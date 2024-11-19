@@ -1,0 +1,70 @@
+scalar BigInt
+
+type Query {
+  telemetry(chainId: String!): [NodeDetailsX]
+  # telemetryForNode(chainId: String!, stash: String, name: String): NodeDetailsX
+  # telemetryById(chainId: String!, id: Int!): NodeDetailsX
+  telemetryNames(chainId: String!): [String]
+  telemetryByName(chainId: String!, name: String!): NodeDetailsX
+  telemetryByNetworkId(chainId: String!, networkId: String!): NodeDetailsX
+}
+
+type NodeDetailsX {
+  NodeId: Int!
+  NodeDetails: NodeDetails
+  NodeStats: [[Int]]
+  NodeIO: [[Int]]
+  NodeHardware: [[Float]]
+  BlockDetails: BlockDetails
+  NodeLocation: String
+  Timestamp: String
+}
+
+type NodeDetails {
+  NodeName: String
+  TelemetryName: String
+  NodeImplementation: String
+  NodeVersion: String
+  Field4: String
+  # NetworkId: Maybe<String>,
+  NetworkId: String,
+  Address: String
+  # OperatingSystem: String,
+  # CpuArchitecture: CpuArchitecture,
+  # _undefined: undefined
+  # TargetEnv: TargetEnv
+  NodeSysInfo: NodeSysInfo,
+  ChainStats: ChainStats
+}
+
+type NodeSysInfo {
+  cpu: String
+  memory: BigInt
+  core_count: Int
+  linux_kernel: String
+  linux_distro: String
+  is_virtual_machine: Boolean
+}
+
+type ChainStats {
+  cpu_hashrate_score: Int
+  memory_memcpy_score: Int
+  disk_sequential_write_score: Int
+  disk_random_write_score: Int
+}
+
+# type NodeStats {}
+
+# type NodeHardware {
+#   # Array<BytesPerSecond>,  
+#   # Array<BytesPerSecond>,
+#   # Array<Timestamp>
+# }
+
+type BlockDetails {
+  BlockNumber: BigInt
+  BlockHash: String
+  Milliseconds: Int
+  Timestamp: BigInt
+  PropagationTime: Int
+}

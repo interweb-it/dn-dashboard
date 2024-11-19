@@ -1,0 +1,6 @@
+
+query nodes($chainId: String!) {
+  nodes(chainId: $chainId) {
+    NodeId
+  }
+}

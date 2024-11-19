@@ -1,0 +1,26 @@
+scalar BigInt
+
+type Query {
+  selected(chainId: String!): [Node]
+  backups(chainId: String!): [NodeBase]
+  nominators(chainId: String!): [String]
+  term(chainId: String!): Term
+  nodeByStash(chainId: String!, stash: String!): Node
+  telemetryForNode(chainId: String!, stash: String, name: String): NodeDetailsX
+}
+
+type NodeBase {
+  identity: String
+  stash: String
+}
+
+type Node {
+  identity: String
+  stash: String
+  status: String
+}
+
+type Term {
+  start: String
+  end: String
+}

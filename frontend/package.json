@@ -1,0 +1,35 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxtjs/apollo": "^5.0.0-alpha.14",
+    "@nuxtjs/vuetify": "^1.12.3",
+    "@pinia/nuxt": "^0.7.0",
+    "@polkadot/api": "^14.3.1",
+    "@polkadot/vue-identicon": "^3.11.3",
+    "from": "^0.1.7",
+    "gql": "^1.1.2",
+    "gql-tag": "^1.0.1",
+    "import": "^0.0.6",
+    "nuxt": "^3.14.159",
+    "nuxt-graphql-client": "^0.2.40",
+    "pinia": "^2.2.6",
+    "sass": "^1.80.7",
+    "vite-plugin-vuetify": "^2.0.4",
+    "vue": "latest",
+    "vue-router": "latest",
+    "vuetify": "^3.7.4",
+    "vuetify-nuxt-module": "^0.18.3"
+  },
+  "devDependencies": {
+    "graphql": "^16.9.0"
+  }
+}

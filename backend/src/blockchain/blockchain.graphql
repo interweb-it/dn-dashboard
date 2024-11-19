@@ -1,0 +1,8 @@
+scalar BigInt
+
+type Query {
+  validators(chainId: String!): [String]
+  # nodeById(chainId: String!, id: Int!): NodeDetailsX
+  # nodeByName(chainId: String!, name: String!): NodeDetailsX
+  # nodeByNetworkId(chainId: String!, networkId: String!): NodeDetailsX
+}
