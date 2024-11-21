@@ -74,8 +74,7 @@ export interface BlockDetailsX {
 // };
 
 const parseBlockDetails = (data: BlockDetails): BlockDetailsX => {
-  const [BlockNumber, BlockHash, Milliseconds, Timestamp, PropagationTime] =
-    data;
+  const [BlockNumber, BlockHash, Milliseconds, Timestamp, PropagationTime] = data;
   return {
     BlockNumber,
     BlockHash,
@@ -91,14 +90,7 @@ const parseNodeSysInfo = (data: NodeSysInfo): NodeSysInfoX => {
   if (!Array.isArray(data)) {
     return data;
   }
-  const [
-    cpu,
-    memory,
-    core_count,
-    linux_kernel,
-    linux_distro,
-    is_virtual_machine,
-  ] = data;
+  const [cpu, memory, core_count, linux_kernel, linux_distro, is_virtual_machine] = data;
   return {
     cpu,
     memory,
@@ -151,16 +143,7 @@ const parseNodeDetails = (data: NodeDetails): NodeDetailsX => {
 
 const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
   //console.debug('Parsing AddedNodeMessage', data.payload);
-  const [
-    NodeId,
-    NodeDetails,
-    NodeStats,
-    NodeIO,
-    NodeHardware,
-    BlockDetails,
-    NodeLocation,
-    Timestamp,
-  ] = data.payload;
+  const [NodeId, NodeDetails, NodeStats, NodeIO, NodeHardware, BlockDetails, NodeLocation, Timestamp] = data.payload;
   const parsedNodeDetails = parseNodeDetails(NodeDetails);
   //console.debug('Parsed NodeDetails', parsedNodeDetails);
   return {
@@ -186,13 +169,10 @@ const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
 export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   private polkadotWS: WebSocket | null = null;
   private kusamaWS: WebSocket | null = null;
-  private readonly TELEMETRY_WS_URL =
-    'wss://telemetry-backend.w3f.community/feed';
+  private readonly TELEMETRY_WS_URL = 'wss://telemetry-backend.w3f.community/feed';
   private chains: Record<string, string> = {
-    kusama:
-      '0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe',
-    polkadot:
-      '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
+    kusama: '0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe',
+    polkadot: '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
   };
   private dataStore: Record<string, Map<number, AddedNodeMessageX>> = {
     polkadot: new Map<number, AddedNodeMessageX>(), // [],
@@ -248,8 +228,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     };
 
     ws.onclose = () => console.log(`Disconnected from ${chainId} telemetry`);
-    ws.onerror = (error) =>
-      console.error(`${chainId} telemetry WebSocket error:`, error);
+    ws.onerror = (error) => console.error(`${chainId} telemetry WebSocket error:`, error);
 
     if (chainId === 'polkadot') {
       this.polkadotWS = ws;
@@ -266,7 +245,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   addNode(chainId: string, message: AddedNodeMessageX) {
     // console.log('AddedNode', chainId, message.NodeId, message.NodeDetails.NodeName, message.NodeDetails.ChainStats);
     //console.log('AddedNode', message[1].NodeId, message[1].NodeDetails);
-    console.log(`${chainId}, ${message.NodeDetails.NodeName}`);
+    console.log(`${chainId}, |${message.NodeDetails.NodeName}|`);
     this.dataStore[chainId].set(message.NodeId, message);
 
     // // test
@@ -292,9 +271,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   getNames(chainId: string): string[] {
-    return Array.from(this.dataStore[chainId].values()).map(
-      (node) => node.NodeDetails.NodeName,
-    );
+    return Array.from(this.dataStore[chainId].values()).map((node) => node.NodeDetails.NodeName);
   }
 
   findOneById(chainId: string, nodeId: number): AddedNodeMessageX {
@@ -306,9 +283,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   findOneByNetworkId(chainId: string, networkId: string): AddedNodeMessageX {
-    return Array.from(this.dataStore[chainId].values()).find(
-      (node) => node.NodeDetails.NetworkId === networkId,
-    );
+    return Array.from(this.dataStore[chainId].values()).find((node) => node.NodeDetails.NetworkId === networkId);
   }
 
   findOneByName(chainId: string, nodeName: string): AddedNodeMessageX {

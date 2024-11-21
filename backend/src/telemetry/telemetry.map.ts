@@ -46,6 +46,7 @@ export const telemetryNameMap: Record<string, Record<string, string>> = {
     'DOZENODES.COM': 'DOZENODES',
     'Encointer/KV1': 'Encointer/KV1',
     'Encointer/KV2': 'Encointer/KV2',
+    'Eric/BladeRunner': 'BladeRunner',
     'Eric/BladeRunner2': 'BladeRunner2',
     'Exotic Stake/02': 'ExoticStake-k2',
     'Exotic Stake/03': 'ExoticStake-k3',
