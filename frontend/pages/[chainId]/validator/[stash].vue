@@ -55,12 +55,16 @@
                   Bonded
                 </v-col>
                 <v-col>
-                  <v-icon :color="rulesRewardDestingation ? 'green' : 'red'">mdi-hand</v-icon>
+                  <v-icon :color="rulesRewardDestingation ? 'green' : 'red'">mdi-bank-outline</v-icon>
                   Rewards
                 </v-col>
                 <v-col>
                   <v-icon :color="rulesCommission ? 'green' : 'red'">mdi-percent</v-icon>
                   Commission
+                </v-col>
+                <v-col>
+                  <v-icon :color="rulesIdentity ? 'green' : 'red'">mdi-passport</v-icon>
+                  Identity
                 </v-col>
               </v-row>
             </v-card>
@@ -94,6 +98,19 @@
           <v-list-item>
             <v-list-item-subtitle>Commission</v-list-item-subtitle>
             <v-list-item-title>{{ (commission.commission || 0) / 10_000_000 }}%</v-list-item-title>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-subtitle>Identity</v-list-item-subtitle>
+            <!-- <v-list-item-title>{{ identity }}</v-list-item-title> -->
+            <v-list-item-title>
+              <p>Display: {{ identity.info?.display }}{{ identity.subId ? `/${identity.subId}` : '' }}</p>
+              <p>Email: {{ identity.info?.email }}</p>
+              <p v-show="identity.info?.discord">Discord: {{ identity.info?.discord }}</p>
+              <p v-show="identity.info?.github">Github: {{ identity.info?.github }}</p>
+              <p v-show="identity.info?.matrix">Matrix: {{ identity.info?.matrix }}</p>
+              <p v-show="identity.info?.twitter">Twitter: {{ identity.info?.twitter }}</p>
+              <p v-show="identity.info?.web">Web: {{ identity.info?.web }}</p>
+            </v-list-item-title>
           </v-list-item>
         </v-list>
       </v-card-text>
@@ -188,17 +205,17 @@
         [DN] <a href="https://nodes.web3.foundation/rules" target="_blank">Rules</a> <br>
         <ul>
           <li>Self bond <v-icon>mdi-check</v-icon></li>
-          <li>Rewards Target  <v-icon>mdi-check</v-icon></li>
-          <li>Commission  <v-icon>mdi-check</v-icon></li>
-          <li>Telemetry  <v-icon>mdi-check</v-icon></li>
+          <li>Rewards Target <v-icon>mdi-check</v-icon></li>
+          <li>Commission <v-icon>mdi-check</v-icon></li>
+          <li>Telemetry <v-icon>mdi-check</v-icon></li>
+          <li>On Chain Id (email & matrix) <v-icon>mdi-check</v-icon></li>
+          <li>Payouts</li>
           <li>Hardware -  <a href="https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot#requirements" target="_blank">requirements</a></li>
           <li>IP4 & IP6</li>
-          <li>Client Version (24 hours)</li>
-          <li>dedicatee machine</li>
+          <li>Client Version - from telemetry (24 hours)</li>
+          <li>dedicated machine</li>
           <li>No slashes</li>
-          <li>Performance A/A+?</li>
-          <li>On Chain Id (email & matrix)</li>
-          <li>Payouts</li>
+          <li>Performance A/A+? - link to https://apps.turboflakes.io</li>
         </ul>
 
       </v-card-text>
@@ -210,6 +227,7 @@
 <script lang="ts">
 // import { NodeDetailsX } from '../../substrate-telemetry/types'
 import { ApiPromise } from '@polkadot/api'
+import { hexToString } from '@polkadot/util'
 
 import { FeedMessage } from '../substrate-telemetry';
 import type { Maybe } from '../substrate-telemetry/helpers';
@@ -334,6 +352,7 @@ export default defineComponent({
     const stash = ref(route.params.stash)
     const { $substrate } = useNuxtApp();
     var api: ApiPromise | null;
+    var apip: ApiPromise | null;
 
     const nodeStore = useNodeStore()
     const nodes = ref([])
@@ -352,6 +371,7 @@ export default defineComponent({
     const locks = ref([])
     const rewardDestination = ref({})
     const commission = ref(0)
+    const identity = ref({})
 
     const loading = ref({
       node: true,
@@ -391,6 +411,11 @@ export default defineComponent({
       const _commission = (commission.value.commission || 0) / 10_000_000
       // console.debug('rulesCommission', commission.value, _commission, rules.commission);
       return _commission <= rules.commission[chainId.value]
+    })
+
+    const rulesIdentity = computed(() => {
+      // identity.value.info should have email and matrix
+      return identity.value.info?.email && identity.value.info?.matrix
     })
 
     const reload = async () => {
@@ -455,8 +480,10 @@ export default defineComponent({
     // }
 
     const getAccount = async () => {
+      console.debug('getAccount', stash.value);
       // if (!api) return
       api = await $substrate.getApi(chainId.value)
+      apip = await $substrate.getApip(chainId.value)
       const _account = await api.query.system.account(stash.value)
       console.log('account', account)
       account.value = _account
@@ -476,6 +503,25 @@ export default defineComponent({
 
       const _commission = await api.query.staking.validators(stash.value)
       commission.value = _commission.toJSON()
+
+      // get Identity
+      let _identity = await apip.query.identity.identityOf(stash.value)
+      console.debug('identity', _identity)
+      if(_identity.isSome) {
+        identity.value = parseIdentity(_identity)
+      } else {
+        const _super = await apip.query.identity.superOf(stash.value)
+        console.debug('super', _super.toJSON())
+        const subId = hexToString(_super.toJSON()[1].raw)
+        if(_super.isSome) {
+          _identity = await apip.query.identity.identityOf(_super.toJSON()[0])
+          if(_identity.isSome) {
+            identity.value = { subId, ...parseIdentity(_identity) }
+          }
+        }
+        // console.debug('identity', _identity.toJSON())
+        // console.debug('identity', parseIdentity(_identity))
+      }
 
     }
 
@@ -505,6 +551,31 @@ export default defineComponent({
       return ret.toFixed(2) + ' ' + tokens[chainId.value]
     }
 
+    const parseIdentity = (id: any) => {
+      const idj = id.toJSON()[0]
+      console.debug('idj', idj)
+      if (idj) {
+        const res = {} as any
+        res.deposit = idj.deposit
+        res.info = {
+          discord: idj.info.discord?.raw ? hexToString(idj.info.discord.raw) : '',
+          display: idj.info.display?.raw ? hexToString(idj.info.display.raw) : '',
+          email: idj.info.email?.raw ? hexToString(idj.info.email.raw) : '',
+          github: idj.info.github?.raw ? hexToString(idj.info.github.raw) : '',
+          image: idj.info.image?.raw ? hexToString(idj.info.image.raw) : '',
+          legal: idj.info.legal?.raw ? hexToString(idj.info.legal.raw) : '',
+          matrix: idj.info.matrix?.raw ? hexToString(idj.info.matrix.raw) : '',
+          pgpFingerprint: idj.info.pgpFingerprint?.raw ? hexToString(idj.info.pgpFingerprint.raw) : '',
+          // riot: idj.info.riot?.raw ? hexToString(idj.info.riot.raw) : '',
+          twitter: idj.info.twitter?.raw ? hexToString(idj.info.twitter.raw) : '',
+          web: idj.info.web?.raw ? hexToString(idj.info.web.raw) : ''
+        }
+        res.judgements = idj.judgements
+        return res
+      }
+      return null
+    }
+
     return {
       isLoading,
       reload,
@@ -515,9 +586,11 @@ export default defineComponent({
       locks,
       rewardDestination,
       commission,
+      identity,
       rulesBonded,
       rulesRewardDestingation,
       rulesCommission,
+      rulesIdentity,
 
       node,
       hasTelemetry,

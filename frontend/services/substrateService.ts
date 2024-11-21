@@ -3,8 +3,9 @@ import { ApiPromise, WsProvider } from '@polkadot/api';
 
 export default class SubstrateService {
   private api: ApiPromise | null = null;
+  private apip: ApiPromise | null = null; // people
   private chainId: string = 'kusama';
-  private readonly WS_URL = 'wss://rpc.ibp.network/';
+  private readonly WS_URL = 'wss://rpc.metaspan.io/'; // 'wss://rpc.ibp.network/';
 
   // Connect to the rpc server
   async connect(chainId: string): Promise<void> {
@@ -17,9 +18,13 @@ export default class SubstrateService {
       return;
     }
 
-    const provider = new WsProvider(this.WS_URL + chainId);
+    let provider = new WsProvider(this.WS_URL + chainId);
     this.api = await ApiPromise.create({ provider, noInitWarn: true });
     await this.api.isReady;
+
+    provider = new WsProvider(this.WS_URL + 'people-' + chainId);
+    this.apip = await ApiPromise.create({ provider, noInitWarn: true });
+    await this.apip.isReady;
 
     // Handle api open event
     this.api.on('connected', (event) => {
@@ -49,6 +54,14 @@ export default class SubstrateService {
     } else {
       await this.connect(chainId);
       return this.api;
+    }
+  }
+  async getApip(chainId: string): Promise<ApiPromise | null> {
+    if (this.apip && this.chainId === chainId) {
+      return this.apip;
+    } else {
+      await this.connect(chainId);
+      return this.apip;
     }
   }
 
