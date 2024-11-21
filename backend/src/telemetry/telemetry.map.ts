@@ -108,6 +108,7 @@ export const telemetryNameMap: Record<string, Record<string, string>> = {
     'wdmaster': 'wdmaster',
     'WinterStamp/Avalanche': 'WinterStamp/Avalanche',
     'WinterStamp/Blizzard': 'WinterStamp/Blizzard',
+    'XUAN_2': 'XUAN_LOW_COMMISSION_NODE_2',
     'Zetetic Validator': 'Zetetic Validator',
   },
   polkadot: {
