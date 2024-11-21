@@ -252,6 +252,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     console.log(`${chainId}, |${message.NodeDetails.NodeName}|`);
     this.dataStore[chainId].set(message.NodeId, message);
 
+
     // // test
     // const testNode = this.dataStore[chainId].get(message.NodeId);
     // console.debug('testNode', testNode.NodeDetails.ChainStats);
