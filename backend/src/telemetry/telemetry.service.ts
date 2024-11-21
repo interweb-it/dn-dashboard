@@ -289,7 +289,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   findOneByName(chainId: string, nodeName: string): AddedNodeMessageX {
     let ret: AddedNodeMessageX | undefined;
     const _name = telemetryNameMap[chainId][nodeName] || nodeName;
-    console.log('findOneByName', chainId, _name, 'or', nodeName);
+    console.log('telemetry.service.ts: findOneByName', chainId, _name, 'from', nodeName);
     this.dataStore[chainId].forEach((node) => {
       if (node.NodeDetails.NodeName === _name) {
         // console.log('findOneByName ChainStats:', node.NodeDetails.ChainStats);
