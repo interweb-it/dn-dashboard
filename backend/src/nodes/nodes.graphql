@@ -1,12 +1,12 @@
 scalar BigInt
 
 type Query {
-  selected(chainId: String!): [Node]
-  backups(chainId: String!): [NodeBase]
-  nominators(chainId: String!): [String]
-  term(chainId: String!): Term
-  nodeByStash(chainId: String!, stash: String!): Node
-  telemetryForNode(chainId: String!, stash: String, name: String): NodeDetailsX
+  selected(chainId: String!, cohortId:Int!): [Node]
+  backups(chainId: String!, cohortId:Int!): [NodeBase]
+  nominators(chainId: String!, cohortId:Int!): [String]
+  term(chainId: String!, cohortId:Int!): Term
+  nodeByStash(chainId: String!, cohortId:Int!, stash: String!): Node
+  telemetryForNode(chainId: String!, cohortId:Int!, stash: String, name: String): NodeDetailsX
 }
 
 type NodeBase {

@@ -17,9 +17,11 @@ export class NodesResolver {
   async getNodes(
     @Args('chainId')
     chainId: string,
+    @Args('cohortId')
+    cohortId: number,
   ): Promise<INode[]> {
-    console.debug('resolver.ts: getSelected', chainId);
-    return this.nodesService.getSelected(chainId);
+    console.debug('resolver.ts: getSelected', chainId, cohortId);
+    return this.nodesService.getSelected(chainId, cohortId);
   }
 
   @Query('backups')
@@ -27,49 +29,59 @@ export class NodesResolver {
   async getBackups(
     @Args('chainId')
     chainId: string,
+    @Args('cohortId')
+    cohortId: number,
   ): Promise<INodeBase[]> {
-    console.debug('resolver.ts: getBackups', chainId);
-    return this.nodesService.getBackups(chainId);
+    console.debug('resolver.ts: getBackups', chainId, cohortId);
+    return this.nodesService.getBackups(chainId, cohortId);
   }
 
   @Query('nominators')
   async getNominators(
     @Args('chainId')
     chainId: string,
+    @Args('cohortId')
+    cohortId: number,
   ): Promise<string[]> {
-    console.debug('resolver.ts: getNominators', chainId);
-    return this.nodesService.getNominators(chainId);
+    console.debug('resolver.ts: getNominators', chainId, cohortId);
+    return this.nodesService.getNominators(chainId, cohortId);
   }
 
   @Query('term')
   async getTerm(
     @Args('chainId')
     chainId: string,
+    @Args('cohortId')
+    cohortId: number,
   ): Promise<ITerm> {
-    console.debug('resolver.ts: getTerm', chainId);
-    return this.nodesService.getTerm(chainId);
+    console.debug('resolver.ts: getTerm', chainId, cohortId);
+    return this.nodesService.getTerm(chainId, cohortId);
   }
 
   @Query('nodeByStash')
   async findNodeByName(
     @Args('chainId')
     chainId: string,
+    @Args('cohortId')
+    cohortId: number,
     @Args('name')
     name: string,
   ): Promise<INode | INodeBase> {
-    console.debug('resolver.ts: findNodeByName', chainId, name);
-    return this.nodesService.findNodeByName(chainId, name);
+    console.debug('resolver.ts: findNodeByName', chainId, cohortId, name);
+    return this.nodesService.findNodeByName(chainId, cohortId, name);
   }
 
   @Query('nodeByStash')
   async findNodeByStash(
     @Args('chainId')
     chainId: string,
+    @Args('cohortId')
+    cohortId: number,
     @Args('stash')
     stash: string,
   ): Promise<INode | INodeBase> {
-    console.debug('resolver.ts: findNodeByStash', chainId, stash);
-    return this.nodesService.findNodeByStash(chainId, stash);
+    console.debug('resolver.ts: findNodeByStash', chainId, cohortId, stash);
+    return this.nodesService.findNodeByStash(chainId, cohortId, stash);
   }
 
   // @Query('nodeById')

@@ -18,7 +18,7 @@ export interface ITerm {
   end: string;
 }
 
-export interface IChainData {
+export interface ICohortData {
   backups: INodeBase[];
   nominators: string[];
   selected: INode[];
@@ -26,8 +26,13 @@ export interface IChainData {
   term: ITerm;
 }
 
-const BASE_URL =
-  'https://deploy-preview-7--decentralized-nodes-749eed.netlify.app/api/cohort/COHORT_ID/CHAIN_ID';
+export interface IChainData {
+  [cohortId: number]: ICohortData;
+}
+
+const BASE_URL = 'https://deploy-preview-7--decentralized-nodes-749eed.netlify.app/api/cohort/COHORT_ID/CHAIN_ID';
+
+const cohorts = [1];
 
 @Injectable()
 export class NodesService implements OnModuleInit, OnModuleDestroy {
@@ -35,10 +40,8 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   private kusamaWS: WebSocket | null = null;
 
   private chains: Record<string, string> = {
-    kusama:
-      '0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe',
-    polkadot:
-      '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
+    kusama: '0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe',
+    polkadot: '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
   };
 
   private dataStore: Record<string, IChainData> = {
@@ -47,8 +50,10 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   };
 
   async onModuleInit() {
-    await this.fetchChainData('polkadot');
-    await this.fetchChainData('kusama');
+    for (const cohortId of cohorts) {
+      await this.fetchChainData('polkadot', cohortId);
+      await this.fetchChainData('kusama', cohortId);
+    }
   }
 
   // Schedule a task to run every 5 minutes
@@ -56,21 +61,22 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   @Interval(5 * 60 * 1000) // Every 5 minutes
   async handleInterval() {
     console.log('Running scheduled task to fetch chain data');
-    await this.fetchChainData('polkadot');
-    await this.fetchChainData('kusama');
+    for (const cohortId of cohorts) {
+      await this.fetchChainData('polkadot', cohortId);
+      await this.fetchChainData('kusama', cohortId);
+    }
   }
 
   onModuleDestroy() {
     // this.disconnect();
   }
 
-  private async fetchChainData(chainId: string) {
+  private async fetchChainData(chainId: string, cohortId: number) {
     console.log('fetchChainData', chainId);
     try {
-      const url = BASE_URL.replace('COHORT_ID', '1').replace(
-        'CHAIN_ID',
-        chainId,
-      );
+      const url = BASE_URL.replace('COHORT_ID', '1')
+        .replace('CHAIN_ID', chainId)
+        .replace('COHORT_ID', cohortId.toString());
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -84,53 +90,45 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  getSelected(chainId: string): INode[] {
+  getSelected(chainId: string, cohortId: number): INode[] {
     console.log('getNodes', chainId);
-    const ret = Array.from(this.dataStore[chainId].selected);
-    return ret; // this.dataStore[chainId].forEach((node) => node);
+    const ret = Array.from(this.dataStore[chainId][cohortId].selected);
+    return ret;
   }
 
-  getBackups(chainId: string): INodeBase[] {
+  getBackups(chainId: string, cohortId: number): INodeBase[] {
     console.log('getNodes', chainId);
-    const ret = Array.from(this.dataStore[chainId].backups);
-    return ret; // this.dataStore[chainId].forEach((node) => node);
+    const ret = Array.from(this.dataStore[chainId][cohortId].backups);
+    return ret;
   }
 
-  getNominators(chainId: string): string[] {
+  getNominators(chainId: string, cohortId: number): string[] {
     console.log('getNodes', chainId);
-    const ret = Array.from(this.dataStore[chainId].nominators);
-    return ret; // this.dataStore[chainId].forEach((node) => node);
+    const ret = Array.from(this.dataStore[chainId][cohortId].nominators);
+    return ret;
   }
 
-  getTerm(chainId: string): ITerm {
+  getTerm(chainId: string, cohortId): ITerm {
     console.log('getNodes', chainId);
-    return this.dataStore[chainId].term;
+    return this.dataStore[chainId][cohortId].term;
   }
 
-  findNodeByName(chainId: string, name: string): INode | INodeBase {
+  findNodeByName(chainId: string, cohortId: number, name: string): INode | INodeBase {
     console.log('findNodeByName', chainId, name);
     let node: INode | INodeBase;
-    node = this.dataStore[chainId].selected.find(
-      (node) => node.identity === name,
-    );
+    node = this.dataStore[chainId][cohortId].selected.find((node) => node.identity === name);
     if (!node) {
-      node = this.dataStore[chainId].backups.find(
-        (node) => node.identity === name,
-      );
+      node = this.dataStore[chainId][cohortId].backups.find((node) => node.identity === name);
     }
     return node;
   }
 
-  findNodeByStash(chainId: string, stash: string): INode | INodeBase {
+  findNodeByStash(chainId: string, cohortId: number, stash: string): INode | INodeBase {
     console.log('findNodeByStash', chainId, stash);
     let node: INode | INodeBase;
-    node = this.dataStore[chainId].selected.find(
-      (node) => node.stash === stash,
-    );
+    node = this.dataStore[chainId][cohortId].selected.find((node) => node.stash === stash);
     if (!node) {
-      node = this.dataStore[chainId].backups.find(
-        (node) => node.stash === stash,
-      );
+      node = this.dataStore[chainId][cohortId].backups.find((node) => node.stash === stash);
     }
     return node;
   }

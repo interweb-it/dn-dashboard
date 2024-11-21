@@ -10,8 +10,8 @@ export default defineNuxtConfig({
   modules: [
     'vuetify-nuxt-module',
     '@pinia/nuxt',
-    // 'nuxt-graphql-client',
     '@nuxtjs/apollo',
+    // '@nuxtjs/proxy',
   ],
   plugins: ['~/plugins/telemetry.ts'],
   vuetify: {
@@ -30,10 +30,15 @@ export default defineNuxtConfig({
     proxyCookies: true,
     clients: {
       default: {
-        httpEndpoint: 'http://localhost:3002/graphql',
+        // development: gql endpoint is direct to the backend, so the proxy is not needed
+        // production : gql endpoint is proxied to the backend
+        httpEndpoint: process.env.GRAPHQL_HTTP_ENDPOINT || 'http://localhost:3002/graphql',
         connectToDevTools: true,
-        // inMemoryCacheOptions: {
-        //   typePolicies: {
+        inMemoryCacheOptions: {
+          typePolicies: {
+            node: {
+              keyFields: ['chainId', 'NodeName']
+            },
         //     Candidate: {
         //       keyFields: ['chain', 'stash']
         //     },
@@ -43,8 +48,8 @@ export default defineNuxtConfig({
         //     Pool: {
         //       keyFields: ['chain', 'id']
         //     }
-        //   }
-        // },
+          }
+        },
       },
     },
   },
@@ -62,12 +67,57 @@ export default defineNuxtConfig({
       }
     }
   },
-  runtimeConfig: {
-    public: {
-      // apiBase: '/api',
-      GQL_HOST: 'http://localhost:3002/graphql',
-      // graphqlEndpoint: 'http://localhost:3002/graphql',
-      // graphqlBrowserEndpoint: 'http://localhost:3002/graphql',
-    },
-  }
+
+  // development: gql endpoint is direct to the backend, so the proxy is not needed
+  // production : gql endpoint is proxied to the backend
+  // routeRules: {
+  //   '/graphql': {
+  //     proxy: process.env.GRAPHQL_BACKEND_URL || 'http://dnd-backend:3002/graphql',
+  //   }
+  // },
+
+  nitro: {
+    // does not work on the SSR
+    // devProxy: {
+    //   '/graphql' : {
+    //     target: 'http://localhost:3002/graphql',
+    //     changeOrigin: true,
+    //     // pathRewrite: { '^/graphql': '' },
+    //   },
+    // }
+  },
+
+  ...(process.env.NODE_ENV === 'development' 
+    ? {
+      // development
+      runtimeConfig: {
+        public: {
+          // apiBase: '/api',
+          // GQL_HOST: 'http://localhost:3002/graphql',
+          graphqlEndpoint: 'http://localhost:3002/graphql',
+          rpcBaseUrl: 'wss://rpc.ibp.network/',
+          // graphqlBrowserEndpoint: 'http://localhost:3002/graphql',
+        },
+      },
+    
+    } : {
+      // production
+      runtimeConfig: {
+        public: {
+          // apiBase: '/api',
+          // GQL_HOST: 'http://localhost:3002/graphql',
+          graphqlEndpoint: '', // process.env.NUXT_GRAPHQL_ENDPOINT = 'http://localhost:3002/graphql',
+          rpcBaseUrl: '', // process.env.NUXT_RPC_BASE_URL = 'wss://rpc.ibp.network/',
+          // graphqlBrowserEndpoint: 'http://localhost:3002/graphql',
+        },
+      },
+      // we only need to proxy the graphql endpoint in production
+      routeRules: {
+        '/graphql': {
+          proxy: process.env.GRAPHQL_BACKEND_URL || 'http://dnd-backend:3002/graphql',
+        }
+      },
+    
+    }
+  ),
 })

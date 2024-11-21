@@ -3,7 +3,7 @@
 
     <v-container>
     <v-toolbar color="background">
-      <v-toolbar-title>[DN] {{ chainId }} cohort {{ id }}</v-toolbar-title>
+      <v-toolbar-title>[DN] {{ chainId }} cohort {{ cohortId }}</v-toolbar-title>
       <v-spacer></v-spacer>
       <v-text-field v-model="search" placeholder="Search"></v-text-field>
       <v-toolbar-items>
@@ -69,14 +69,14 @@
 <script lang="ts">
 
 const QUERY_NODES = gql`
-query nodeByName($chainId: String!) {
-  selected(chainId: $chainId) {
+query nodeByName($chainId: String!, cohortId:Int!) {
+  selected(chainId: $chainId, cohortId: $cohortId) {
     identity
     stash
     status
   }
-  nominators(chainId: $chainId) 
-  backups(chainId: $chainId) {
+  nominators(chainId: $chainId, cohortId: $cohortId) 
+  backups(chainId: $chainId, cohortId: $cohortId) {
     identity
     stash
   }
@@ -114,7 +114,7 @@ export default defineComponent({
     const route = useRoute()
     const router = useRouter()
     const chainId = ref(route.params.chainId)
-    const id = ref(route.params.id)
+    const cohortId = ref(route.params.cohortId)
     const nodeStore = useNodeStore()
     const nodes = ref([])
 
@@ -139,7 +139,8 @@ export default defineComponent({
         // loading: cLoading,
         refetch: cRefetch,
         onResult } = await useQuery(QUERY_NODES, {
-        chainId: chainId.value
+        chainId: chainId.value,
+        cohortId: cohortId.value
       })
       refetch.value = cRefetch
       // loading.value = computed(() => cLoading)
@@ -239,7 +240,7 @@ export default defineComponent({
       loading,
       refetch,
       chainId,
-      id,
+      cohortId,
       selected,
       nominators,
       nominations,
