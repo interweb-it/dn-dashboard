@@ -184,18 +184,18 @@ export interface NodeDetailsX {
 }
 
 const QUERY_NODE = gql`
-query nodeByName($chainId: String!, $stash: String!) {
-  selected(chainId: $chainId) {
+query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
+  selected(chainId: $chainId, cohortId: $cohortId) {
     identity
     stash
     status
   }
   # nominators(chainId: $chainId) 
-  backups(chainId: $chainId) {
+  backups(chainId: $chainId, cohortId: $cohortId) {
     identity
     stash
   }
-  nodeByStash(chainId: $chainId, stash: $stash) {
+  nodeByStash(chainId: $chainId, cohortId: $cohortId, stash: $stash) {
     identity
     stash
     status
@@ -271,6 +271,7 @@ export default defineComponent({
       api = $substrate.getApi(chainId.value)
       var { error, loading: cLoading, refetch: cRefetch, onResult } = useQuery(QUERY_NODE, {
         chainId: chainId.value,
+        cohortId: 1,
         stash: stash.value
       })
       refetch = cRefetch

@@ -69,7 +69,7 @@
 <script lang="ts">
 
 const QUERY_NODES = gql`
-query nodeByName($chainId: String!, cohortId:Int!) {
+query nodeByName($chainId: String!, $cohortId:Int!) {
   selected(chainId: $chainId, cohortId: $cohortId) {
     identity
     stash
@@ -114,7 +114,7 @@ export default defineComponent({
     const route = useRoute()
     const router = useRouter()
     const chainId = ref(route.params.chainId)
-    const cohortId = ref(route.params.cohortId)
+    const cohortId = ref(Number(route.params.cohortId))
     const nodeStore = useNodeStore()
     const nodes = ref([])
 

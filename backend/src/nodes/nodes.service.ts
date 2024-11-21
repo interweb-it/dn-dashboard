@@ -26,11 +26,12 @@ export interface ICohortData {
   term: ITerm;
 }
 
-export interface IChainData {
-  [cohortId: number]: ICohortData;
-}
+// export interface IChainData {
+//   [cohortId: number]: ICohortData;
+// }
+export type TChainData = Record<number, ICohortData>;
 
-const BASE_URL = 'https://deploy-preview-7--decentralized-nodes-749eed.netlify.app/api/cohort/COHORT_ID/CHAIN_ID';
+const BASE_URL = 'https://nodes.web3.foundation/api/cohort/COHORT_ID/CHAIN_ID';
 
 const cohorts = [1];
 
@@ -44,13 +45,14 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     polkadot: '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
   };
 
-  private dataStore: Record<string, IChainData> = {
-    polkadot: {} as IChainData,
-    kusama: {} as IChainData,
+  private dataStore: Record<string, TChainData> = {
+    polkadot: {} as TChainData,
+    kusama: {} as TChainData,
   };
 
   async onModuleInit() {
     for (const cohortId of cohorts) {
+      console.log('Fetching chain data for cohort', cohortId);
       await this.fetchChainData('polkadot', cohortId);
       await this.fetchChainData('kusama', cohortId);
     }
@@ -81,9 +83,9 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const data: IChainData = await response.json();
+      const data: ICohortData = await response.json();
       console.log('Data fetched:', data);
-      this.dataStore[chainId] = data;
+      this.dataStore[chainId][cohortId] = data;
       console.log(`Data updated for ${chainId}`);
     } catch (error) {
       console.error(`Failed to fetch data for ${chainId}:`, error.message);

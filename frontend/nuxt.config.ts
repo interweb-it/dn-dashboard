@@ -86,38 +86,36 @@ export default defineNuxtConfig({
     //   },
     // }
   },
-
-  ...(process.env.NODE_ENV === 'development' 
-    ? {
-      // development
-      runtimeConfig: {
-        public: {
-          // apiBase: '/api',
-          // GQL_HOST: 'http://localhost:3002/graphql',
-          graphqlEndpoint: 'http://localhost:3002/graphql',
-          rpcBaseUrl: 'wss://rpc.ibp.network/',
-          // graphqlBrowserEndpoint: 'http://localhost:3002/graphql',
-        },
-      },
-    
-    } : {
-      // production
-      runtimeConfig: {
-        public: {
-          // apiBase: '/api',
-          // GQL_HOST: 'http://localhost:3002/graphql',
-          graphqlEndpoint: '', // process.env.NUXT_GRAPHQL_ENDPOINT = 'http://localhost:3002/graphql',
-          rpcBaseUrl: '', // process.env.NUXT_RPC_BASE_URL = 'wss://rpc.ibp.network/',
-          // graphqlBrowserEndpoint: 'http://localhost:3002/graphql',
-        },
-      },
-      // we only need to proxy the graphql endpoint in production
-      routeRules: {
-        '/graphql': {
-          proxy: process.env.GRAPHQL_BACKEND_URL || 'http://dnd-backend:3002/graphql',
-        }
-      },
-    
+  // we only need to proxy the graphql endpoint in production
+  routeRules: {
+    '/graphql': {
+      // proxy: process.env.GRAPHQL_BACKEND_URL || 'http://dnd-backend:3002/graphql',
+      // proxy: 'http://192.168.1.209:4000/graphql', // development
+      proxy: 'http://dnd-backend:4000/graphql', // production
     }
-  ),
+  },
+  runtimeConfig: {
+    public: {
+      // apiBase: '/api',
+      // GQL_HOST: 'http://localhost:3002/graphql',
+      graphqlEndpoint: process.env.NUXT_GRAPHQL_ENDPOINT = 'https://dn.metaspan.io/graphql',
+      rpcBaseUrl: process.env.NUXT_RPC_BASE_URL = 'wss://rpc.ibp.network/',
+      // graphqlBrowserEndpoint: 'http://localhost:3002/graphql',
+    },
+  },
+
+  // ...(process.env.NODE_ENV === 'development' 
+  //   ? {
+  //     // development
+  //     runtimeConfig: {
+  //       public: {
+  //         // apiBase: '/api',
+  //         // GQL_HOST: 'http://localhost:3002/graphql',
+  //         graphqlEndpoint: 'http://localhost:3002/graphql',
+  //         rpcBaseUrl: 'wss://rpc.ibp.network/',
+  //         // graphqlBrowserEndpoint: 'http://localhost:3002/graphql',
+  //       },
+  //     },
+  //   }
+  // ) : {}
 })
