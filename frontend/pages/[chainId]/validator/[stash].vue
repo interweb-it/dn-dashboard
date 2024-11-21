@@ -45,26 +45,26 @@
 
           <v-list-item>
             <v-card>
-              <v-row>
-                <v-col>
+              <v-row no-gutters>
+                <v-col class="pa-2 d-flex align-center">
                   <v-icon :color="hasTelemetry ? 'green' : 'red'">mdi-chart-box-outline</v-icon>
-                  Telemetry
+                  <span> Telemetry</span>
                 </v-col>
-                <v-col>
+                <v-col class="ma-2 d-flex align-center">
                   <v-icon :color="rulesBonded ? 'green' : 'red'">mdi-lock-outline</v-icon>
-                  Bonded
+                  <span> Bonded</span>
                 </v-col>
-                <v-col>
+                <v-col class="ma-2 d-flex align-center">
                   <v-icon :color="rulesRewardDestingation ? 'green' : 'red'">mdi-bank-outline</v-icon>
-                  Rewards
+                  <span> Rewards</span>
                 </v-col>
-                <v-col>
+                <v-col class="ma-2 d-flex align-center">
                   <v-icon :color="rulesCommission ? 'green' : 'red'">mdi-percent</v-icon>
-                  Commission
+                  <span> Commission</span>
                 </v-col>
-                <v-col>
+                <v-col class="ma-2 d-flex align-center">
                   <v-icon :color="rulesIdentity ? 'green' : 'red'">mdi-passport</v-icon>
-                  Identity
+                  <span> Identity</span>
                 </v-col>
               </v-row>
             </v-card>
@@ -215,7 +215,8 @@
           <li>Client Version - from telemetry (24 hours)</li>
           <li>dedicated machine</li>
           <li>No slashes</li>
-          <li>Performance A/A+? - link to https://apps.turboflakes.io</li>
+          <li>Performance A/A+? - check <a :href="`https://apps.turboflakes.io/?chain=${chainId}#/validator/${node.stash}?mode=history`" target="_blank">
+            apps.turboflakes.io</a></li>
         </ul>
 
       </v-card-text>
