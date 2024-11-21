@@ -182,7 +182,7 @@
           <li>Rewards Target  <v-icon>mdi-check</v-icon></li>
           <li>Commission  <v-icon>mdi-check</v-icon></li>
           <li>Telemetry  <v-icon>mdi-check</v-icon></li>
-          <li>Hardware - https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot#requirements</li>
+          <li>Hardware -  <a href="https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot#requirements" target="_blank">requirements</a></li>
           <li>IP4 & IP6</li>
           <li>Client Version (24 hours)</li>
           <li>dedicatee machine</li>
