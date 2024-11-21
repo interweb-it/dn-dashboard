@@ -1,7 +1,13 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-// import WebSocket from 'isomorphic-ws';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebSocket } from 'ws';
-import { telemetryNameMap } from './telemetry.map';
+// import request
+
+// import { telemetryNameMap } from './telemetry.map';
+let telemetryNameMap: Record<string, Record<string, string>> = {
+  kusama: {},
+  polkadot: {},
+};
 
 import { FeedMessage } from '../substrate-telemetry';
 import type { Maybe } from '../substrate-telemetry/helpers';
@@ -16,10 +22,7 @@ import type {
   NodeSysInfo,
   ChainStats,
 } from '../substrate-telemetry/types';
-import {
-  AddedNodeMessage,
-  RemovedNodeMessage,
-} from 'src/substrate-telemetry/feed';
+import { AddedNodeMessage, RemovedNodeMessage } from 'src/substrate-telemetry/feed';
 
 export interface AddedNodeMessageX {
   NodeId: number;
@@ -182,6 +185,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     this.connect('polkadot');
     this.connect('kusama');
+    this.updateTelemetryNameMap();
   }
 
   onModuleDestroy() {
@@ -302,6 +306,35 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     });
     // console.log('findOneByName ChainStats:', ret);
     return ret;
+  }
+
+  private async updateTelemetryNameMap() {
+    console.debug('Fetching telemetry name map...');
+    const url =
+      'https://raw.githubusercontent.com/metaspan/dn-dashboard/refs/heads/main/backend/config/telemetryNameMap.json';
+    try {
+      const response = await fetch(url);
+      // if (!response.ok) {
+      //   throw new Error(`HTTP error! status: ${response.status}`);
+      // }
+      const data = await response.json();
+      if (data) {
+        telemetryNameMap = data;
+        console.log('Telemetry Name Map updated successfully:', telemetryNameMap);
+        console.log('Telemetry Name Map updated successfully:', telemetryNameMap);
+      } else {
+        console.error('Failed to update telemetry name map:', data);
+      }
+    } catch (error) {
+      console.error('Error fetching telemetry name map:', error.message);
+    }
+  }
+
+  // Cron job to periodically update the telemetry map
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  handleCron() {
+    console.log('Fetching telemetry name map...');
+    this.updateTelemetryNameMap();
   }
 
   handleTelemetryMessage(chainId: string, message: any) {
