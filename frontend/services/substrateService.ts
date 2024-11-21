@@ -13,10 +13,10 @@ export default class SubstrateService {
       console.warn('SubstrateService is only available in the browser');
       return;
     }
-    if (this.api) {
-      console.debug(`${chainId} API is already connected`);
-      return;
-    }
+    // if (this.api) {
+    //   console.debug(`${chainId} API is already connected`);
+    //   return;
+    // }
 
     let provider = new WsProvider(this.WS_URL + chainId);
     this.api = await ApiPromise.create({ provider, noInitWarn: true });
@@ -53,6 +53,7 @@ export default class SubstrateService {
       return this.api;
     } else {
       await this.connect(chainId);
+      this.chainId = chainId;
       return this.api;
     }
   }
@@ -61,6 +62,7 @@ export default class SubstrateService {
       return this.apip;
     } else {
       await this.connect(chainId);
+      this.chainId = chainId;
       return this.apip;
     }
   }
