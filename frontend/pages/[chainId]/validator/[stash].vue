@@ -306,7 +306,10 @@ const tokens = {
 }
 
 const rules = {
-  commission: 5,
+  commission: {
+    polkadot: 5,
+    kusama: 15,
+  },
   rewardDestination: 'Staked',
   selfBond: {
     polkadot: 7500,
@@ -378,7 +381,7 @@ export default defineComponent({
     const rulesCommission = computed(() => {
       const _commission = (commission.value.commission || 0) / 10_000_000
       // console.debug('rulesCommission', commission.value, _commission, rules.commission);
-      return _commission <= rules.commission
+      return _commission <= rules.commission[chainId.value]
     })
 
     const reload = async () => {
