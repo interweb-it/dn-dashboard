@@ -106,7 +106,16 @@
           <span v-show="!hasTelemetry">
             <v-list-item v-show="telemetryError">
               <v-list-item-subtitle text-color="red">Telemetry Error</v-list-item-subtitle>
-              <v-list-item-title>{{ telemetryError }}</v-list-item-title>
+              <v-list-item-title>
+                <!-- {{ telemetryError }}<br> -->
+                <p>No telemetry found for "{{ node.identity }}"</p>
+                <p>If the `DN identity` does not match `telemetry name``.</p>
+                <p>
+                  <a href="https://github.com/metaspan/dn-dashboard/blob/main/backend/config/telemetryNameMap.json" target="_blank">
+                    Submit a PR to add your details here...
+                  </a>
+                </p>
+              </v-list-item-title>
             </v-list-item>
           </span>
 
