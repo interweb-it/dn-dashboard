@@ -9,6 +9,12 @@
       <v-toolbar-items>
       </v-toolbar-items>
 
+      <v-btn icon>
+        <nuxt-link :to="`/${chainId === 'polkadot' ? 'kusama' : 'polkadot'}/cohort/${cohortId}`">
+          <v-img :src="`/image/${chainId === 'polkadot' ? 'kusama' : 'polkadot'}-logo.svg`" height="22" width="22" rounded></v-img>
+        </nuxt-link>
+      </v-btn>
+
       <v-btn icon flat :loading="loading" @click="refetch">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
