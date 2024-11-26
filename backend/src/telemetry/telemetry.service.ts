@@ -231,7 +231,12 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       }
     };
 
-    ws.onclose = () => console.log(`Disconnected from ${chainId} telemetry`);
+    ws.onclose = () => {
+      console.log(`Disconnected from ${chainId} telemetry, reconnecting...`);
+      setTimeout(() => {
+        this.connect(chainId);
+      }, 5000);
+    };
     ws.onerror = (error) => console.error(`${chainId} telemetry WebSocket error:`, error);
 
     if (chainId === 'polkadot') {
