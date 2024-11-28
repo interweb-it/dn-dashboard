@@ -1,13 +1,13 @@
 <template>
-  <client-only>
 
-    <v-container>
-    <v-toolbar color="background">
+  <client-only>
+    <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar">
       <v-toolbar-title>[DN] {{ chainId }} cohort {{ cohortId }}</v-toolbar-title>
       <v-spacer></v-spacer>
       <v-text-field v-model="search" placeholder="Search"></v-text-field>
-      <v-toolbar-items>
-      </v-toolbar-items>
+
+      <!-- <v-toolbar-items>
+      </v-toolbar-items> -->
 
       <v-btn icon>
         <nuxt-link :to="`/${chainId === 'polkadot' ? 'kusama' : 'polkadot'}/cohort/${cohortId}`">
@@ -20,59 +20,61 @@
       </v-btn>
     </v-toolbar>
 
-    <v-tabs v-model="tab">
-      <v-tab value="selected">Selected</v-tab>
-      <v-tab value="backups">Backups</v-tab>
-      <v-tab value="nominators">Nominators</v-tab>
-    </v-tabs>
+    <v-container>
+      <v-tabs v-model="tab">
+        <v-tab value="selected">Selected</v-tab>
+        <v-tab value="backups">Backups</v-tab>
+        <v-tab value="nominators">Nominators</v-tab>
+      </v-tabs>
 
-    <v-tabs-window v-model="tab">
-      <v-tabs-window-item value="selected">
-        <v-data-table
-          :items="selected"
-          :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'},{title:'DN Status',key: 'status'},
-            {title: 'DN nominated', key: 'nominatedBy'}]"
-          :search="search"
-          @click:row="gotoValidator">
-          <template v-slot:item="{ item }">
-            <tr @click="gotoValidator(null, {item})">
-              <td>{{ item.identity }}</td>
-              <td class="text-overline text-none">{{ shortStash(item.stash) }}</td>
-              <td>{{ item.status }}</td>
-              <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
-              <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
-            </tr>
-          </template>
-        </v-data-table>
-      </v-tabs-window-item>
-      <v-tabs-window-item value="backups">
-        <v-data-table
-          :items="backups"
-          :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'}]"
-          :search="search"
-          @click:row="gotoValidator"></v-data-table>
-      </v-tabs-window-item>
-      <v-tabs-window-item value="nominators">
-        <v-data-table
-          :items="nominators"
-          :headers="[{title: 'Stash',key: 'stash'}]"
-          :search="search">
-          <template v-slot:item="{ item }">
-            <tr>
-              <td>{{ item.stash }}</td>
-              <td>{{ nominations[item.stash] }}</td>
-            </tr>
-          </template>
-        </v-data-table>
-      </v-tabs-window-item>
-    </v-tabs-window>
+      <v-tabs-window v-model="tab">
+        <v-tabs-window-item value="selected">
+          <v-data-table
+            :items="selected"
+            :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'},{title:'DN Status',key: 'status'},
+              {title: 'DN nominated', key: 'nominatedBy'}]"
+            :search="search"
+            @click:row="gotoValidator">
+            <template v-slot:item="{ item }">
+              <tr @click="gotoValidator(null, {item})">
+                <td>{{ item.identity }}</td>
+                <td class="text-overline text-none">{{ shortStash(item.stash) }}</td>
+                <td>{{ item.status }}</td>
+                <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
+                <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
+              </tr>
+            </template>
+          </v-data-table>
+        </v-tabs-window-item>
+        <v-tabs-window-item value="backups">
+          <v-data-table
+            :items="backups"
+            :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'}]"
+            :search="search"
+            @click:row="gotoValidator"></v-data-table>
+        </v-tabs-window-item>
+        <v-tabs-window-item value="nominators">
+          <v-data-table
+            :items="nominators"
+            :headers="[{title: 'Stash',key: 'stash'}]"
+            :search="search">
+            <template v-slot:item="{ item }">
+              <tr>
+                <td>{{ item.stash }}</td>
+                <td>{{ nominations[item.stash] }}</td>
+              </tr>
+            </template>
+          </v-data-table>
+        </v-tabs-window-item>
+      </v-tabs-window>
 
-  </v-container>
+    </v-container>
   </client-only>
 
 </template>
 
 <script lang="ts">
+import { handleScroll } from "~/utils/helpers";
 
 const QUERY_NODES = gql`
 query nodeByName($chainId: String!, $cohortId:Int!) {
@@ -136,9 +138,18 @@ export default defineComponent({
     const validators = ref([])
     const search = ref(nodeStore.search)
     var tab = ref('selected')
+    const elevation = ref(0)
+    var scrollHandler = null
+
+    onBeforeUnmount(() => {
+      if(scrollHandler) scrollHandler();
+    }),
 
     onBeforeMount(async () => {
       api = $substrate.getApi(chainId.value)
+      scrollHandler = handleScroll((scrollY) => {
+        elevation.value = scrollY > 0 ? 4 : 0;
+      })
 
       var {
         error, 
@@ -245,6 +256,7 @@ export default defineComponent({
     return {
       loading,
       refetch,
+      elevation,
       chainId,
       cohortId,
       selected,
@@ -262,3 +274,13 @@ export default defineComponent({
   }
 })
 </script>
+
+<style scoped>
+.dynamic-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: white;
+  transition: box-shadow 0.3s;
+}
+</style>

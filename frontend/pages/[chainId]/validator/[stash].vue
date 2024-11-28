@@ -1,6 +1,7 @@
 <template>
-  <v-container>
-    <v-toolbar color="background">
+  <client-only>
+
+    <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar">
       <v-btn icon flat :to="`/${chainId}/cohort/1`">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
@@ -14,215 +15,219 @@
       <v-btn>{{ isLoading }}</v-btn>
     </v-toolbar>
 
-    <!-- {{ node }} -->
-    <v-card>
-      <v-card-title>DN</v-card-title>
-      <v-card-text>
-        <v-list>
-          <v-list-item>
-            <v-list-item-subtitle>DN Identity</v-list-item-subtitle>
-            <v-list-item-title>{{ node.identity }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Stash</v-list-item-subtitle>
-            <v-list-item-title>
-              {{ node.stash }}
-              <sup>
-                <a icon size="small" target="_blank" :href="`https://${chainId}.subscan.io/validator/${node.stash}`">
-                  <v-icon>mdi-open-in-new</v-icon>
-                </a>
-              </sup>
-            </v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Status (in the program)</v-list-item-subtitle>
-            <v-list-item-title>{{ getStatus(node.stash) }}</v-list-item-title>
-          </v-list-item>
-          <!-- <v-list-item>
-            <v-list-item-subtitle>Nominated (by the program)</v-list-item-subtitle>
-            <v-list-item-title>{{ isNominated(node.stash) }}</v-list-item-title>
-          </v-list-item> -->
+    <v-container>
 
-          <v-list-item>
-            <v-card>
-              <v-row no-gutters>
-                <v-col class="pa-2 d-flex align-center">
-                  <v-icon :color="hasTelemetry ? 'green' : 'red'">mdi-chart-box-outline</v-icon>
-                  <span> Telemetry</span>
-                </v-col>
-                <v-col class="ma-2 d-flex align-center">
-                  <v-icon :color="rulesBonded ? 'green' : 'red'">mdi-lock-outline</v-icon>
-                  <span> Bonded</span>
-                </v-col>
-                <v-col class="ma-2 d-flex align-center">
-                  <v-icon :color="rulesRewardDestingation ? 'green' : 'red'">mdi-bank-outline</v-icon>
-                  <span> Rewards</span>
-                </v-col>
-                <v-col class="ma-2 d-flex align-center">
-                  <v-icon :color="rulesCommission ? 'green' : 'red'">mdi-percent</v-icon>
-                  <span> Commission</span>
-                </v-col>
-                <v-col class="ma-2 d-flex align-center">
-                  <v-icon :color="rulesIdentity ? 'green' : 'red'">mdi-passport</v-icon>
-                  <span> Identity</span>
-                </v-col>
-              </v-row>
-            </v-card>
-            <!-- <v-list-item-subtitle text-color="red">Has Telemetry</v-list-item-subtitle> -->
-            <!-- <v-list-item-title>{{ telemetryError }}</v-list-item-title> -->
-          </v-list-item>
-        </v-list>
-      </v-card-text>
-    </v-card>
-
-    <v-card>
-      <v-card-title>On Chain</v-card-title>
-      <v-card-text>
-        <v-list>
-          <v-list-item>
-            <v-list-item-subtitle>Account</v-list-item-subtitle>
-            <v-list-item-title>{{ toCoin(account.data?.free || 0) }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Bonded</v-list-item-subtitle>
-            <v-list-item-title>
-              <p v-for="lock in locks">
-                {{ lock.id }}: {{ toCoin(lock.amount) }}
-              </p>
-            </v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Reward Destination</v-list-item-subtitle>
-            <v-list-item-title>{{ rewardDestination }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Commission</v-list-item-subtitle>
-            <v-list-item-title>{{ (commission.commission || 0) / 10_000_000 }}%</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Identity</v-list-item-subtitle>
-            <!-- <v-list-item-title>{{ identity }}</v-list-item-title> -->
-            <v-list-item-title>
-              <p>Display: {{ identity.info?.display }}{{ identity.subId ? `/${identity.subId}` : '' }}</p>
-              <p>Email: {{ identity.info?.email }}</p>
-              <p v-show="identity.info?.discord">Discord: {{ identity.info?.discord }}</p>
-              <p v-show="identity.info?.github">Github: {{ identity.info?.github }}</p>
-              <p v-show="identity.info?.matrix">Matrix: {{ identity.info?.matrix }}</p>
-              <p v-show="identity.info?.twitter">Twitter: {{ identity.info?.twitter }}</p>
-              <p v-show="identity.info?.web">Web: {{ identity.info?.web }}</p>
-            </v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-card-text>
-    </v-card>
-
-    <v-card>
-      <v-card-title>Telemetry</v-card-title>
-      <v-card-text>
-        <v-list>
-          <span v-show="!hasTelemetry">
-            <v-list-item v-show="telemetryError">
-              <v-list-item-subtitle text-color="red">Telemetry Error</v-list-item-subtitle>
+      <!-- {{ node }} -->
+      <v-card>
+        <v-card-title>DN</v-card-title>
+        <v-card-text>
+          <v-list>
+            <v-list-item>
+              <v-list-item-subtitle>DN Identity</v-list-item-subtitle>
+              <v-list-item-title>{{ node.identity }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-subtitle>Stash</v-list-item-subtitle>
               <v-list-item-title>
-                <!-- {{ telemetryError }}<br> -->
-                <p>No telemetry found for "{{ node.identity }}"</p>
-                <p>If the `DN identity` does not match `telemetry name``.</p>
-                <p>
-                  <a href="https://github.com/metaspan/dn-dashboard/blob/main/backend/config/telemetryNameMap.json" target="_blank">
-                    Submit a PR to add your details here...
+                {{ node.stash }}
+                <sup>
+                  <a icon size="small" target="_blank" :href="`https://${chainId}.subscan.io/validator/${node.stash}`">
+                    <v-icon>mdi-open-in-new</v-icon>
                   </a>
+                </sup>
+              </v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-subtitle>Status (in the program)</v-list-item-subtitle>
+              <v-list-item-title>{{ getStatus(node.stash) }}</v-list-item-title>
+            </v-list-item>
+            <!-- <v-list-item>
+              <v-list-item-subtitle>Nominated (by the program)</v-list-item-subtitle>
+              <v-list-item-title>{{ isNominated(node.stash) }}</v-list-item-title>
+            </v-list-item> -->
+
+            <v-list-item>
+              <v-card>
+                <v-row no-gutters>
+                  <v-col class="pa-2 d-flex align-center">
+                    <v-icon :color="hasTelemetry ? 'green' : 'red'">mdi-chart-box-outline</v-icon>
+                    <span> Telemetry</span>
+                  </v-col>
+                  <v-col class="ma-2 d-flex align-center">
+                    <v-icon :color="rulesBonded ? 'green' : 'red'">mdi-lock-outline</v-icon>
+                    <span> Bonded</span>
+                  </v-col>
+                  <v-col class="ma-2 d-flex align-center">
+                    <v-icon :color="rulesRewardDestingation ? 'green' : 'red'">mdi-bank-outline</v-icon>
+                    <span> Rewards</span>
+                  </v-col>
+                  <v-col class="ma-2 d-flex align-center">
+                    <v-icon :color="rulesCommission ? 'green' : 'red'">mdi-percent</v-icon>
+                    <span> Commission</span>
+                  </v-col>
+                  <v-col class="ma-2 d-flex align-center">
+                    <v-icon :color="rulesIdentity ? 'green' : 'red'">mdi-passport</v-icon>
+                    <span> Identity</span>
+                  </v-col>
+                </v-row>
+              </v-card>
+              <!-- <v-list-item-subtitle text-color="red">Has Telemetry</v-list-item-subtitle> -->
+              <!-- <v-list-item-title>{{ telemetryError }}</v-list-item-title> -->
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+      </v-card>
+
+      <v-card>
+        <v-card-title>On Chain</v-card-title>
+        <v-card-text>
+          <v-list>
+            <v-list-item>
+              <v-list-item-subtitle>Account</v-list-item-subtitle>
+              <v-list-item-title>{{ toCoin(account.data?.free || 0) }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-subtitle>Bonded</v-list-item-subtitle>
+              <v-list-item-title>
+                <p v-for="lock in locks">
+                  {{ lock.id }}: {{ toCoin(lock.amount) }}
                 </p>
               </v-list-item-title>
             </v-list-item>
-          </span>
+            <v-list-item>
+              <v-list-item-subtitle>Reward Destination</v-list-item-subtitle>
+              <v-list-item-title>{{ rewardDestination }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-subtitle>Commission</v-list-item-subtitle>
+              <v-list-item-title>{{ (commission.commission || 0) / 10_000_000 }}%</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-subtitle>Identity</v-list-item-subtitle>
+              <!-- <v-list-item-title>{{ identity }}</v-list-item-title> -->
+              <v-list-item-title>
+                <p>Display: {{ identity.info?.display }}{{ identity.subId ? `/${identity.subId}` : '' }}</p>
+                <p>Email: {{ identity.info?.email }}</p>
+                <p v-show="identity.info?.discord">Discord: {{ identity.info?.discord }}</p>
+                <p v-show="identity.info?.github">Github: {{ identity.info?.github }}</p>
+                <p v-show="identity.info?.matrix">Matrix: {{ identity.info?.matrix }}</p>
+                <p v-show="identity.info?.twitter">Twitter: {{ identity.info?.twitter }}</p>
+                <p v-show="identity.info?.web">Web: {{ identity.info?.web }}</p>
+              </v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+      </v-card>
 
-          <span v-show="hasTelemetry">
-            <v-list-item v-show="telemetry?.TelemetryName">
-            <v-list-item-subtitle>Telemetry Name</v-list-item-subtitle>
-            <v-list-item-title>{{ telemetry?.TelemetryName }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Node Implementation</v-list-item-subtitle>
-            <v-list-item-title>{{ telemetry?.NodeImplementation }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Node Version</v-list-item-subtitle>
-            <v-list-item-title>{{ telemetry?.NodeVersion }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Network Id</v-list-item-subtitle>
-            <v-list-item-title>{{ telemetry?.NetworkId }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Address</v-list-item-subtitle>
-            <v-list-item-title>{{ telemetry?.Address }}</v-list-item-title>
-          </v-list-item>
-          <!-- <v-list-item>
-            <v-list-item-title>Operating System</v-list-item-title>
-            <v-list-item-subtitle>{{ telemetry?.OperatingSystem }}</v-list-item-subtitle>
-          </v-list-item> -->
-          <v-list-item>
-            <v-list-item-subtitle>NodeSysInfo</v-list-item-subtitle>
-            <!-- <v-list-item-subtitle> -->
-            <span text-color="grey">
-              <!-- {{ telemetry?.CpuArchitecture }} -->
-              CPU: {{ telemetry?.NodeSysInfo?.cpu }},
-              Memory: {{ Number(telemetry?.NodeSysInfo?.memory/1024/1024/1024).toFixed(2) }} GB,
-              Cores: {{ telemetry?.NodeSysInfo?.core_count }}<br>
-              Kernel: {{ telemetry?.NodeSysInfo?.linux_kernel }},
-              Distro: {{ telemetry?.NodeSysInfo?.linux_distro }},
-              VM: {{ telemetry?.NodeSysInfo?.is_virtual_machine }}
+      <v-card>
+        <v-card-title>Telemetry</v-card-title>
+        <v-card-text>
+          <v-list>
+            <span v-show="!hasTelemetry">
+              <v-list-item v-show="telemetryError">
+                <v-list-item-subtitle text-color="red">Telemetry Error</v-list-item-subtitle>
+                <v-list-item-title>
+                  <!-- {{ telemetryError }}<br> -->
+                  <p>No telemetry found for "{{ node.identity }}"</p>
+                  <p>If the `DN identity` does not match `telemetry name``.</p>
+                  <p>
+                    <a href="https://github.com/metaspan/dn-dashboard/blob/main/backend/config/telemetryNameMap.json" target="_blank">
+                      Submit a PR to add your details here...
+                    </a>
+                  </p>
+                </v-list-item-title>
+              </v-list-item>
             </span>
-            <!-- </v-list-item-subtitle> -->
-          </v-list-item>
-          <!-- <v-list-item>
-            <v-list-item-title>Target Env</v-list-item-title>
-            <v-list-item-subtitle>{{ telemetry?.TargetEnv }}</v-list-item-subtitle>
-          </v-list-item> -->
-          <!-- <v-list-item>
-            <v-list-item-title>Node Sys Info</v-list-item-title>
-            <v-list-item-subtitle>{{ telemetry?.NodeSysInfo }}</v-list-item-subtitle>
-          </v-list-item> -->
-          <v-list-item>
-            <v-list-item-subtitle>Chain Stats</v-list-item-subtitle>
-            <v-list-item-title>
-              <!-- {{ telemetry?.ChainStats }} -->
-              CPU Hashrate: {{ telemetry?.ChainStats?.cpu_hashrate_score }},
-              Memory Memcpy: {{ telemetry?.ChainStats?.memory_memcpy_score }},
-              Disk Seq Write: {{ telemetry?.ChainStats?.disk_sequential_write_score }},
-              Disk Rand Write: {{ telemetry?.ChainStats?.disk_random_write_score }}
-            </v-list-item-title>
-          </v-list-item>
 
-          </span>
-        </v-list>
-      </v-card-text>
-    </v-card>
+            <span v-show="hasTelemetry">
+              <v-list-item v-show="telemetry?.TelemetryName">
+              <v-list-item-subtitle>Telemetry Name</v-list-item-subtitle>
+              <v-list-item-title>{{ telemetry?.TelemetryName }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-subtitle>Node Implementation</v-list-item-subtitle>
+              <v-list-item-title>{{ telemetry?.NodeImplementation }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-subtitle>Node Version</v-list-item-subtitle>
+              <v-list-item-title>{{ telemetry?.NodeVersion }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-subtitle>Network Id</v-list-item-subtitle>
+              <v-list-item-title>{{ telemetry?.NetworkId }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-subtitle>Address</v-list-item-subtitle>
+              <v-list-item-title>{{ telemetry?.Address }}</v-list-item-title>
+            </v-list-item>
+            <!-- <v-list-item>
+              <v-list-item-title>Operating System</v-list-item-title>
+              <v-list-item-subtitle>{{ telemetry?.OperatingSystem }}</v-list-item-subtitle>
+            </v-list-item> -->
+            <v-list-item>
+              <v-list-item-subtitle>NodeSysInfo</v-list-item-subtitle>
+              <!-- <v-list-item-subtitle> -->
+              <span text-color="grey">
+                <!-- {{ telemetry?.CpuArchitecture }} -->
+                CPU: {{ telemetry?.NodeSysInfo?.cpu }},
+                Memory: {{ Number(telemetry?.NodeSysInfo?.memory/1024/1024/1024).toFixed(2) }} GB,
+                Cores: {{ telemetry?.NodeSysInfo?.core_count }}<br>
+                Kernel: {{ telemetry?.NodeSysInfo?.linux_kernel }},
+                Distro: {{ telemetry?.NodeSysInfo?.linux_distro }},
+                VM: {{ telemetry?.NodeSysInfo?.is_virtual_machine }}
+              </span>
+              <!-- </v-list-item-subtitle> -->
+            </v-list-item>
+            <!-- <v-list-item>
+              <v-list-item-title>Target Env</v-list-item-title>
+              <v-list-item-subtitle>{{ telemetry?.TargetEnv }}</v-list-item-subtitle>
+            </v-list-item> -->
+            <!-- <v-list-item>
+              <v-list-item-title>Node Sys Info</v-list-item-title>
+              <v-list-item-subtitle>{{ telemetry?.NodeSysInfo }}</v-list-item-subtitle>
+            </v-list-item> -->
+            <v-list-item>
+              <v-list-item-subtitle>Chain Stats</v-list-item-subtitle>
+              <v-list-item-title>
+                <!-- {{ telemetry?.ChainStats }} -->
+                CPU Hashrate: {{ telemetry?.ChainStats?.cpu_hashrate_score }},
+                Memory Memcpy: {{ telemetry?.ChainStats?.memory_memcpy_score }},
+                Disk Seq Write: {{ telemetry?.ChainStats?.disk_sequential_write_score }},
+                Disk Rand Write: {{ telemetry?.ChainStats?.disk_random_write_score }}
+              </v-list-item-title>
+            </v-list-item>
 
-    <v-card>
-      <v-card-title>Rules</v-card-title>
-      <v-card-text>
-        [DN] <a href="https://nodes.web3.foundation/rules" target="_blank">Rules</a> <br>
-        <ul>
-          <li>Self bond <v-icon>mdi-check</v-icon></li>
-          <li>Rewards Target <v-icon>mdi-check</v-icon></li>
-          <li>Commission <v-icon>mdi-check</v-icon></li>
-          <li>Telemetry <v-icon>mdi-check</v-icon></li>
-          <li>On Chain Id (email & matrix) <v-icon>mdi-check</v-icon></li>
-          <li>Payouts</li>
-          <li>Hardware -  <a href="https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot#requirements" target="_blank">requirements</a></li>
-          <li>IP4 & IP6</li>
-          <li>Client Version - from telemetry (24 hours)</li>
-          <li>dedicated machine</li>
-          <li>No slashes</li>
-          <li>Performance A/A+? - check <a :href="`https://apps.turboflakes.io/?chain=${chainId}#/validator/${node.stash}?mode=history`" target="_blank">
-            apps.turboflakes.io</a></li>
-        </ul>
+            </span>
+          </v-list>
+        </v-card-text>
+      </v-card>
 
-      </v-card-text>
-    </v-card>
+      <v-card>
+        <v-card-title>Rules</v-card-title>
+        <v-card-text>
+          [DN] <a href="https://nodes.web3.foundation/rules" target="_blank">Rules</a> <br>
+          <ul>
+            <li>Self bond <v-icon>mdi-check</v-icon></li>
+            <li>Rewards Target <v-icon>mdi-check</v-icon></li>
+            <li>Commission <v-icon>mdi-check</v-icon></li>
+            <li>Telemetry <v-icon>mdi-check</v-icon></li>
+            <li>On Chain Id (email & matrix) <v-icon>mdi-check</v-icon></li>
+            <li>Payouts</li>
+            <li>Hardware -  <a href="https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot#requirements" target="_blank">requirements</a></li>
+            <li>IP4 & IP6</li>
+            <li>Client Version - from telemetry (24 hours)</li>
+            <li>dedicated machine</li>
+            <li>No slashes</li>
+            <li>Performance A/A+? - check <a :href="`https://apps.turboflakes.io/?chain=${chainId}#/validator/${node.stash}?mode=history`" target="_blank">
+              apps.turboflakes.io</a></li>
+          </ul>
 
-</v-container>
+        </v-card-text>
+      </v-card>
+
+      </v-container>
+  </client-only>
+
 </template>
 
 <script lang="ts">
@@ -374,6 +379,13 @@ export default defineComponent({
     const commission = ref(0)
     const identity = ref({})
 
+    const elevation = ref(0)
+    var scrollHandler = null;
+
+    onBeforeUnmount(() => {
+      if(scrollHandler) scrollHandler();
+    })
+
     const loading = ref({
       node: true,
       telemetry: true,
@@ -426,6 +438,9 @@ export default defineComponent({
 
     onBeforeMount(() => {
       api = $substrate.getApi(chainId.value)
+      scrollHandler = handleScroll((scrollY) => {
+        elevation.value = scrollY > 0 ? 4 : 0;
+      })
       var { error, loading: cLoading, refetch: cRefetch, onResult } = useQuery(QUERY_NODE, {
         chainId: chainId.value,
         cohortId: 1,
@@ -579,6 +594,7 @@ export default defineComponent({
 
     return {
       isLoading,
+      elevation,
       reload,
       chainId,
       stash,
@@ -608,3 +624,13 @@ export default defineComponent({
   }
 })
 </script>
+
+<style scoped>
+.dynamic-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: white;
+  transition: box-shadow 0.3s;
+}
+</style>
