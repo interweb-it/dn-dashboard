@@ -1,7 +1,7 @@
+import * as fs from 'fs';
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebSocket } from 'ws';
-// import request
 
 // import { telemetryNameMap } from './telemetry.map';
 let telemetryNameMap: Record<string, Record<string, string>> = {
@@ -24,6 +24,16 @@ import type {
 } from '../substrate-telemetry/types';
 import { AddedNodeMessage, RemovedNodeMessage } from 'src/substrate-telemetry/feed';
 
+type IPGeo = {
+  query: string;
+  status: string;
+  message: string;
+  country: string;
+  city: string;
+  lat: number;
+  lon: number;
+  timestamp: number;
+};
 export interface AddedNodeMessageX {
   NodeId: number;
   NodeDetails: NodeDetailsX;
@@ -31,7 +41,8 @@ export interface AddedNodeMessageX {
   NodeIO: NodeIO;
   NodeHardware: NodeHardware;
   BlockDetails: BlockDetailsX;
-  NodeLocation: Maybe<NodeLocation>;
+  NodeLocation: NodeLocationX;
+  IPGeo?: IPGeo;
   Timestamp: Maybe<Timestamp>;
 }
 // interface RemovedNodeMessageX {
@@ -69,12 +80,31 @@ export interface BlockDetailsX {
   Timestamp: number;
   PropagationTime: Maybe<number>;
 }
+export interface NodeLocationX {
+  Latitude: number;
+  Longitude: number;
+  City: string;
+}
 
 // type NodeInfo = {
 //   name: string;
 //   network: string;
 //   version: string;
 // };
+
+const parseNodeLocation = (data: NodeLocation): NodeLocationX => {
+  console.debug('Parsing NodeLocation', data);
+  if (!Array.isArray(data)) {
+    return data;
+  }
+  if (!data) return null;
+  const [Latitude, Longitude, City] = data;
+  return {
+    Latitude,
+    Longitude,
+    City,
+  };
+};
 
 const parseBlockDetails = (data: BlockDetails): BlockDetailsX => {
   const [BlockNumber, BlockHash, Milliseconds, Timestamp, PropagationTime] = data;
@@ -156,7 +186,7 @@ const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
     NodeIO,
     NodeHardware,
     BlockDetails: parseBlockDetails(BlockDetails),
-    NodeLocation,
+    NodeLocation: parseNodeLocation(NodeLocation),
     Timestamp,
   };
 };
@@ -181,11 +211,17 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     polkadot: new Map<number, AddedNodeMessageX>(), // [],
     kusama: new Map<number, AddedNodeMessageX>(), // [],
   };
+  private ipGeo = new Map<string, any>();
 
   onModuleInit() {
     this.connect('polkadot');
     this.connect('kusama');
     this.updateTelemetryNameMap();
+    this.readIPGeoFile();
+    // wait 30 secnds
+    // setTimeout(() => {
+    //   this.updateGeoIP();
+    // }, 30_000);
   }
 
   onModuleDestroy() {
@@ -251,16 +287,11 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     this.kusamaWS?.close();
   }
 
-  addNode(chainId: string, message: AddedNodeMessageX) {
+  async addNode(chainId: string, message: AddedNodeMessageX) {
     // console.log('AddedNode', chainId, message.NodeId, message.NodeDetails.NodeName, message.NodeDetails.ChainStats);
     //console.log('AddedNode', message[1].NodeId, message[1].NodeDetails);
     console.log(`${chainId}, |${message.NodeDetails.NodeName}|`);
     this.dataStore[chainId].set(message.NodeId, message);
-
-
-    // // test
-    // const testNode = this.dataStore[chainId].get(message.NodeId);
-    // console.debug('testNode', testNode.NodeDetails.ChainStats);
   }
 
   removeNode(chainId: string, message: RemovedNodeMessage) {
@@ -314,6 +345,10 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     return ret;
   }
 
+  getGeoForIP(ip: string): IPGeo | undefined {
+    return this.ipGeo.get(ip);
+  }
+
   private async updateTelemetryNameMap() {
     console.debug('Fetching telemetry name map...');
     const url =
@@ -336,11 +371,99 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private async readIPGeoFile() {
+    console.debug('Reading IP Geo file...');
+    const filename = 'ipgeo.json';
+    try {
+      const data = fs.readFileSync(filename, 'utf-8');
+      const geo = new Map(JSON.parse(data));
+      geo.forEach((value: IPGeo) => {
+        this.ipGeo.set(value.query, value);
+      });
+    } catch (error) {
+      console.error('Error reading IP Geo file:', error.message);
+    }
+    console.debug('IP Geo:', this.ipGeo);
+  }
+
+  private async writeIPGeoFile() {
+    const filename = 'ipgeo.json';
+    try {
+      const data = {};
+      this.ipGeo.forEach((value, key) => {
+        data[key] = value;
+      });
+      fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+    } catch (error) {
+      console.error('Error writing IP Geo file:', error.message);
+    }
+  }
+
+  private async updateGeoIP() {
+    console.log('Fetching GeoIP data...');
+    let batch = [];
+    let updated = 0;
+    // for each chain
+    for (const chainId of ['kusama', 'polkadot']) {
+      // for each node
+      console.log('geoIP for', chainId);
+      this.dataStore[chainId].forEach((node) => {
+        // console.log('geoIP for', chainId, node.NodeDetails.NodeName, node.NodeDetails.Address);
+        // geoip lookup
+        const ip = node.NodeDetails.Address;
+        if (ip) {
+          if (!this.ipGeo.has(ip)) {
+            batch.push(ip);
+            updated++;
+          } else {
+            const lastUpdate = this.ipGeo.get(ip).timestamp;
+            // 24 hours
+            if (Date.now() - lastUpdate > 86400 * 1000) {
+              console.log('IP Geo data is stale:', ip);
+              batch.push(ip);
+              updated++;
+            }
+            // console.log('IP already in cache:', ip);
+          }
+        }
+      });
+      console.debug(chainId, 'Batch:', batch.length);
+      if (batch.length > 0) {
+        const fields = 'query,status,message,country,city,lat,lon';
+        const params = JSON.stringify(batch.slice(0, 10).map((ip) => ({ query: ip, fields })));
+        console.debug('Params:', params);
+        try {
+          const geo = await fetch(`http://ip-api.com/batch`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: params,
+          });
+          const resp = await geo.json();
+          console.log('geo', resp);
+          resp.forEach((data: IPGeo) => {
+            const ip = data.query;
+            data.timestamp = Date.now();
+            this.ipGeo.set(ip, data);
+          });
+        } catch (error) {
+          console.error('Error fetching GeoIP data:', error.message);
+        } finally {
+          batch = [];
+        }
+      }
+    }
+    if (updated > 0) await this.writeIPGeoFile();
+  }
+
   // Cron job to periodically update the telemetry map
   @Cron(CronExpression.EVERY_10_MINUTES)
+  // @Cron(CronExpression.EVERY_30_SECONDS)
   handleCron() {
     console.log('Fetching telemetry name map...');
     this.updateTelemetryNameMap();
+    // this.updateGeoIP();
   }
 
   handleTelemetryMessage(chainId: string, message: any) {

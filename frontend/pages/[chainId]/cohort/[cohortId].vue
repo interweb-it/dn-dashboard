@@ -15,7 +15,7 @@
         </nuxt-link>
       </v-btn>
 
-      <v-btn icon flat :loading="loading" @click="refetch">
+      <v-btn icon flat :loading="loading" @click="refresh">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
     </v-toolbar>
@@ -75,6 +75,7 @@
 
 <script lang="ts">
 import { handleScroll } from "~/utils/helpers";
+import { ApiPromise } from '@polkadot/api';
 
 const QUERY_NODES = gql`
 query nodeByName($chainId: String!, $cohortId:Int!) {
@@ -116,14 +117,32 @@ query nodeByName($chainId: String!, $cohortId:Int!) {
   }
 }`
 
+const QUERY_GEO = gql`
+query geoForIds($chainId:String!, $ids:[Int]!) {
+  telemetryForIds(chainId:$chainId, ids:$ids) {
+    NodeId
+    NodeLocation {
+      Latitude
+      Longitude
+  		City
+    }
+    NodeDetails {
+      NodeName
+      Address
+    }
+  }  
+}`
+
 export default defineComponent({
   name: 'CohortHome',
   async setup() {
     const route = useRoute()
     const router = useRouter()
-    const chainId = ref(route.params.chainId)
-    const cohortId = ref(Number(route.params.cohortId))
+    const chainId = ref(route.params.chainId.toString())
+    const cohortId = ref(Number(route.params.cohortId.toString()))
     const nodeStore = useNodeStore()
+    const nominatorStore = useNominatorStore()
+    const nominatorStoreLoading = computed(() => nominatorStore.loading)
     const nodes = ref([])
 
     const { $substrate } = useNuxtApp();
@@ -132,10 +151,13 @@ export default defineComponent({
     var error = ref(null)
     var loading = ref()
     var refetch = ref(() => {})
+    var grefetch = ref(() => {})
+
     const selected = ref([])
     const nominators = ref([])
     const backups = ref([])
     const validators = ref([])
+    const telemetry = ref([])
     const search = ref(nodeStore.search)
     var tab = ref('selected')
     const elevation = ref(0)
@@ -146,7 +168,7 @@ export default defineComponent({
     }),
 
     onBeforeMount(async () => {
-      api = $substrate.getApi(chainId.value)
+      api = await $substrate.getApi(chainId.value)
       scrollHandler = handleScroll((scrollY) => {
         elevation.value = scrollY > 0 ? 4 : 0;
       })
@@ -183,6 +205,9 @@ export default defineComponent({
         loading.value = false;
       });
       
+      if(nominatorStore.stakingEntries.length === 0) {
+        getAllNominators();
+      }
     });
 
     // if (error) {
@@ -221,6 +246,21 @@ export default defineComponent({
       }
     }
 
+    const getAllNominators = async () => {
+      console.debug('get stakingEntries');
+      if(!api) return
+      nominatorStore.loading = true
+      const stakingEntries = await api.query.staking.nominators.entries()
+      const entries = stakingEntries.map(([key, nominations]) => {
+        // console.debug('key', key.toString(), value);
+        return [key, nominations.toJSON()]
+        // nominatorStore.setStakingEntries(key.toString(), value)
+      })
+      console.debug('entries', entries.length);
+      nominatorStore.setStakingEntries(entries)
+      nominatorStore.loading = false;
+    }
+
     const getNominatedBy = (stash: string): string => {
       const nominators: string[] = []
       for (let i = 0; i < nominators.value.length; i++) {
@@ -253,10 +293,40 @@ export default defineComponent({
       return stash.substring(0, 6) + '...' + stash.substring(stash.length - 6);
     }
 
+    interface ILocation {
+      // stash: string;
+      country: string;
+      city: string;
+      lat: string;
+      lon: string;
+    }
+    const locations = ref<Record<string, ILocation>>({});
+
+    const locationMap = computed(async () => {
+      const map = {};
+      // selected.value.filter(f => f.identity.toUpperCase().includes(search.value.toUpperCase())).forEach(s => {
+      //   console.debug('s', s);
+      //   // get location from api
+      //   if (!locations[s.stash]) {
+      //     const loc = request('https://ipapi.co/json/');
+      //   }
+      //   map[s.stash] = s.identity;
+      // });
+      return map;
+    })
+
+    const refresh = async () => {
+      console.log('refreshing');
+      // loading.value = true;
+      refetch.value();
+      grefetch.value();
+    }
+
     return {
       loading,
-      refetch,
+      nominatorStoreLoading,
       elevation,
+      refresh,
       chainId,
       cohortId,
       selected,

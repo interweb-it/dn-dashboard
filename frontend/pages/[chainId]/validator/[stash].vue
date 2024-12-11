@@ -12,14 +12,14 @@
       <v-btn icon flat :loading="isLoading" @click="reload">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
-      <v-btn>{{ isLoading }}</v-btn>
+      <!-- <v-btn>{{ isLoading }}</v-btn> -->
     </v-toolbar>
 
     <v-container>
 
       <!-- {{ node }} -->
       <v-card>
-        <v-card-title>DN</v-card-title>
+        <v-card-title>DN {{ loadingN }}</v-card-title>
         <v-card-text>
           <v-list>
             <v-list-item>
@@ -79,7 +79,7 @@
       </v-card>
 
       <v-card>
-        <v-card-title>On Chain</v-card-title>
+        <v-card-title>On Chain {{ loadingC }}</v-card-title>
         <v-card-text>
           <v-list>
             <v-list-item>
@@ -106,13 +106,13 @@
               <v-list-item-subtitle>Identity</v-list-item-subtitle>
               <!-- <v-list-item-title>{{ identity }}</v-list-item-title> -->
               <v-list-item-title>
-                <p>Display: {{ identity.info?.display }}{{ identity.subId ? `/${identity.subId}` : '' }}</p>
-                <p>Email: {{ identity.info?.email }}</p>
-                <p v-show="identity.info?.discord">Discord: {{ identity.info?.discord }}</p>
-                <p v-show="identity.info?.github">Github: {{ identity.info?.github }}</p>
-                <p v-show="identity.info?.matrix">Matrix: {{ identity.info?.matrix }}</p>
-                <p v-show="identity.info?.twitter">Twitter: {{ identity.info?.twitter }}</p>
-                <p v-show="identity.info?.web">Web: {{ identity.info?.web }}</p>
+                <p>Display: {{ identity?.info?.display }}{{ identity?.subId ? `/${identity?.subId}` : '' }}</p>
+                <p>Email: {{ identity?.info?.email }}</p>
+                <p v-show="identity?.info?.discord">Discord: {{ identity?.info?.discord }}</p>
+                <p v-show="identity?.info?.github">Github: {{ identity?.info?.github }}</p>
+                <p v-show="identity?.info?.matrix">Matrix: {{ identity?.info?.matrix }}</p>
+                <p v-show="identity?.info?.twitter">Twitter: {{ identity?.info?.twitter }}</p>
+                <p v-show="identity?.info?.web">Web: {{ identity?.info?.web }}</p>
               </v-list-item-title>
             </v-list-item>
           </v-list>
@@ -120,7 +120,95 @@
       </v-card>
 
       <v-card>
-        <v-card-title>Telemetry</v-card-title>
+        <v-card-title>Exposure
+          <v-btn icon flat @click="getExposure" :loading="loadingE">
+            <v-icon>mdi-refresh</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text>
+          <!-- {{ exposure }} -->
+          <v-container fluid class="ma-0 pa-0">
+            <v-row no-gutters>
+              <v-col>
+                Total: {{ exposure.total.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+              </v-col>
+              <v-col>
+                Own: {{ exposure.own.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+              </v-col>
+              <v-col>
+                Others: {{ exposure.others.reduce((sum, m) => sum + m.value, 0).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+              </v-col>
+            </v-row>
+          </v-container>
+
+          <v-data-table :items="exposure.others" :headers="[{ key: 'who', title: 'Address'}, {key: 'value', title: 'Amount', align: 'end'}]">
+            <template v-slot:item.who="{ item }">
+              <a :href="`https://${chainId}.subscan.io/nominator/${item.who}`" target="_blank">{{ shortStash(item.who) }}</a>              
+              <v-icon color="purple" v-if="dnNominators.includes(item.who)">mdi-hand</v-icon>
+            </template>
+            <template v-slot:item.value="{ item }">
+              {{ item.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}
+            </template>
+          </v-data-table>
+        </v-card-text>
+      </v-card>
+
+      <!-- {{ dnNominators }} -->
+
+      <v-card>
+        <!-- <v-card-title>Nominators {{ nominatorStoreLoading }}</v-card-title> -->
+        <v-toolbar fluid color="background" density="compact">
+          <v-toolbar-title>Nominators</v-toolbar-title>
+          <v-btn icon flat @click="getNominators" :loading="loadingN">
+            <v-icon>mdi-refresh</v-icon>
+          </v-btn>
+          <v-spacer></v-spacer>
+          <v-btn icon flat @click="getAllNominators" :loading="loadingAN">
+            <v-icon>mdi-flash-alert-outline</v-icon>
+          </v-btn>
+        </v-toolbar>
+        <v-card-text>
+          <!-- <p v-show="loadingN" color="red">Scanning chain nominators, building nominator list... {{ page }} of {{ pages }}</p> -->
+          <!-- {{ nominators }} -->
+          <v-container fluid class="ma-0 pa-0">
+            <v-row no-gutters>
+              <v-col>
+                Total: {{ totalNominations.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+              </v-col>
+              <v-col>
+                DN: {{ dnNominations.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+              </v-col>
+              <v-col>
+                Non-DN: {{ nonDnNominations.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+              </v-col>
+            </v-row>
+          </v-container>
+          <!-- {{ dnNominators }} -->
+          <v-data-table :items="nominators"  :loading="loadingN"
+            :headers="[{key:'address',title:'Address' }, {key: 'balance', title: 'Balance', align:'end'}]"
+            :sort-by="[{ key: 'balance', order: 'desc' }]">
+            <template v-slot:loading>
+              <v-skeleton-loader type="table-row@5"></v-skeleton-loader>
+            </template>
+            <template v-slot:item.address="{ item }">
+              <a :href="`https://${chainId}.subscan.io/nominator/${item.address}`" target="_blank">{{ shortStash(item.address) }}</a>              
+              <v-icon color="red" v-if="exposure.others.map(m => m.who).includes(item.address)">mdi-fire</v-icon>
+              <v-icon color="purple" v-if="dnNominators.includes(item.address)">mdi-hand</v-icon>
+              <!-- <a :href="`/${chainId}/validator/${item.address}`">{{ item.address }}</a> -->
+            </template>
+            <template v-slot:item.balance="{ item }">
+              {{ item.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}
+            </template>
+          </v-data-table>
+        </v-card-text>
+      </v-card>
+
+      <v-card>
+        <v-card-title>Telemetry
+          <v-btn icon flat @click="getTelemetry" :loading="loadingT">
+            <v-icon>mdi-refresh</v-icon>
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-list>
             <span v-show="!hasTelemetry">
@@ -235,9 +323,10 @@
 import { ApiPromise } from '@polkadot/api'
 import { hexToString } from '@polkadot/util'
 
-import { FeedMessage } from '../substrate-telemetry';
-import type { Maybe } from '../substrate-telemetry/helpers';
+// import { FeedMessage } from '../substrate-telemetry';
+import type { Maybe } from '~/utils/substrate-telemetry/helpers';
 import type {
+  BlockNumber,
   NodeDetails,
   NodeStats,
   NodeIO,
@@ -247,11 +336,13 @@ import type {
   Timestamp,
   NodeSysInfo,
   ChainStats,
-} from '../substrate-telemetry/types';
-import {
-  AddedNodeMessage,
-  RemovedNodeMessage,
-} from 'src/substrate-telemetry/feed';
+} from '~/utils/substrate-telemetry/types';
+// import {
+//   AddedNodeMessage,
+//   RemovedNodeMessage,
+// } from '../../substrate-telemetry/feed';
+import type { BlockDetailsX } from '~/utils/types';
+import { shortStash } from '~/utils/helpers';
 
 export interface AddedNodeMessageX {
   NodeId: number;
@@ -281,6 +372,7 @@ export interface NodeDetailsX {
 
 const QUERY_NODE = gql`
 query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
+  nominators(chainId: $chainId, cohortId: $cohortId) 
   selected(chainId: $chainId, cohortId: $cohortId) {
     identity
     stash
@@ -328,7 +420,7 @@ query telemetry($chainId: String!, $name: String!) {
   }
 }`
 
-const decimals = {
+const decimals: Record<string, number> = {
   polkadot: 10,
   kusama: 12,
 }
@@ -338,37 +430,46 @@ const tokens = {
   kusama: 'KSM',
 }
 
-const rules = {
-  commission: {
-    polkadot: 5,
-    kusama: 15,
+const rules: Record<string, Record<string, number|string>> = {
+  polkadot: {
+    commission: 5,
+    selfBond: 7500,
+    rewardDestination: 'Staked',
   },
-  rewardDestination: 'Staked',
-  selfBond: {
-    polkadot: 7500,
-    kusama: 125,
-  }
+  kusama: {
+    commission: 15,
+    selfBond: 125,
+    rewardDestination: 'Staked',
+  },
+}
+
+interface INode {
+  identity: string;
+  stash: string;
+  status: string;
 }
 
 export default defineComponent({
   name: 'CohortHome',
   async setup() {
     const route = useRoute()
-    const chainId = ref(route.params.chainId)
+    const chainId = ref(route.params.chainId.toString())
     const stash = ref(route.params.stash)
     const { $substrate } = useNuxtApp();
     var api: ApiPromise | null;
     var apip: ApiPromise | null;
 
     const nodeStore = useNodeStore()
+    const nominatorStore = useNominatorStore()
+    const stakingEntries = computed(() => nominatorStore.stakingEntries)
+    const nominatorStoreLoading = computed(() => nominatorStore.loading)
     const nodes = ref([])
     var error = ref(null)
-    var refetch = ref(() => {})
     // const selected = ref([])
-    const node = ref({})
-    const nominators = ref([])
+    const node = ref<INode>({ identity: '', stash: '', status: '' })
     const selected = ref([])
     const backups = ref([])
+    const dnNominators = ref<string[]>([])
     const validators = ref([])
     const telemetry = ref({})
     const telemetryError = ref<null|string>(null)
@@ -376,23 +477,27 @@ export default defineComponent({
     const account = ref({})
     const locks = ref([])
     const rewardDestination = ref({})
-    const commission = ref(0)
-    const identity = ref({})
+    const commission = ref<Record<string, any>>({ commission: 0, blocked: false })
+    const identity = ref<Record<string, any>>({})
 
     const elevation = ref(0)
-    var scrollHandler = null;
+    var scrollHandler: any = null;
+
+    var refetchC = () => {}
+    var refetchT = () => {}
 
     onBeforeUnmount(() => {
       if(scrollHandler) scrollHandler();
     })
 
-    const loading = ref({
-      node: true,
-      telemetry: true,
-    })
+    var loadingC = ref<any>()
+    var loadingT = ref<any>()
+    var loadingE = ref<boolean>(false)
+    var loadingN = ref<boolean>(false)
+    var loadingAN = computed(() => nominatorStore.loading)
 
     const isLoading = computed(() => {
-      return loading.node || loading.telemetry
+      return loadingC.value || loadingT.value || loadingE.value || loadingN.value
     })
 
     const hasTelemetry = computed(() => {
@@ -401,7 +506,7 @@ export default defineComponent({
 
     const rulesBonded = computed(() => {
       let _bonded: Number = 0;
-      locks.value.forEach(l => {
+      locks.value.forEach((l: Record<string, any>) => {
         // console.debug('lock', l.id, l.amount);
         if (l.id === 'staking') {
           // console.debug('staking lock', l.amount);
@@ -413,17 +518,18 @@ export default defineComponent({
       console.debug('_bonded', _bonded, locks.value);
       // const _bondedCoin = _bonded ? Number(_bonded.amount) / Math.pow(10, decimals[chainId.value]) : 0
       // console.debug('rulesBonded', _bonded, rules.selfBond[chainId.value]);
-      return _bonded >= rules.selfBond[chainId.value]
+      return _bonded >= rules[chainId.value].selfBond
     })
 
     const rulesRewardDestingation = computed(() => {
-      return rewardDestination.value === rules.rewardDestination
+      // console.debug('rewardDestination', rewardDestination.value, rules[chainId.value].rewardDestination);
+      return rewardDestination.value === rules[chainId.value].rewardDestination
     })
 
     const rulesCommission = computed(() => {
       const _commission = (commission.value.commission || 0) / 10_000_000
-      // console.debug('rulesCommission', commission.value, _commission, rules.commission);
-      return _commission <= rules.commission[chainId.value]
+      // console.debug('rulesCommission', commission.value.commission, _commission, rules[chainId.value].commission);
+      return _commission <= Number(rules[chainId.value].commission)
     })
 
     const rulesIdentity = computed(() => {
@@ -433,11 +539,16 @@ export default defineComponent({
 
     const reload = async () => {
       console.log('reload');
-      await refetch()
+      await refetchC()
+      // await refetchT() // refetchC will call the telemetry
+      await getAccount()
+      await getExposure()
+      // await getNominators()
     }
 
-    onBeforeMount(() => {
-      api = $substrate.getApi(chainId.value)
+    onBeforeMount(async () => {
+      api = await $substrate.getApi(chainId.value)
+      apip = await $substrate.getApip(chainId.value)
       scrollHandler = handleScroll((scrollY) => {
         elevation.value = scrollY > 0 ? 4 : 0;
       })
@@ -446,15 +557,16 @@ export default defineComponent({
         cohortId: 1,
         stash: stash.value
       })
-      refetch = cRefetch
-      loading.value.node = cLoading
+      refetchC = cRefetch
+      loadingC = cLoading
 
       // telemetry
       var { error, loading: tLoading, refetch: tRefetch, onResult: tonResult } = useQuery(QUERY_TELEMETRY, {
         chainId: chainId.value,
         name: node.value.identity || ''
       });
-      loading.value.telemetry = tLoading
+      refetchT = tRefetch
+      loadingT = tLoading
 
       onResult(async (result: any) => {
         if (result.loading) {
@@ -465,6 +577,7 @@ export default defineComponent({
         node.value = result.data.nodeByStash;
         selected.value = result.data.selected || [];
         backups.value = result.data.backups || [];
+        dnNominators.value = result.data.nominators || [];
         validators.value = result.data.validators || [];
         // use the name to get telemetry data
         tRefetch({
@@ -486,7 +599,9 @@ export default defineComponent({
       });
 
       // get Acount details
-      getAccount()
+      await getAccount()
+      await getExposure()
+      await getNominators()
       
     });
 
@@ -497,42 +612,42 @@ export default defineComponent({
 
     const getAccount = async () => {
       console.debug('getAccount', stash.value);
-      // if (!api) return
-      api = await $substrate.getApi(chainId.value)
-      apip = await $substrate.getApip(chainId.value)
-      const _account = await api.query.system.account(stash.value)
+      if (!api) return
+      const _account = await api?.query.system.account(stash.value)
       console.log('account', account)
-      account.value = _account
+      account.value = _account ? _account : {}
 
-      const _locks = await api.query.balances.locks(stash.value);
-      const _locksStr = _locks.toHuman()
+      const _locks = await api?.query.balances.locks(stash.value);
+      const _locksStr: any = _locks?.toJSON() as any[] || []
       for (const lock of _locksStr) {
         console.debug('lock amount', lock.amount)
-        lock.id = lock.id.trim()
-        lock.amount = BigInt(lock.amount.replaceAll(',',''))
+        lock.id = hexToString(lock.id).trim()
+        lock.amount = BigInt(lock.amount)
       }
       locks.value = _locksStr
       console.debug('locks', locks.value)
 
-      const _rewardDestination = await api.query.staking.payee(stash.value)
-      rewardDestination.value = _rewardDestination.toHuman()
+      const _rewardDestination = await api?.query.staking.payee(stash.value)
+      rewardDestination.value = _rewardDestination?.toHuman() || 'Unknown'
 
-      const _commission = await api.query.staking.validators(stash.value)
-      commission.value = _commission.toJSON()
+      const _commission = await api?.query.staking.validators(stash.value)
+      commission.value = _commission?.toJSON() as number || 0
 
       // get Identity
-      let _identity = await apip.query.identity.identityOf(stash.value)
+      let _identity = await apip?.query.identity.identityOf(stash.value)
       console.debug('identity', _identity)
-      if(_identity.isSome) {
+      if(_identity) {
         identity.value = parseIdentity(_identity)
       } else {
-        const _super = await apip.query.identity.superOf(stash.value)
-        console.debug('super', _super.toJSON())
-        const subId = hexToString(_super.toJSON()[1].raw)
-        if(_super.isSome) {
-          _identity = await apip.query.identity.identityOf(_super.toJSON()[0])
-          if(_identity.isSome) {
-            identity.value = { subId, ...parseIdentity(_identity) }
+        const _super = await apip?.query.identity.superOf(stash.value)
+        if (_super) {
+          console.debug('super', _super?.toJSON())
+          const subId = hexToString(_super.toJSON()[1].raw)
+          if(_super) {
+            _identity = await apip?.query.identity.identityOf(_super.toJSON()[0])
+            if(_identity) {
+              identity.value = { subId, ...parseIdentity(_identity) }
+            }
           }
         }
         // console.debug('identity', _identity.toJSON())
@@ -568,32 +683,186 @@ export default defineComponent({
     }
 
     const parseIdentity = (id: any) => {
-      const idj = id.toJSON()[0]
-      console.debug('idj', idj)
-      if (idj) {
-        const res = {} as any
-        res.deposit = idj.deposit
-        res.info = {
-          discord: idj.info.discord?.raw ? hexToString(idj.info.discord.raw) : '',
-          display: idj.info.display?.raw ? hexToString(idj.info.display.raw) : '',
-          email: idj.info.email?.raw ? hexToString(idj.info.email.raw) : '',
-          github: idj.info.github?.raw ? hexToString(idj.info.github.raw) : '',
-          image: idj.info.image?.raw ? hexToString(idj.info.image.raw) : '',
-          legal: idj.info.legal?.raw ? hexToString(idj.info.legal.raw) : '',
-          matrix: idj.info.matrix?.raw ? hexToString(idj.info.matrix.raw) : '',
-          pgpFingerprint: idj.info.pgpFingerprint?.raw ? hexToString(idj.info.pgpFingerprint.raw) : '',
-          // riot: idj.info.riot?.raw ? hexToString(idj.info.riot.raw) : '',
-          twitter: idj.info.twitter?.raw ? hexToString(idj.info.twitter.raw) : '',
-          web: idj.info.web?.raw ? hexToString(idj.info.web.raw) : ''
+      if(!id) return null
+      try {
+        const idj = (id.toJSON())[0]
+        console.debug('idj', idj)
+        if (idj) {
+          const res = {} as any
+          res.deposit = idj.deposit
+          res.info = {
+            discord: idj.info?.discord?.raw ? hexToString(idj.info.discord.raw) : '',
+            display: idj.info?.display?.raw ? hexToString(idj.info.display.raw) : '',
+            email: idj.info?.email?.raw ? hexToString(idj.info.email.raw) : '',
+            github: idj.info?.github?.raw ? hexToString(idj.info.github.raw) : '',
+            image: idj.info?.image?.raw ? hexToString(idj.info.image.raw) : '',
+            legal: idj.info?.legal?.raw ? hexToString(idj.info.legal.raw) : '',
+            matrix: idj.info?.matrix?.raw ? hexToString(idj.info.matrix.raw) : '',
+            pgpFingerprint: idj.info?.pgpFingerprint?.raw ? hexToString(idj.info.pgpFingerprint.raw) : '',
+            // riot: idj.info.riot?.raw ? hexToString(idj.info.riot.raw) : '',
+            twitter: idj.info?.twitter?.raw ? hexToString(idj.info.twitter.raw) : '',
+            web: idj.info?.web?.raw ? hexToString(idj.info.web.raw) : ''
+          }
+          res.judgements = idj.judgements
+          return res
         }
-        res.judgements = idj.judgements
-        return res
+      } catch (e) {
+        console.warn('parseIdentity', e)
+        return null
       }
-      return null
+    }
+
+    // get exposures
+    interface IExposureItem {
+      who: string;
+      value: number;
+    }
+    interface IExposure {
+      total: number;
+      own: number;
+      pageCount: number;
+      others: IExposureItem[]
+    }
+    const exposure = ref<IExposure>({
+      total: 0,
+      own: 0,
+      pageCount: 0,
+      others: []
+    })
+    const getExposure = async () => {
+      console.debug('getExposure', stash.value);
+      if (!api) return
+      loadingE.value = true
+      const era: any = (await api.query.staking.activeEra()).toJSON();
+      const denom = BigInt(Math.pow(10, decimals[chainId.value]));
+
+      var _exposure: IExposure = (await api.query.staking.erasStakersOverview(era.index, stash.value)).toJSON() as any;
+      if (!_exposure) return
+      _exposure.total = Number(BigInt(_exposure.total) / denom);
+      _exposure.own = Number(BigInt(_exposure.own) / denom);
+      console.log('exposure:', _exposure);
+
+      // validator other exposures
+      _exposure.others = [];
+      for (let j = 0; j < _exposure.pageCount; j++) {
+        const exp: IExposure = (await api.query.staking.erasStakersPaged(era.index, stash.value, j)).toJSON() as any;
+        exp.others = exp.others.map((o) => {
+          return {
+            who: o.who,
+            value: Number(BigInt(o.value) / denom),
+          };
+        })
+        _exposure.others.push(...exp.others || []);
+      }
+      exposure.value = _exposure;
+      loadingE.value = false
+    }
+
+    // get nominations
+    interface INominator {
+      address: string;
+      balance: number;
+      identity?: string;
+      identityInfo?: any;
+      locks?: any[];
+      pooled?: any;
+      nominations?: any;
+    }
+
+    // const nominators = computed(() => nominatorStore.nominators)
+    //const nominatorList = computed(() => Array.from(nominators.value.values()))
+    const totalNominations = computed(() => {
+      return nominators.value.reduce((sum, n) => sum + n.balance, 0)
+      // return 0
+    })
+    const dnNominations = computed(() => {
+      return nominators.value.filter(n => dnNominators.value.includes(n.address)).reduce((sum, n) => sum + n.balance, 0)
+      // return 0
+    })
+    const nonDnNominations = computed(() => {
+      return nominators.value.filter(n => !dnNominators.value.includes(n.address)).reduce((sum, n) => sum + n.balance, 0)
+      // return 0
+    })
+
+    const getAllNominators = async () => {
+      console.debug('get stakingEntries');
+      if(!api) return
+      nominatorStore.loading = true
+      const stakingEntries = await api.query.staking.nominators.entries()
+      const entries = stakingEntries.map(([key, nominations]) => {
+        // console.debug('key', key.toString(), value);
+        return [key, nominations.toJSON()]
+        // nominatorStore.setStakingEntries(key.toString(), value)
+      })
+      console.debug('entries', entries.length);
+      nominatorStore.setStakingEntries(entries)
+      nominatorStore.loading = false;
+    }
+
+    const nominators = ref<INominator[]>([])
+    const page = ref(0)
+    const pages = ref(0)
+    const getNominators = async () => {
+      if(!api) return
+      if(nominatorStore.stakingEntries.length === 0 ) {
+        await getAllNominators();
+      }
+
+      loadingN.value = true
+      console.debug('getNominators', stash.value);
+      nominators.value = []
+      page.value = 0
+      // const stakingEntries = await api.query.staking.nominators.entries()
+      // console.debug('stakingEntries', stakingEntries)
+      pages.value = stakingEntries.value.length
+
+      for (const [key, nominations] of stakingEntries.value as any) {
+        const nominatorAddress = key.args[0].toString();
+        page.value += 1
+
+        // const identity = parseIdentity(await idApi.query.identity.identityOf(nominatorAddress));
+        // const identityInfo = identity ? identity.info : {};
+
+        // targets
+        const targets = nominations; // .toJSON() as any;
+        // console.debug('targets', targets)
+
+        if (targets.targets?.includes(stash.value)) {
+          // Fetch account balance for the nominator
+          const accountData = (await api.query.system.account(nominatorAddress)).toJSON() as any;
+          // console.debug('accountData', accountData)
+          const balance = Number(BigInt(accountData.data.free)) / 10 ** decimals[chainId.value]; // Available balance
+          // pooled
+          // const pooled = api.query.nominationPools.poolMembers(nominatorAddress);
+          // console.debug('nominator', nominatorAddress, balance, targets);
+          nominators.value.push({
+            address: nominatorAddress,
+            balance,
+            // identity: identity ? identity.display : nominatorAddress,
+            // identityInfo,
+            // locks,
+            // pooled,
+            // nominations: nominations.toJSON(),
+          });
+        } else {
+          continue;
+        }
+
+      }
+
+    //   // const nominatedValidators = nominations.unwrap().targets;
+    //   // nominators.value = _nominators.toJSON()
+      loadingN.value = false
     }
 
     return {
       isLoading,
+      loadingC,
+      loadingT,
+      loadingE,
+      loadingN,
+      loadingAN,
+      nominatorStoreLoading,
       elevation,
       reload,
       chainId,
@@ -610,22 +879,40 @@ export default defineComponent({
       rulesIdentity,
 
       node,
+      dnNominators,
       hasTelemetry,
       telemetry,
       telemetryError,
       nominators,
-      backups,
+      //backups,
       validators,
+      exposure,
+      // page,
+      // pages,
+
       // data,
+      totalNominations,
+      dnNominations,
+      nonDnNominations,
+      getTelemetry: refetchT,
       getStatus,
+      getExposure,
+      getNominators,
+      getAllNominators,
       isNominated,
       toCoin,
+      shortStash,
     }
   }
 })
 </script>
 
 <style scoped>
+/* a link no decoration */
+a {
+  text-decoration: none;
+  color: inherit;
+}
 .dynamic-toolbar {
   position: sticky;
   top: 0;

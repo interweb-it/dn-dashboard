@@ -4,11 +4,7 @@ import { Args, Query, Resolver, Subscription } from '@nestjs/graphql';
 // import { Node } from '../graphql.schema';
 // import { NodeDetailsX } from './telemetry.service';
 // import { TelemetryGuard } from './cats.guard';
-import {
-  AddedNodeMessageX,
-  NodeDetailsX,
-  TelemetryService,
-} from './telemetry.service';
+import { AddedNodeMessageX, NodeDetailsX, TelemetryService } from './telemetry.service';
 // import { CreateCatDto } from './dto/create-cat.dto';
 
 // const pubSub = new PubSub();
@@ -25,6 +21,24 @@ export class TelemetryResolver {
   ): Promise<AddedNodeMessageX[]> {
     console.debug('resolver.ts: getTelemetry', 'chainId', chainId);
     return this.telemetryService.getNodes(chainId);
+  }
+
+  @Query('telemetryForIds')
+  // @UseGuards(TelemetryGuard)
+  async getTelemetryForIds(
+    @Args('chainId')
+    chainId: string,
+    @Args('ids')
+    ids: number[],
+  ): Promise<AddedNodeMessageX[]> {
+    console.debug('resolver.ts: getTelemetryForIds', 'chainId', chainId, ids);
+    const ret = this.telemetryService.getNodes(chainId).filter((node) => ids.includes(node.NodeId));
+    // .map((node): AddedNodeMessageX => {
+    //   node.IPGeo = this.telemetryService.getGeoForIP(node.NodeDetails.Address);
+    //   return node;
+    // });
+    console.debug('resolver.ts: getTelemetryForIds', 'chainId', chainId, ids, ret);
+    return ret;
   }
 
   @Query('telemetryNames')

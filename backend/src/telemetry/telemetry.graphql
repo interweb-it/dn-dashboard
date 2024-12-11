@@ -3,7 +3,7 @@ scalar BigInt
 type Query {
   telemetry(chainId: String!): [NodeDetailsX]
   # telemetryForNode(chainId: String!, stash: String, name: String): NodeDetailsX
-  # telemetryById(chainId: String!, id: Int!): NodeDetailsX
+  telemetryForIds(chainId: String!, ids: [Int]!): [NodeDetailsX]
   telemetryNames(chainId: String!): [String]
   telemetryByName(chainId: String!, name: String!): NodeDetailsX
   telemetryByNetworkId(chainId: String!, networkId: String!): NodeDetailsX
@@ -16,8 +16,27 @@ type NodeDetailsX {
   NodeIO: [[Int]]
   NodeHardware: [[Float]]
   BlockDetails: BlockDetails
-  NodeLocation: String
+  NodeLocation: NodeLocationX
+  IPGeo: IPGeo
   Timestamp: String
+}
+
+type NodeLocationX {
+  Latitude: Float
+  Longitude: Float
+  City: String
+}
+
+type IPGeo {
+  ip: String
+  query: String # IP address
+  countryCode: String
+  countryName: String
+  regionCode: String
+  regionName: String
+  city: String
+  lat: Float
+  lon: Float
 }
 
 type NodeDetails {
