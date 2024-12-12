@@ -4,6 +4,7 @@
   },
   "kusama": {
     "♞GameTheory♜/01": "GameTheory-01",
+    "LuckyFriday.io/🍀 KSM 06 🍀": "🍀LuckyFriday-KSM-06🍀",
     "LuckyFriday.io/🍀 KSM 09 🍀": "🍀LuckyFriday-KSM-09🍀",
     "🍁 High/Stake 🥩/HEL1": "🍁 HIGH/STAKE 🥩 | HEL1-KSM",
     "🍁 High/Stake 🥩/ZRH1": "🍁 HIGH/STAKE 🥩 | ZRH1-KSM",
@@ -56,7 +57,8 @@
     "FARADAY": "Faraday/1",
     "Frog🐸": "frogstakingnode#fksm#01",
     "Frog🐸/02": "frogstakingnode#fksm#02",
-    "GATOTECH/UK2": "GATOTECH😸KSM_2",
+    "GATOTECH/CR1": "GATOTECH😸KSM_CR1",
+    "GATOTECH/UK2": "GATOTECH😸KSM_GB2",
     "GoOpen": "GoOpen",
     "Grimface": "grimface",
     "🏔 HELIKON 🏔/BELIEVE": "helikon-kusama-believe",
@@ -111,7 +113,8 @@
     "WinterStamp/Avalanche": "WinterStamp/Avalanche",
     "WinterStamp/Blizzard": "WinterStamp/Blizzard",
     "XUAN_2": "XUAN_LOW_COMMISSION_NODE_2",
-    "Zetetic Validator": "Zetetic Validator"
+    "Zetetic Validator": "Zetetic Validator",
+    "ZKValidator/ZKValidator5": "ZKV-5"
   },
   "polkadot": {
     "🏔 HELIKON 🏔/ISTANBUL": "⛰ HELIKON ⛰ ISTANBUL",
@@ -136,6 +139,7 @@
     "Encointer/PV1": "ENCOINTER/PV1",
     "Eric/BladeRunner": "BladeRunner",
     "GoOpen": "GoOpen",
+    "GATOTECH/UK2": "GATOTECH😸DOT_GB2",
     "hirish": "hirish",
     "Hsinchu": "Hsinchu",
     "HYPERSPEED/DOT[1]⏩": "HYPERSPEED_DOT1",
@@ -169,6 +173,7 @@
     "VLADIMIRPRO": "VLADIMIRPRO",
     "WinterStamp/Storm": "WinterStamp/Storm",
     "XUAN": "XUAN_NODE",
-    "Zetetic Validator/01": "Zetetic Validator 1"
+    "Zetetic Validator/01": "Zetetic Validator 1",
+    "ZKV": "ZKV-2"
   }
 }
