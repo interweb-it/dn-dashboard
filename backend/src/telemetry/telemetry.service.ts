@@ -348,7 +348,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       }
     });
     // console.log('findOneByName ChainStats:', ret);
-    if (ret.NodeDetails.Address) {
+    if (ret?.NodeDetails.Address) {
       ret.IPGeo = this.getGeoForIP(ret.NodeDetails.Address);
     }
     return ret;
