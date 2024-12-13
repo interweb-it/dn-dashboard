@@ -24,7 +24,6 @@
 
     <v-container>
       <v-card>      
-        <!-- {{ locationMap }} -->
         <client-only>
           <validator-map :chain-id="chainId" :validators="telemetry"></validator-map>
         </client-only>
@@ -134,22 +133,6 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
   }
 }`
 
-const QUERY_GEO = gql`
-query geoForIds($chainId:String!, $ids:[Int]!) {
-  telemetryForIds(chainId:$chainId, ids:$ids) {
-    NodeId
-    NodeLocation {
-      Latitude
-      Longitude
-  		City
-    }
-    NodeDetails {
-      NodeName
-      Address
-    }
-  }  
-}`
-
 export default defineComponent({
   name: 'CohortHome',
   components: {
@@ -169,9 +152,10 @@ export default defineComponent({
     var api: ApiPromise | null;
 
     var error = ref(null)
-    var loading = ref()
-    var refetch = ref(() => {})
-    var grefetch = ref(() => {})
+    var loading = ref<any>(false)
+    // var loadingG = ref<any>(false)
+    var refetch = ref<any>(() => {})
+    // var grefetch = ref(() => {})
 
     const selected = ref([])
     const nominators = ref([])
@@ -192,17 +176,19 @@ export default defineComponent({
       scrollHandler = handleScroll((scrollY) => {
         elevation.value = scrollY > 0 ? 4 : 0;
       })
+    });
 
+    onMounted(async () => {
       var {
         error, 
-        // loading: cLoading,
+        loading: cLoading,
         refetch: cRefetch,
-        onResult } = await useQuery(QUERY_NODES, {
+        onResult } = useQuery(QUERY_NODES, {
         chainId: chainId.value,
         cohortId: cohortId.value
       })
       refetch.value = cRefetch
-      // loading.value = computed(() => cLoading)
+      loading = cLoading
 
       onResult((result: any) => {
         if (result.loading) {
@@ -222,40 +208,12 @@ export default defineComponent({
         });
 
         getNominatorTargets()
-        loading.value = false;
       });
-
-      // var {
-      //   error, 
-      //   // loading: cLoading,
-      //   refetch: gRefetch,
-      //   onResult: gonResult } = await useQuery(QUERY_GEO, {
-      //   chainId: chainId.value,
-      //   ids: [3,4,5]
-      // })
-      // grefetch.value = gRefetch
-      // gonResult((result: any) => {
-      //   if (result.loading) {
-      //     console.log('still loading...');
-      //     return;
-      //   }
-      //   console.log('result', result.data);
-      //   // const geo = result.data?.telemetryForIds || [];
-      //   // geo?.forEach((g: any) => {
-      //   //   console.log('geo', g);
-      //   //   nodeStore.addGeo(g);
-      //   // });
-      // });
 
       if(nominatorStore.stakingEntries.length === 0) {
         getAllNominators();
       }
     });
-
-    // if (error) {
-    //   // eslint-disable-next-line no-console
-    //   console.error(error)
-    // }
 
     const nominations = ref<Record<string, string[]>>({});
     const nominatedBy = ref<Record<string, string[]>>({});
@@ -268,7 +226,7 @@ export default defineComponent({
         const nominator = nominators.value[i];
         // console.log('nominator', nominator);
         const res = await api?.query.staking.nominators(nominator.stash) || [];
-        const { targets } = res.toJSON();
+        const { targets } = res?.toJSON() || [];
         //console.log('targets', targets);
         for(let j = 0; j < targets.length; j++) {
           const target = targets[j];
@@ -288,24 +246,6 @@ export default defineComponent({
       }
     }
 
-    // const getNominators = async () => {
-      // loadingN.value = true
-    //   console.debug('getAllNominators');
-    //   if (!api) return
-    //   // nominators.value = []
-    //   const stakingEntries = await api.query.staking.nominators.entries()
-    //   // console.debug('stakingEntries', stakingEntries)
-    //   for (const [key, nominations] of stakingEntries) {
-    //     const nominatorAddress = key.args[0].toString();
-    //     const targets = nominations.toJSON() as any;
-    //     const accountData = (await api.query.system.account(nominatorAddress)).toJSON() as any;
-    //     // console.debug('accountData', accountData)
-    //     const balance = Number(BigInt(accountData.data.free)); // Available balance
-    //     nominatorStore.addNominator({ address: nominatorAddress, balance: balance, targets: targets.targets });
-    //   }
-    //   console.debug('nominators', nominatorStore.nominators.size)
-      // loadingN.value = false
-    // }
     const getAllNominators = async () => {
       console.debug('get stakingEntries');
       if(!api) return
@@ -362,24 +302,11 @@ export default defineComponent({
     }
     const locations = ref<Record<string, ILocation>>({});
 
-    const locationMap = computed(async () => {
-      const map = {};
-      // selected.value.filter(f => f.identity.toUpperCase().includes(search.value.toUpperCase())).forEach(s => {
-      //   console.debug('s', s);
-      //   // get location from api
-      //   if (!locations[s.stash]) {
-      //     const loc = request('https://ipapi.co/json/');
-      //   }
-      //   map[s.stash] = s.identity;
-      // });
-      return map;
-    })
-
     const refresh = async () => {
       console.log('refreshing');
       // loading.value = true;
       refetch.value();
-      grefetch.value();
+      // grefetch.value();
     }
 
     return {
@@ -401,7 +328,6 @@ export default defineComponent({
       gotoValidator,
       nominatedBy,
       shortStash,
-      locationMap,
     }
   }
 })
