@@ -128,7 +128,7 @@
         </a> )
         <v-btn icon flat size="small" @click="refetchP()"><v-icon>mdi-refresh</v-icon></v-btn>
         </v-card-title>
-        <v-card-tex>
+        <v-card-text>
           <!-- {{ performance }} -->
           <v-container>
             <v-row>
@@ -143,7 +143,7 @@
               </v-col>
             </v-row>
           </v-container>
-        </v-card-tex>
+        </v-card-text>
       </v-card>
 
       <v-card>
@@ -232,7 +232,7 @@
 
       <v-card>
         <v-card-title>Telemetry
-          <v-btn icon flat @click="getTelemetry" :loading="loadingT">
+          <v-btn icon flat @click="refetchT()" :loading="loadingT">
             <v-icon>mdi-refresh</v-icon>
           </v-btn>
         </v-card-title>
@@ -524,7 +524,7 @@ export default defineComponent({
     var scrollHandler: any = null;
 
     var refetchC = () => {}
-    var refetchT = () => {}
+    var refetchT = ref(() => {})
     var refetchP = ref(() => {})
 
     onBeforeUnmount(() => {
@@ -638,7 +638,7 @@ export default defineComponent({
         chainId: chainId.value,
         name: node.value.identity || ''
       });
-      refetchT = tRefetch
+      refetchT.value = tRefetch
       loadingT = tLoading
 
       tonResult((result: any) => {
@@ -674,10 +674,10 @@ export default defineComponent({
       await getNominators()
     });
 
-    if (error) {
-      // eslint-disable-next-line no-console
-      console.error(error)
-    }
+    // if (error) {
+    //   // eslint-disable-next-line no-console
+    //   console.error(error)
+    // }
 
     const getAccount = async () => {
       console.debug('getAccount', stash.value);
@@ -700,7 +700,7 @@ export default defineComponent({
       rewardDestination.value = _rewardDestination?.toHuman() || 'Unknown'
 
       const _commission = await api?.query.staking.validators(stash.value)
-      commission.value = _commission?.toJSON() as number || 0
+      commission.value = _commission?.toJSON() as any || { commission: null, blocked: null }
 
       // get Identity
       let _identity = await apip?.query.identity.identityOf(stash.value)
@@ -954,6 +954,7 @@ export default defineComponent({
       hasTelemetry,
       telemetry,
       telemetryError,
+      refetchT,
       nominators,
       //backups,
       validators,
