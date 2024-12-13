@@ -122,6 +122,31 @@
       </v-card>
 
       <v-card>
+        <v-card-title>Performance ( c/o <a :href="`https://apps.turboflakes.io/?chain=${chainId}#/validator/${node.stash}?mode=history`" target="_blank">
+          turboflakes.io
+          <sup><v-icon size="v-small">mdi-open-in-new</v-icon></sup>
+        </a> )
+        <v-btn icon flat size="small" @click="getPerformance()"><v-icon>mdi-refresh</v-icon></v-btn>
+        </v-card-title>
+        <v-card-tex>
+          <!-- {{ performance }} -->
+          <v-container>
+            <v-row>
+              <v-col>
+                  <p>Grade: {{ performance.grade }}</p>
+              </v-col>
+              <v-col>
+                <p>Authority: {{ (performance.authority_inclusion * 100).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}%</p>
+              </v-col>
+              <v-col>
+                <p>Para: {{ (performance.para_authority_inclusion * 100).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}%</p>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-card-tex>
+      </v-card>
+
+      <v-card>
         <v-card-title>Exposure
           <v-btn icon flat @click="getExposure" :loading="loadingE">
             <v-icon>mdi-refresh</v-icon>
@@ -246,13 +271,9 @@
               <v-list-item-subtitle>Network Id</v-list-item-subtitle>
               <v-list-item-title>{{ telemetry?.NetworkId }}</v-list-item-title>
             </v-list-item>
-            <v-list-item>
+            <!-- <v-list-item>
               <v-list-item-subtitle>Address</v-list-item-subtitle>
               <v-list-item-title>{{ telemetry?.Address }}</v-list-item-title>
-            </v-list-item>
-            <!-- <v-list-item>
-              <v-list-item-title>Operating System</v-list-item-title>
-              <v-list-item-subtitle>{{ telemetry?.OperatingSystem }}</v-list-item-subtitle>
             </v-list-item> -->
             <v-list-item>
               <v-list-item-subtitle>NodeSysInfo</v-list-item-subtitle>
@@ -408,7 +429,7 @@ query telemetry($chainId: String!, $name: String!) {
       TelemetryName
       NodeImplementation
       NodeVersion
-      Address
+      # Address
       NetworkId
       # OperatingSystem
       NodeSysInfo {
@@ -489,6 +510,8 @@ export default defineComponent({
     const commission = ref<Record<string, any>>({ commission: 0, blocked: false })
     const identity = ref<Record<string, any>>({})
 
+    const performance = ref<Record<string, any>>({})
+
     const elevation = ref(0)
     var scrollHandler: any = null;
 
@@ -555,12 +578,24 @@ export default defineComponent({
       // await getNominators()
     }
 
+    const getPerformance = async () => {
+      await fetch(`https://${chainId.value}-onet-api.turboflakes.io/api/v1/validators/${stash.value}/grade`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('turboflakes', data)
+          performance.value = data
+        })
+    }
+
     onBeforeMount(async () => {
       api = await $substrate.getApi(chainId.value)
       apip = await $substrate.getApip(chainId.value)
       scrollHandler = handleScroll((scrollY) => {
         elevation.value = scrollY > 0 ? 4 : 0;
       })
+    });
+
+    onMounted(async () => {
       var { error, loading: cLoading, refetch: cRefetch, onResult } = useQuery(QUERY_NODE, {
         chainId: chainId.value,
         cohortId: 1,
@@ -611,6 +646,7 @@ export default defineComponent({
       await getAccount()
       await getExposure()
       await getNominators()
+      await getPerformance()
       
     });
 
@@ -901,6 +937,8 @@ export default defineComponent({
       // page,
       // pages,
 
+      performance,
+
       // data,
       totalNominations,
       dnNominations,
@@ -910,6 +948,7 @@ export default defineComponent({
       getExposure,
       getNominators,
       getAllNominators,
+      getPerformance,
       isNominated,
       toCoin,
       shortStash,
