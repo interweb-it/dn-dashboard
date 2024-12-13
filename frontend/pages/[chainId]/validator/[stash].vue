@@ -126,7 +126,7 @@
           turboflakes.io
           <sup><v-icon size="v-small">mdi-open-in-new</v-icon></sup>
         </a> )
-        <v-btn icon flat size="small" @click="getPerformance()"><v-icon>mdi-refresh</v-icon></v-btn>
+        <v-btn icon flat size="small" @click="refetchP()"><v-icon>mdi-refresh</v-icon></v-btn>
         </v-card-title>
         <v-card-tex>
           <!-- {{ performance }} -->
@@ -449,6 +449,14 @@ query telemetry($chainId: String!, $name: String!) {
     }
   }
 }`
+const QUERY_PERFORMANCE = gql`
+query performance($chainId: String!, $address: String!) {
+  performance(chainId: $chainId, address: $address) {
+    grade
+    authority_inclusion
+    para_authority_inclusion
+  }
+}`
 
 const decimals: Record<string, number> = {
   polkadot: 10,
@@ -517,6 +525,7 @@ export default defineComponent({
 
     var refetchC = () => {}
     var refetchT = () => {}
+    var refetchP = ref(() => {})
 
     onBeforeUnmount(() => {
       if(scrollHandler) scrollHandler();
@@ -524,12 +533,13 @@ export default defineComponent({
 
     var loadingC = ref<any>()
     var loadingT = ref<any>()
+    var loadingP = ref<any>()
     var loadingE = ref<boolean>(false)
     var loadingN = ref<boolean>(false)
     var loadingAN = computed(() => nominatorStore.loading)
 
     const isLoading = computed(() => {
-      return loadingC.value || loadingT.value || loadingE.value || loadingN.value
+      return loadingC.value || loadingT.value || loadingE.value || loadingN.value || loadingP.value
     })
 
     const hasTelemetry = computed(() => {
@@ -576,16 +586,17 @@ export default defineComponent({
       await getAccount()
       await getExposure()
       // await getNominators()
+      await refetchP.value()
     }
 
-    const getPerformance = async () => {
-      await fetch(`https://${chainId.value}-onet-api.turboflakes.io/api/v1/validators/${stash.value}/grade`)
-        .then(res => res.json())
-        .then(data => {
-          console.log('turboflakes', data)
-          performance.value = data
-        })
-    }
+    // const getPerformance = async () => {
+    //   await fetch(`https://${chainId.value}-onet-api.turboflakes.io/api/v1/validators/${stash.value}/grade`)
+    //     .then(res => res.json())
+    //     .then(data => {
+    //       console.log('turboflakes', data)
+    //       performance.value = data
+    //     })
+    // }
 
     onBeforeMount(async () => {
       api = await $substrate.getApi(chainId.value)
@@ -642,18 +653,31 @@ export default defineComponent({
           : `No telemetry data found - does your node have '--name "${node.value.identity}"''`;
       });
 
-      // get Acount details
+      // performance
+      var { error, loading: pLoading, refetch: pRefetch, onResult: ponResult } = useQuery(QUERY_PERFORMANCE, {
+        chainId: chainId.value,
+        address: stash.value || ''
+      });
+      refetchP.value = pRefetch
+      loadingP = pLoading
+
+      ponResult((result: any) => {
+        if (result.loading) {
+          console.log('still loading...');
+          return;
+        }
+        console.log('performance result', result.data);
+        performance.value = result.data?.performance || {};
+      });
       await getAccount()
       await getExposure()
       await getNominators()
-      await getPerformance()
-      
     });
 
-    // if (error) {
-    //   // eslint-disable-next-line no-console
-    //   console.error(error)
-    // }
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.error(error)
+    }
 
     const getAccount = async () => {
       console.debug('getAccount', stash.value);
@@ -938,6 +962,7 @@ export default defineComponent({
       // pages,
 
       performance,
+      refetchP,
 
       // data,
       totalNominations,
@@ -948,7 +973,7 @@ export default defineComponent({
       getExposure,
       getNominators,
       getAllNominators,
-      getPerformance,
+      // getPerformance,
       isNominated,
       toCoin,
       shortStash,

@@ -1,0 +1,32 @@
+scalar BigInt
+
+type Query {
+  performance(chainId: String!, address: String!): Performance
+}
+
+# "address": "5GbUxHu1gpSf2zMCx5r2TukCnKcFtFtEENMX2ybYHMKTvB44",
+# "grade": "A+",
+# "authority_inclusion": 1.0,
+# "para_authority_inclusion": 0.3333333333333333,
+# "explicit_votes_total": 355,
+# "implicit_votes_total": 8,
+# "missed_votes_total": 0,
+# "sessions": [
+#     44197,
+#     44198,
+#     44199,
+#     44200,
+#     44201,
+#     44202
+# ]
+
+type Performance {
+  address: String
+  grade: String
+  authority_inclusion: Float
+  para_authority_inclusion: Float
+  explicit_votes_total: Int
+  implicit_votes_total: Int
+  missed_votes_total: Int
+  sessions: [Int]
+}

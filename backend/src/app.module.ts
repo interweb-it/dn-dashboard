@@ -14,6 +14,7 @@ import { AppService } from './app.service';
 import { NodesModule } from './nodes/nodes.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { BlockchainModule } from './blockchain/blockchain.module';
+import { PerformanceModule } from './performance/performance.module';
 
 import configuration from './config/configuration';
 // import { join } from 'path';
@@ -27,7 +28,7 @@ import configuration from './config/configuration';
     ScheduleModule.forRoot({}),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      include: [NodesModule, TelemetryModule, BlockchainModule],
+      include: [NodesModule, TelemetryModule, BlockchainModule, PerformanceModule],
       // autoSchemaFile: 'schema.gql',
       // autoSchemaFile: join(process.cwd(), 'src/graphql/graphql.schema.gql'),
       // typePaths: ['./**/*.graphql'],
@@ -51,6 +52,7 @@ import configuration from './config/configuration';
     NodesModule,
     TelemetryModule,
     BlockchainModule,
+    PerformanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
