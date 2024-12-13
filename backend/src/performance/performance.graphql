@@ -19,6 +19,82 @@ type Query {
 #     44201,
 #     44202
 # ]
+# "sessions_data": [
+# {
+#     "session": 9959,
+#     "is_auth": true,
+#     "is_para": true,
+#     "auth": {
+#         "aix": 159,
+#         "sp": 56940,
+#         "ep": 69120,
+#         "ab": [
+#             23795142,
+#             23795186,
+#             23795867,
+#             23796718,
+#             23796945,
+#             23796957
+#         ]
+#     },
+#     "para": {
+#         "core": 23,
+#         "group": 64,
+#         "peers": [
+#             167,
+#             173,
+#             400,
+#             204
+#         ],
+#         "pid": 2046,
+#         "pix": 328
+#     },
+#     "para_summary": {
+#         "pt": 12120,
+#         "ca": 612,
+#         "ab": 3,
+#         "ev": 176,
+#         "iv": 421,
+#         "mv": 0
+#     }
+# },
+# {
+#     "session": 9960,
+#     "is_auth": true,
+#     "is_para": true,
+#     "auth": {
+#         "aix": 160,
+#         "sp": 20,
+#         "ep": 9600,
+#         "ab": [
+#             23797147,
+#             23797902,
+#             23798332,
+#             23798669,
+#             23798764
+#         ]
+#     },
+#     "para": {
+#         "core": null,
+#         "group": 94,
+#         "peers": [
+#             309,
+#             193,
+#             444,
+#             89
+#         ],
+#         "pid": null,
+#         "pix": 476
+#     },
+#     "para_summary": {
+#         "pt": 9520,
+#         "ca": 487,
+#         "ab": 2,
+#         "ev": 70,
+#         "iv": 402,
+#         "mv": 0
+#     }
+# },
 
 type Performance {
   address: String
@@ -29,4 +105,38 @@ type Performance {
   implicit_votes_total: Int
   missed_votes_total: Int
   sessions: [Int]
+  sessions_data: [SessionData]
+}
+
+type SessionData {
+  session: Int
+  is_auth: Boolean
+  is_para: Boolean
+  auth: AuthData
+  para: ParaData
+  para_summary: ParaSummary
+}
+
+type AuthData {
+  aix: Int
+  sp: BigInt
+  ep: BigInt
+  ab: [BigInt]
+}
+
+type ParaData {
+  core: Int
+  group: Int
+  peers: [Int]
+  pid: Int
+  pix: Int
+}
+
+type ParaSummary {
+  pt: Int
+  ca: Int
+  ab: Int
+  ev: Int
+  iv: Int
+  mv: Int
 }

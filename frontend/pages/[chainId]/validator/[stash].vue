@@ -130,19 +130,38 @@
         </v-card-title>
         <v-card-text>
           <!-- {{ performance }} -->
-          <v-container>
-            <v-row>
-              <v-col>
-                  <p>Grade: {{ performance.grade }}</p>
-              </v-col>
-              <v-col>
-                <p>Authority: {{ (performance.authority_inclusion * 100).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}%</p>
-              </v-col>
-              <v-col>
-                <p>Para: {{ (performance.para_authority_inclusion * 100).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}%</p>
-              </v-col>
-            </v-row>
-          </v-container>
+          <v-row>
+            <v-col class="text-center">
+              <p>Grade: {{ performance.grade }}</p>
+            </v-col>
+            <v-col class="text-center">
+              <p>Authority: {{ (performance.authority_inclusion * 100).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}%</p>
+            </v-col>
+            <v-col class="text-center">
+              <p>Para: {{ (performance.para_authority_inclusion * 100).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}%</p>
+            </v-col>
+          </v-row>
+          <!-- <v-row>
+            <v-col v-for="(c, idx) in performance.sessions_data" v-bind:key="c.session">
+              <v-chip size="small" :color="c.is_para ? 'purple' : c.is_auth ? 'pink' : 'grey'" variant="flat">
+                {{ c.is_para ? 'P' : 'V' }}
+              </v-chip>
+            </v-col>
+          </v-row> -->
+          <v-table style="border-collapse: collapse;">
+            <tr>
+              <td v-for="(c, idx) in performance.sessions_data" 
+                  v-bind:key="c.session"
+                  style="padding: 0;">
+                <div :style="{ 
+                  'background-color': c.is_para ? '#D1C4E9' : c.is_auth ? '#F8BBD0' : 'grey', 
+                  margin: '3px', 
+                  padding: '10px' 
+                }">
+                </div>
+              </td>
+            </tr>
+          </v-table>
         </v-card-text>
       </v-card>
 
@@ -455,6 +474,32 @@ query performance($chainId: String!, $address: String!) {
     grade
     authority_inclusion
     para_authority_inclusion
+    sessions_data {
+      session
+      is_auth
+      is_para
+      auth {
+        aix
+        sp
+        ep
+        ab
+      }
+      para {
+        core
+        group
+        peers
+        pid
+        pix
+      }
+      para_summary {
+        pt
+        ca
+        ab
+        ev
+        iv
+        mv
+      }
+    }
   }
 }`
 

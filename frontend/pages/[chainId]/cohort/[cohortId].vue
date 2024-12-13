@@ -77,6 +77,7 @@
       </v-tabs-window>
 
     </v-container>
+    <Footer :chain-id="chainId" :cohort-id="cohortId"></Footer>
   </client-only>
 
 </template>
@@ -85,6 +86,7 @@
 import ValidatorMap from '@/components/ValidatorMap.vue'
 import { handleScroll } from "~/utils/helpers";
 import { ApiPromise } from '@polkadot/api';
+import Footer from '~/components/Footer.vue';
 
 const QUERY_NODES = gql`
 query queryNodes($chainId: String!, $cohortId:Int!) {
@@ -136,7 +138,8 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
 export default defineComponent({
   name: 'CohortHome',
   components: {
-    ValidatorMap
+    ValidatorMap,
+    Footer
   },
   async setup() {
     const route = useRoute()
