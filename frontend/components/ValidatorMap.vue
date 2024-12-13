@@ -51,10 +51,10 @@ export default {
       return props.validators.map((m) => {
         return {
           name: m.NodeDetails.NodeName,
-          lat: m.IPGeo.lat,
-          lon: m.IPGeo.lon,
-          country: m.IPGeo.country,
-          city: m.IPGeo.city,
+          lat: m.IPGeo?.lat,
+          lon: m.IPGeo?.lon,
+          country: m.IPGeo?.country,
+          city: m.IPGeo?.city,
           // ip: m.IPGeo.query, // do not dox the IP
           // address: m.,
         };
