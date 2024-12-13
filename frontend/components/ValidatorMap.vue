@@ -48,7 +48,7 @@ export default {
   },
   setup(props) {
     const markers = computed(() => {
-      return props.validators.map((m) => {
+      return props.validators.filter(f => f.IPGeo).map((m) => {
         return {
           name: m.NodeDetails.NodeName,
           lat: m.IPGeo?.lat,
