@@ -30,10 +30,11 @@ type NodeLocationX {
 type IPGeo {
   ip: String
   query: String # IP address
-  countryCode: String
-  countryName: String
-  regionCode: String
-  regionName: String
+  # countryCode: String
+  # countryName: String
+  country: String
+  # regionCode: String
+  # regionName: String
   city: String
   lat: Float
   lon: Float

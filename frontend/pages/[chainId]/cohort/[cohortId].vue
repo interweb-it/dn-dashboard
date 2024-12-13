@@ -2,7 +2,9 @@
 
   <client-only>
     <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar">
-      <v-toolbar-title>[DN] {{ chainId }} cohort {{ cohortId }}</v-toolbar-title>
+      <v-toolbar-title>[DN]
+        <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" rounded></v-img></v-icon> 
+        {{ chainId }} cohort {{ cohortId }}</v-toolbar-title>
       <v-spacer></v-spacer>
       <v-text-field v-model="search" placeholder="Search"></v-text-field>
 
@@ -21,6 +23,13 @@
     </v-toolbar>
 
     <v-container>
+      <v-card>      
+        <!-- {{ locationMap }} -->
+        <client-only>
+          <validator-map :chain-id="chainId" :validators="telemetry"></validator-map>
+        </client-only>
+      </v-card>
+
       <v-tabs v-model="tab">
         <v-tab value="selected">Selected</v-tab>
         <v-tab value="backups">Backups</v-tab>
@@ -74,11 +83,12 @@
 </template>
 
 <script lang="ts">
+import ValidatorMap from '@/components/ValidatorMap.vue'
 import { handleScroll } from "~/utils/helpers";
 import { ApiPromise } from '@polkadot/api';
 
 const QUERY_NODES = gql`
-query nodeByName($chainId: String!, $cohortId:Int!) {
+query queryNodes($chainId: String!, $cohortId:Int!) {
   selected(chainId: $chainId, cohortId: $cohortId) {
     identity
     stash
@@ -92,6 +102,13 @@ query nodeByName($chainId: String!, $cohortId:Int!) {
   validators(chainId: $chainId)
   telemetry(chainId: $chainId) {
     NodeId
+    IPGeo {
+      # query # do not dox the IP
+      lat
+      lon
+      city
+      country
+    }
     NodeDetails {
       NodeName
       NodeImplementation
@@ -135,6 +152,9 @@ query geoForIds($chainId:String!, $ids:[Int]!) {
 
 export default defineComponent({
   name: 'CohortHome',
+  components: {
+    ValidatorMap
+  },
   async setup() {
     const route = useRoute()
     const router = useRouter()
@@ -194,9 +214,9 @@ export default defineComponent({
         nominators.value = result.data?.nominators.map(n => {return {stash: n}}) || [];
         backups.value = result.data?.backups || [];
         validators.value = result.data?.validators || [];
-        const telemetry = result.data?.telemetry || [];
+        telemetry.value = result.data?.telemetry || [];
         // console.log('nodes', nodes);
-        telemetry?.forEach((node: any) => {
+        telemetry.value?.forEach((node: any) => {
           // console.log('node', node);
           nodeStore.addNode(node);
         });
@@ -204,7 +224,29 @@ export default defineComponent({
         getNominatorTargets()
         loading.value = false;
       });
-      
+
+      // var {
+      //   error, 
+      //   // loading: cLoading,
+      //   refetch: gRefetch,
+      //   onResult: gonResult } = await useQuery(QUERY_GEO, {
+      //   chainId: chainId.value,
+      //   ids: [3,4,5]
+      // })
+      // grefetch.value = gRefetch
+      // gonResult((result: any) => {
+      //   if (result.loading) {
+      //     console.log('still loading...');
+      //     return;
+      //   }
+      //   console.log('result', result.data);
+      //   // const geo = result.data?.telemetryForIds || [];
+      //   // geo?.forEach((g: any) => {
+      //   //   console.log('geo', g);
+      //   //   nodeStore.addGeo(g);
+      //   // });
+      // });
+
       if(nominatorStore.stakingEntries.length === 0) {
         getAllNominators();
       }
@@ -246,6 +288,24 @@ export default defineComponent({
       }
     }
 
+    // const getNominators = async () => {
+      // loadingN.value = true
+    //   console.debug('getAllNominators');
+    //   if (!api) return
+    //   // nominators.value = []
+    //   const stakingEntries = await api.query.staking.nominators.entries()
+    //   // console.debug('stakingEntries', stakingEntries)
+    //   for (const [key, nominations] of stakingEntries) {
+    //     const nominatorAddress = key.args[0].toString();
+    //     const targets = nominations.toJSON() as any;
+    //     const accountData = (await api.query.system.account(nominatorAddress)).toJSON() as any;
+    //     // console.debug('accountData', accountData)
+    //     const balance = Number(BigInt(accountData.data.free)); // Available balance
+    //     nominatorStore.addNominator({ address: nominatorAddress, balance: balance, targets: targets.targets });
+    //   }
+    //   console.debug('nominators', nominatorStore.nominators.size)
+      // loadingN.value = false
+    // }
     const getAllNominators = async () => {
       console.debug('get stakingEntries');
       if(!api) return
@@ -334,12 +394,14 @@ export default defineComponent({
       nominations,
       backups,
       validators,
+      telemetry,
       search,
       tab,
       // data,
       gotoValidator,
       nominatedBy,
       shortStash,
+      locationMap,
     }
   }
 })

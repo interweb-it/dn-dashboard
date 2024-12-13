@@ -5,7 +5,9 @@
       <v-btn icon flat :to="`/${chainId}/cohort/1`">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
-      <v-toolbar-title>{{ chainId }} validator {{ node.identity }}</v-toolbar-title>
+      <v-toolbar-title>
+        <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" rounded></v-img></v-icon> 
+        {{ chainId }} validator {{ node.identity }}</v-toolbar-title>
       <v-spacer></v-spacer>
       <v-toolbar-items>
       </v-toolbar-items>
@@ -19,7 +21,7 @@
 
       <!-- {{ node }} -->
       <v-card>
-        <v-card-title>DN {{ loadingN }}</v-card-title>
+        <v-card-title>DN <v-btn flat icon size="small" :loading="loadingN" v-show="loadingN"></v-btn></v-card-title>
         <v-card-text>
           <v-list>
             <v-list-item>
@@ -394,6 +396,13 @@ const QUERY_TELEMETRY = gql`
 query telemetry($chainId: String!, $name: String!) {
   telemetryByName(chainId: $chainId, name: $name) {
     NodeId
+    # IPGeo {
+    #   query
+    #   lat
+    #   lon
+    #   city
+    #   country
+    # }
     NodeDetails {
       NodeName
       TelemetryName
@@ -534,7 +543,7 @@ export default defineComponent({
 
     const rulesIdentity = computed(() => {
       // identity.value.info should have email and matrix
-      return identity.value.info?.email && identity.value.info?.matrix
+      return identity.value?.info?.email && identity.value?.info?.matrix
     })
 
     const reload = async () => {
@@ -560,20 +569,12 @@ export default defineComponent({
       refetchC = cRefetch
       loadingC = cLoading
 
-      // telemetry
-      var { error, loading: tLoading, refetch: tRefetch, onResult: tonResult } = useQuery(QUERY_TELEMETRY, {
-        chainId: chainId.value,
-        name: node.value.identity || ''
-      });
-      refetchT = tRefetch
-      loadingT = tLoading
-
       onResult(async (result: any) => {
         if (result.loading) {
           console.log('still loading...');
           return;
         }
-        console.log('result', result.data);
+        console.log('main result', result.data);
         node.value = result.data.nodeByStash;
         selected.value = result.data.selected || [];
         backups.value = result.data.backups || [];
@@ -586,12 +587,20 @@ export default defineComponent({
         });
       });
 
+      // telemetry
+      var { error, loading: tLoading, refetch: tRefetch, onResult: tonResult } = useQuery(QUERY_TELEMETRY, {
+        chainId: chainId.value,
+        name: node.value.identity || ''
+      });
+      refetchT = tRefetch
+      loadingT = tLoading
+
       tonResult((result: any) => {
         if (result.loading) {
           console.log('still loading...');
           return;
         }
-        console.log('result', result.data.telemetryByName);
+        console.log('telemetry result', result.data.telemetryByName);
         telemetry.value = result.data?.telemetryByName?.NodeDetails || {};
         telemetryError.value = result.data?.telemetryByName?.NodeDetails 
           ? null 
@@ -635,13 +644,14 @@ export default defineComponent({
 
       // get Identity
       let _identity = await apip?.query.identity.identityOf(stash.value)
-      console.debug('identity', _identity)
-      if(_identity) {
+      // console.debug('identity', _identity)
+      if(_identity?.toJSON()) {
         identity.value = parseIdentity(_identity)
+        // console.debug('parsed identity', identity.value)
       } else {
         const _super = await apip?.query.identity.superOf(stash.value)
         if (_super) {
-          console.debug('super', _super?.toJSON())
+          // console.debug('super', _super?.toJSON())
           const subId = hexToString(_super.toJSON()[1].raw)
           if(_super) {
             _identity = await apip?.query.identity.identityOf(_super.toJSON()[0])
@@ -685,12 +695,13 @@ export default defineComponent({
     const parseIdentity = (id: any) => {
       if(!id) return null
       try {
-        const idj = (id.toJSON())[0]
+        let idj = (id.toJSON())
         console.debug('idj', idj)
-        if (idj) {
+        if (idj && idj[0]) {
+          idj = idj[0]
           const res = {} as any
           res.deposit = idj.deposit
-          res.info = {
+          if(idj?.info) res.info = {
             discord: idj.info?.discord?.raw ? hexToString(idj.info.discord.raw) : '',
             display: idj.info?.display?.raw ? hexToString(idj.info.display.raw) : '',
             email: idj.info?.email?.raw ? hexToString(idj.info.email.raw) : '',

@@ -291,6 +291,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     // console.log('AddedNode', chainId, message.NodeId, message.NodeDetails.NodeName, message.NodeDetails.ChainStats);
     //console.log('AddedNode', message[1].NodeId, message[1].NodeDetails);
     console.log(`${chainId}, |${message.NodeDetails.NodeName}|`);
+    // TODO: attempt to match the node name with the telemetry name
     this.dataStore[chainId].set(message.NodeId, message);
   }
 
@@ -302,6 +303,11 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   getNodes(chainId: string): AddedNodeMessageX[] {
     console.log('getNodes', chainId);
     const ret = Array.from(this.dataStore[chainId].values());
+    ret.forEach((node) => {
+      if (node.NodeDetails.Address) {
+        node.IPGeo = this.getGeoForIP(node.NodeDetails.Address);
+      }
+    });
     return ret; // this.dataStore[chainId].forEach((node) => node);
   }
 
@@ -342,10 +348,19 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       }
     });
     // console.log('findOneByName ChainStats:', ret);
+    if (ret.NodeDetails.Address) {
+      ret.IPGeo = this.getGeoForIP(ret.NodeDetails.Address);
+    }
     return ret;
   }
 
   getGeoForIP(ip: string): IPGeo | undefined {
+    if (!ip) return undefined;
+    if (!this.ipGeo.has(ip)) {
+      console.log('IP Geo data not found:', ip);
+      return undefined;
+    }
+    console.log('IP Geo data found:', ip, this.ipGeo.get(ip));
     return this.ipGeo.get(ip);
   }
 
@@ -376,9 +391,9 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     const filename = 'ipgeo.json';
     try {
       const data = fs.readFileSync(filename, 'utf-8');
-      const geo = new Map(JSON.parse(data));
-      geo.forEach((value: IPGeo) => {
-        this.ipGeo.set(value.query, value);
+      const geo: Record<string, IPGeo> = JSON.parse(data);
+      Object.entries(geo).forEach(([address, value]) => {
+        this.ipGeo.set(address, value);
       });
     } catch (error) {
       console.error('Error reading IP Geo file:', error.message);
@@ -463,7 +478,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   handleCron() {
     console.log('Fetching telemetry name map...');
     this.updateTelemetryNameMap();
-    // this.updateGeoIP();
+    this.updateGeoIP();
   }
 
   handleTelemetryMessage(chainId: string, message: any) {
