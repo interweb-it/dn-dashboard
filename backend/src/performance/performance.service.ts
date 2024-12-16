@@ -21,11 +21,11 @@ export class PerformanceService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy() {}
 
-  async getPerformance(chainId: string, address: string): Promise<IPerformance> {
+  async getPerformance(chainId: string, address: string, number_sessions: number): Promise<IPerformance> {
     console.log('getPerformance', chainId, address);
     let performance: IPerformance | undefined;
     await fetch(
-      `https://${chainId}-onet-api.turboflakes.io/api/v1/validators/${address}/grade?number_last_sessions=16&show_sessions=true&show_summary=true`,
+      `https://${chainId}-onet-api.turboflakes.io/api/v1/validators/${address}/grade?number_last_sessions=${number_sessions}&show_sessions=true&show_summary=true`,
     )
       .then((res) => res.json())
       .then((data) => {

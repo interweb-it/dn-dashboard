@@ -1,7 +1,7 @@
 scalar BigInt
 
 type Query {
-  performance(chainId: String!, address: String!): Performance
+  performance(chainId: String!, address: String!, number_sessions: Int): Performance
 }
 
 # "address": "5GbUxHu1gpSf2zMCx5r2TukCnKcFtFtEENMX2ybYHMKTvB44",

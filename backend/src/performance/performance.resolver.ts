@@ -14,8 +14,10 @@ export class PerformanceResolver {
     chainId: string,
     @Args('address')
     address: string,
+    @Args('number_sessions')
+    number_sessions: number,
   ): Promise<IPerformance> {
     console.debug('resolver.ts: getPerformance', 'chainId', chainId);
-    return this.performanceService.getPerformance(chainId, address);
+    return this.performanceService.getPerformance(chainId, address, number_sessions || 16);
   }
 }

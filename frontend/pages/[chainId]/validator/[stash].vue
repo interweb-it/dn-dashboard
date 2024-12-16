@@ -127,6 +127,9 @@
           <sup><v-icon size="v-small">mdi-open-in-new</v-icon></sup>
         </a> )
         <v-btn icon flat size="small" @click="refetchP()"><v-icon>mdi-refresh</v-icon></v-btn>
+        <v-chip size="small" variant="flat" color="#D1C4E9">Para</v-chip>&nbsp;
+        <v-chip size="small" variant="flat" color="#F8BBD0">Active</v-chip>&nbsp;
+        <v-chip size="small" variant="flat" color="grey">Wait</v-chip>
         </v-card-title>
         <v-card-text>
           <!-- {{ performance }} -->
@@ -152,15 +155,28 @@
             <tr>
               <td v-for="(c, idx) in performance.sessions_data" 
                   v-bind:key="c.session"
-                  style="padding: 0;">
+                  style="padding: 0;" class="text-center">
                 <div :style="{ 
                   'background-color': c.is_para ? '#D1C4E9' : c.is_auth ? '#F8BBD0' : 'grey', 
                   margin: '3px', 
-                  padding: '10px' 
+                  padding: '10px',
+                  height: '30px',
+                  width: '30px',
+                  fontSize: '0.8em'
                 }">
+                  {{ performanceGrade(c) }}
                 </div>
               </td>
             </tr>
+            <!-- <tr>
+              <td v-for="(c, idx) in performance.sessions_data" 
+                  v-bind:key="c.session"
+                  style="padding: 0;" class="text-center">
+                <div>
+                  {{ performanceGrade(c) }}
+                </div>
+              </td>
+            </tr> -->
           </v-table>
         </v-card-text>
       </v-card>
@@ -469,8 +485,8 @@ query telemetry($chainId: String!, $name: String!) {
   }
 }`
 const QUERY_PERFORMANCE = gql`
-query performance($chainId: String!, $address: String!) {
-  performance(chainId: $chainId, address: $address) {
+query performance($chainId: String!, $address: String!, $number_sessions: Int) {
+  performance(chainId: $chainId, address: $address, number_sessions: $number_sessions) {
     grade
     authority_inclusion
     para_authority_inclusion
@@ -634,14 +650,100 @@ export default defineComponent({
       await refetchP.value()
     }
 
-    // const getPerformance = async () => {
-    //   await fetch(`https://${chainId.value}-onet-api.turboflakes.io/api/v1/validators/${stash.value}/grade`)
-    //     .then(res => res.json())
-    //     .then(data => {
-    //       console.log('turboflakes', data)
-    //       performance.value = data
-    //     })
-    // }
+    // rules: https://github.com/turboflakes/one-t/blob/main/LEGENDS.md#val-performance-report-legend
+    const ex_session = {
+          "session": 44194,
+          "is_auth": true,
+          "is_para": true,
+          "auth": {
+              "aix": 936,
+              "sp": 2680,
+              "ep": 6080,
+              "ab": [
+                  26183085,
+                  26183107
+              ],
+              "__typename": "AuthData"
+          },
+          "para": {
+              "core": null,
+              "group": 32,
+              "peers": [
+                  152,
+                  608,
+                  26,
+                  357
+              ],
+              "pid": null,
+              "pix": 162,
+              "__typename": "ParaData"
+          },
+          "para_summary": {
+              "pt": 3360,
+              "ca": 168,
+              "ab": 0,
+              "ev": 104,
+              "iv": 62,
+              "mv": 0,
+              "__typename": "ParaSummary"
+          },
+          "__typename": "SessionData"
+      }
+    /**
+     *  A+ = BVR > 99%
+      ‣ A = BVR > 95%
+      ‣ B+ = BVR > 90%
+      ‣ B = BVR > 80%
+      ‣ C+ = BVR > 70%
+      ‣ C = BVR > 60%
+      ‣ D+ = BVR > 50%
+      ‣ D = BVR > 40%
+      ‣ F = BVR <= 40%
+     */
+    interface ISession {
+      session: number;
+      is_auth: boolean;
+      is_para: boolean;
+      auth: {
+        aix: number;  // authority inclusion?
+        sp: number;   //
+        ep: number;
+        ab: number[]; // authored blocks
+      };
+      para: {
+        core: number;
+        group: number;
+        peers: number[];
+        pid: number;
+        pix: number;
+      };
+      para_summary: {
+        pt: number; // points
+        ca: number;
+        ab: number;
+        ev: number; // explicit votes
+        iv: number; // implicit votes
+        mv: number; // missed votes
+      };
+    }
+    const performanceGrade = (session: ISession): string => {
+      if(!session.is_auth) return ' '
+      if(!session.para_summary) return ' '
+      const mvr = session.para_summary.mv / (session.para_summary.ev + session.para_summary.iv + session.para_summary.mv);
+      console.debug('mvr', mvr);
+      const bvr = 1 - mvr;
+      switch (true) {
+        case bvr > 0.99: return 'A+'
+        case bvr > 0.95: return 'A'
+        case bvr > 0.90: return 'B+'
+        case bvr > 0.80: return 'B'
+        case bvr > 0.70: return 'C+'
+        case bvr > 0.60: return 'C'
+        case bvr > 0.50: return 'D+'
+        case bvr > 0.40: return 'D'
+        default: return 'F'
+      }
+    }
 
     onBeforeMount(async () => {
       api = await $substrate.getApi(chainId.value)
@@ -701,7 +803,8 @@ export default defineComponent({
       // performance
       var { error, loading: pLoading, refetch: pRefetch, onResult: ponResult } = useQuery(QUERY_PERFORMANCE, {
         chainId: chainId.value,
-        address: stash.value || ''
+        address: stash.value || '',
+        number_sessions: 24
       });
       refetchP.value = pRefetch
       loadingP = pLoading
@@ -1023,6 +1126,7 @@ export default defineComponent({
       isNominated,
       toCoin,
       shortStash,
+      performanceGrade,
     }
   }
 })
