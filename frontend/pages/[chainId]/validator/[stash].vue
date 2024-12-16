@@ -71,6 +71,10 @@
                     <v-icon :color="rulesIdentity ? 'green' : 'red'">mdi-passport</v-icon>
                     <span> Identity</span>
                   </v-col>
+                  <v-col class="ma-2 d-flex align-center">
+                    <v-icon :color="rulesPerformance ? 'green' : 'red'">mdi-cogs</v-icon>
+                    <span> Performance</span>
+                  </v-col>
                 </v-row>
               </v-card>
               <!-- <v-list-item-subtitle text-color="red">Has Telemetry</v-list-item-subtitle> -->
@@ -358,14 +362,14 @@
             <li>Commission <v-icon>mdi-check</v-icon></li>
             <li>Telemetry <v-icon>mdi-check</v-icon></li>
             <li>On Chain Id (email & matrix) <v-icon>mdi-check</v-icon></li>
+            <li>Performance A/A+? - check <a :href="`https://apps.turboflakes.io/?chain=${chainId}#/validator/${node.stash}?mode=history`" target="_blank">
+              apps.turboflakes.io</a>  <v-icon>mdi-check</v-icon></li>
             <li>Payouts</li>
             <li>Hardware -  <a href="https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot#requirements" target="_blank">requirements</a></li>
             <li>IP4 & IP6</li>
             <li>Client Version - from telemetry (24 hours)</li>
             <li>dedicated machine</li>
             <li>No slashes</li>
-            <li>Performance A/A+? - check <a :href="`https://apps.turboflakes.io/?chain=${chainId}#/validator/${node.stash}?mode=history`" target="_blank">
-              apps.turboflakes.io</a></li>
           </ul>
 
         </v-card-text>
@@ -558,7 +562,7 @@ export default defineComponent({
     var api: ApiPromise | null;
     var apip: ApiPromise | null;
 
-    const nodeStore = useNodeStore()
+    // const nodeStore = useNodeStore()
     const nominatorStore = useNominatorStore()
     const stakingEntries = computed(() => nominatorStore.stakingEntries)
     const nominatorStoreLoading = computed(() => nominatorStore.loading)
@@ -640,6 +644,21 @@ export default defineComponent({
       return identity.value?.info?.email && identity.value?.info?.matrix
     })
 
+    const rulesPerformance = computed(() => {
+      // if the validator is active it should achieve A or A+
+      var ret = true;
+      for (let i = 0; i < performance.value.sessions_data?.length; i++) {
+        const session: ISession = performance.value.sessions_data[i];
+        if (!session.is_para) continue;
+        // const grade = performanceGrade(session);
+        if (session.grade !== 'A' && session.grade !== 'A+') {
+          console.debug('session', session.session, 'grade', session.grade);
+          ret = false;
+        }
+      }
+      return ret;
+    })
+
     const reload = async () => {
       console.log('reload');
       await refetchC()
@@ -704,6 +723,7 @@ export default defineComponent({
       session: number;
       is_auth: boolean;
       is_para: boolean;
+      grade: string; // will be populates on client
       auth: {
         aix: number;  // authority inclusion?
         sp: number;   //
@@ -804,7 +824,7 @@ export default defineComponent({
       var { error, loading: pLoading, refetch: pRefetch, onResult: ponResult } = useQuery(QUERY_PERFORMANCE, {
         chainId: chainId.value,
         address: stash.value || '',
-        number_sessions: 24
+        number_sessions: 36
       });
       refetchP.value = pRefetch
       loadingP = pLoading
@@ -815,7 +835,11 @@ export default defineComponent({
           return;
         }
         console.log('performance result', result.data);
-        performance.value = result.data?.performance || {};
+        const res = result.data?.performance || {};
+        res.sessions_data.forEach((s: ISession) => {
+          s.grade = performanceGrade(s)
+        })
+        performance.value = res;
       });
       await getAccount()
       await getExposure()
@@ -1096,6 +1120,7 @@ export default defineComponent({
       rulesRewardDestingation,
       rulesCommission,
       rulesIdentity,
+      rulesPerformance,
 
       node,
       dnNominators,
@@ -1126,7 +1151,7 @@ export default defineComponent({
       isNominated,
       toCoin,
       shortStash,
-      performanceGrade,
+      // performanceGrade,
     }
   }
 })
