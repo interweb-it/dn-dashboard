@@ -26,7 +26,7 @@ export default defineComponent ({
       required: true
     },
     cohortId: {
-      type: String,
+      type: Number,
       required: true
     }
   },

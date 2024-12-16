@@ -42,6 +42,8 @@
             :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'},{title:'DN Status',key: 'status'},
               {title: 'DN nominated', key: 'nominatedBy'}]"
             :search="search"
+            :items-per-page="linesPerPage"
+            @update:itemsPerPage="val => linesPerPage = val"
             @click:row="gotoValidator">
             <template v-slot:item="{ item }">
               <tr @click="gotoValidator(null, {item})">
@@ -54,6 +56,7 @@
             </template>
           </v-data-table>
         </v-tabs-window-item>
+
         <v-tabs-window-item value="backups">
           <v-data-table
             :items="backups"
@@ -61,18 +64,30 @@
             :search="search"
             @click:row="gotoValidator"></v-data-table>
         </v-tabs-window-item>
+
         <v-tabs-window-item value="nominators">
-          <v-data-table
-            :items="nominators"
-            :headers="[{title: 'Stash',key: 'stash'}]"
-            :search="search">
-            <template v-slot:item="{ item }">
-              <tr>
-                <td>{{ item.stash }}</td>
-                <td>{{ nominations[item.stash] }}</td>
-              </tr>
+          <!-- {{ nominatorList }} -->
+          <v-list>
+            <v-list-item v-for="item in nominatorList" v-bind:key="item.stash"
+              :to="(item.type === 'subheader') ? '' : `/${chainId}/validator/${item.stash}`">
+              <v-list-item-subtitle v-show="item.type == 'subheader'">
+                {{ item.title }}
+              </v-list-item-subtitle>
+              <v-list-item-title v-show="item.type != 'subheader'">
+                {{ item.title }}
+              </v-list-item-title>
+            </v-list-item>
+            <!-- <template v-slot:subheader="{ item }">
+              <v-subheader>{{ item.title }}</v-subheader>
             </template>
-          </v-data-table>
+            <template v-slot:item="{ item }">
+              <v-list-item>
+                <v-list-item-content>
+                  <v-list-item-title>{{ item.title }}</v-list-item-title>
+                </v-list-item-content>
+              </v-list-item>
+            </template> -->
+          </v-list>
         </v-tabs-window-item>
       </v-tabs-window>
 
@@ -87,6 +102,8 @@ import ValidatorMap from '@/components/ValidatorMap.vue'
 import { handleScroll } from "~/utils/helpers";
 import { ApiPromise } from '@polkadot/api';
 import Footer from '~/components/Footer.vue';
+
+import { ISelectedNode, IBackupNode } from '~/utils/types';
 
 const QUERY_NODES = gql`
 query queryNodes($chainId: String!, $cohortId:Int!) {
@@ -166,9 +183,10 @@ export default defineComponent({
     const validators = ref([])
     const telemetry = ref([])
     const search = ref(nodeStore.search)
-    var tab = ref('selected')
+    const tab = ref(nodeStore.tab)
+    const linesPerPage = ref(nodeStore.linesPerPage)
     const elevation = ref(0)
-    var scrollHandler = null
+    var scrollHandler: any = null
 
     onBeforeUnmount(() => {
       if(scrollHandler) scrollHandler();
@@ -226,7 +244,7 @@ export default defineComponent({
       api = await $substrate.getApi(chainId.value)
       // console.log('api', api);
       for(let i = 0; i < nominators.value.length; i++) {
-        const nominator = nominators.value[i];
+        const nominator = nominators.value[i]; // DN nominator
         // console.log('nominator', nominator);
         const res = await api?.query.staking.nominators(nominator.stash) || [];
         const { targets } = res?.toJSON() || [];
@@ -264,21 +282,21 @@ export default defineComponent({
       nominatorStore.loading = false;
     }
 
-    const getNominatedBy = (stash: string): string => {
-      const nominators: string[] = []
-      for (let i = 0; i < nominators.value.length; i++) {
-        const n = nominators.value[i];
-        if (nominations.value[n.stash].includes(stash)) {
-          nominators.push(n.stash);
-        }
-      }
-      for (let [n, targets] of nominations.value.entries()) {
-        if (targets.includes(stash)) {
-          nominators.push(n);
-        }
-      }
-      return nominators[0] || '';
-    }
+    // const getNominatedBy = (stash: string): string => {
+    //   const nominators: string[] = []
+    //   for (let i = 0; i < nominators.value.length; i++) {
+    //     const n = nominators.value[i];
+    //     if (nominations.value[n.stash].includes(stash)) {
+    //       nominators.push(n.stash);
+    //     }
+    //   }
+    //   for (let [n, targets] of nominations.value.entries()) {
+    //     if (targets.includes(stash)) {
+    //       nominators.push(n);
+    //     }
+    //   }
+    //   return nominators[0] || '';
+    // }
 
     const gotoValidator = (event, row) => {
       console.log('item', row.item);
@@ -289,6 +307,16 @@ export default defineComponent({
     watch(() => search.value, async (value) => {
       console.log('search', value);
       nodeStore.setSearch(value);
+    });
+
+    watch(() => tab.value, async (value) => {
+      console.log('tab', value);
+      nodeStore.tab = value;
+    });
+
+    watch(() => linesPerPage.value, async (value) => {
+      console.log('linesPerPage', value);
+      nodeStore.linesPerPage = value;
     });
 
     const shortStash = (stash: string) => {
@@ -312,6 +340,34 @@ export default defineComponent({
       // grefetch.value();
     }
 
+    const getIdentity = (stash: string) => {
+      const foundS: ISelectedNode | undefined = selected.value.find((s: any) => s.stash === stash);
+      if (foundS) return foundS.identity;
+      const foundB: IBackupNode | undefined = backups.value.find((b: any) => b.stash === stash);
+      if (foundB) return foundB.identity;
+      return stash;
+    }
+
+    interface INomination {
+      stash: string;
+      targets: string[];
+    }
+    const nominatorList = computed(() => {
+      var ret: any[] = [];
+      Object.entries(nominations.value).forEach(([nominator, targets]) => {
+        //console.log('nominator', nominator, 'targets', targets);
+        ret.push(
+          {type: 'subheader', title: nominator, stash: nominator},
+          ...targets.map((t: string) => {
+            return {type: 'item', title: t, stash: t}
+          })
+       );
+      });
+      console.log('nominatorList', ret);
+      return ret;
+    })
+
+    const sel_nom = ref<any>({})
     return {
       loading,
       nominatorStoreLoading,
@@ -327,10 +383,15 @@ export default defineComponent({
       telemetry,
       search,
       tab,
+      linesPerPage,
       // data,
       gotoValidator,
       nominatedBy,
       shortStash,
+      sel_nom,
+      getIdentity,
+      nominatorList,
+      // goto
     }
   }
 })

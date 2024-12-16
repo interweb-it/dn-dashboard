@@ -6,3 +6,14 @@ export interface BlockDetailsX {
   Timestamp: Timestamp,
   PropagationTime?: number,
 }
+
+export interface ISelectedNode {
+  identity: string;
+  stash: string;
+  status: string;
+}
+
+export interface IBackupNode {
+  identity: string;
+  stash: string;
+}

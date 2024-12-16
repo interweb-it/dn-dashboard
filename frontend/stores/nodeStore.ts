@@ -44,6 +44,8 @@ export const useNodeStore = defineStore({
   state: () => ({
     chainId: 'kusama',
     search: '',
+    linesPerPage: 10,
+    tab: 'selected', // selected, backup, nominators
     nodes: new Map<string, any>(),
   }),
   // getters: {

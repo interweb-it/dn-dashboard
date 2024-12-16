@@ -6,6 +6,12 @@ export default class SubstrateService {
   private apip: ApiPromise | null = null; // people
   private chainId: string = 'kusama';
   private readonly WS_URL = 'wss://rpc.metaspan.io/'; // 'wss://rpc.ibp.network/';
+  protected apiConnected: boolean = false;
+  protected apipConnected: boolean = false;
+
+  isConnected(): boolean {
+    return this.apiConnected && this.apipConnected;
+  }
 
   // Connect to the rpc server
   async connect(chainId: string): Promise<void> {
@@ -29,14 +35,24 @@ export default class SubstrateService {
     // Handle api open event
     this.api.on('connected', (event) => {
       console.log('Connected to api', chainId);
+      this.apiConnected = true;
+    });
+    this.apip.on('connected', (event) => {
+      console.log('Connected to apip', chainId);
+      this.apipConnected = true;
     });
     // Handle api error event
     this.api.on('error', (event) => {
       console.log('api error', chainId, event);
     });
-    // Handle api error event
+    // Handle api disconnect event
     this.api.on('disconnected', (event) => {
       console.log('api disconnected', chainId, event);
+      this.apiConnected = false;
+    });
+    this.apip.on('disconnected', (event) => {
+      console.log('apip disconnected', chainId, event);
+      this.apipConnected = false;
     });
   }
 
@@ -45,6 +61,10 @@ export default class SubstrateService {
     if (this.api) {
       this.api.disconnect();
       this.api = null;
+    }
+    if (this.apip) {
+      this.apip.disconnect();
+      this.apip = null;
     }
   }
 

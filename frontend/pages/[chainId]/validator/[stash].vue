@@ -164,11 +164,15 @@
                   'background-color': c.is_para ? '#D1C4E9' : c.is_auth ? '#F8BBD0' : 'grey', 
                   margin: '3px', 
                   padding: '10px',
-                  height: '30px',
-                  width: '30px',
-                  fontSize: '0.8em'
+                  height: `${ ![' ', '-'].includes(c.grade)? '30px' : '3px'}`,
+                  width: `${ ![' ', '-'].includes(c.grade)? '30px' : '3px'}`,
+                  // round border
+                  // borderRadius: `${ ![' ', '-'].includes(c.grade)? '25%' : '50%'}`,
+                  fontSize: '0.6em',
+                  // no wrap
+                  whiteSpace: 'nowrap'
                 }">
-                  {{ performanceGrade(c) }}
+                  {{ ![' ', '-'].includes(c.grade) ? c.grade : '' }}
                 </div>
               </td>
             </tr>
@@ -250,7 +254,7 @@
             </v-row>
           </v-container>
           <!-- {{ dnNominators }} -->
-          <v-data-table :items="nominators"  :loading="loadingN"
+          <v-data-table :items="nominators"  :loading="loadingN || loadingAN"
             :headers="[{key:'address',title:'Address' }, {key: 'balance', title: 'Balance', align:'end'}]"
             :sort-by="[{ key: 'balance', order: 'desc' }]">
             <template v-slot:loading>
@@ -432,6 +436,8 @@ export interface NodeDetailsX {
   ChainStats: ChainStats;
 }
 
+import type { ISelectedNode, IBackupNode } from '~/utils/types';
+
 const QUERY_NODE = gql`
 query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
   nominators(chainId: $chainId, cohortId: $cohortId) 
@@ -528,7 +534,7 @@ const decimals: Record<string, number> = {
   kusama: 12,
 }
 
-const tokens = {
+const tokens: Record<string, string> = {
   polkadot: 'DOT',
   kusama: 'KSM',
 }
@@ -562,6 +568,8 @@ export default defineComponent({
     var api: ApiPromise | null;
     var apip: ApiPromise | null;
 
+    const apiConnected = computed(() => $substrate.isConnected())
+
     // const nodeStore = useNodeStore()
     const nominatorStore = useNominatorStore()
     const stakingEntries = computed(() => nominatorStore.stakingEntries)
@@ -570,8 +578,8 @@ export default defineComponent({
     var error = ref(null)
     // const selected = ref([])
     const node = ref<INode>({ identity: '', stash: '', status: '' })
-    const selected = ref([])
-    const backups = ref([])
+    const selected = ref<ISelectedNode[]>([])
+    const backups = ref<IBackupNode[]>([])
     const dnNominators = ref<string[]>([])
     const validators = ref([])
     const telemetry = ref({})
@@ -602,6 +610,13 @@ export default defineComponent({
     var loadingE = ref<boolean>(false)
     var loadingN = ref<boolean>(false)
     var loadingAN = computed(() => nominatorStore.loading)
+
+    const getApi = async () => {
+      if (!apiConnected.value) {
+        api = await $substrate.getApi(chainId.value)
+        apip = await $substrate.getApip(chainId.value)
+      }
+    }
 
     const isLoading = computed(() => {
       return loadingC.value || loadingT.value || loadingE.value || loadingN.value || loadingP.value
@@ -765,9 +780,13 @@ export default defineComponent({
       }
     }
 
+    const init = ref(false)
+
     onBeforeMount(async () => {
-      api = await $substrate.getApi(chainId.value)
-      apip = await $substrate.getApip(chainId.value)
+      init.value = true
+      await getApi();
+      // api = await $substrate.getApi(chainId.value)
+      // apip = await $substrate.getApip(chainId.value)
       scrollHandler = handleScroll((scrollY) => {
         elevation.value = scrollY > 0 ? 4 : 0;
       })
@@ -829,21 +848,12 @@ export default defineComponent({
       refetchP.value = pRefetch
       loadingP = pLoading
 
-      ponResult((result: any) => {
-        if (result.loading) {
-          console.log('still loading...');
-          return;
-        }
-        console.log('performance result', result.data);
-        const res = result.data?.performance || {};
-        res.sessions_data.forEach((s: ISession) => {
-          s.grade = performanceGrade(s)
-        })
-        performance.value = res;
-      });
+      ponResult((result: any) => handlePerformanceResult(result));
+
       await getAccount()
       await getExposure()
       await getNominators()
+      init.value = false
     });
 
     // if (error) {
@@ -851,9 +861,34 @@ export default defineComponent({
     //   console.error(error)
     // }
 
+    const handlePerformanceResult = (result: any) => {
+      if (result.loading) {
+        console.log('still loading...');
+        return;
+      }
+      console.log('performance result', result.data);
+      var res = result.data?.performance || {};
+      // const _sessions_data: any[] = []
+      // for (let i = 0; i < res.sessions_data.length; i++) {
+      //   const sd = res.sessions_data[i];
+      //   _sessions_data.push({ ...sd, grade: performanceGrade(sd) })
+      // }
+      const _sessions_data = res.sessions_data.map((s: ISession) => {
+        return { ...s, grade: performanceGrade(s) }
+        // s.grade = performanceGrade(s)
+      })
+      performance.value = {...res, sessions_data: _sessions_data};
+      // performance.value = res;
+    }
+
     const getAccount = async () => {
       console.debug('getAccount', stash.value);
-      if (!api) return
+      await getApi();
+      // if (!api) {
+      //   console.warn('api not connected');
+      //   api = await $substrate.getApi(chainId.value)
+      //   // return
+      // }
       const _account = await api?.query.system.account(stash.value)
       console.log('account', account)
       account.value = _account ? _account : {}
@@ -899,28 +934,28 @@ export default defineComponent({
     }
 
     const getStatus = (stash: string) => {
-      console.debug('getStatus', stash);
-      let found = selected.value.find(n => n.stash === stash)
-      console.debug('found', found);
-      if (found) return found.status
-      found = backups.value.find(n => n.stash === stash)
-      console.debug('found', found);
-      if (found) return 'Backup'
+      // console.debug('getStatus', stash);
+      let foundS: ISelectedNode | undefined = selected.value.find(n => n.stash === stash)
+      // console.debug('found', found);
+      if (foundS) return foundS.status
+      let foundB: IBackupNode | undefined = backups.value.find(n => n.stash === stash)
+      // console.debug('found', found);
+      if (foundB) return 'Backup'
       return 'Unknown'
     }
 
-    const isNominated = (stash: string) => {
-      return nominators.value.find(n => n.stash === stash)
-    }
-
-    const toCoin = (value: BigInt) => {
+    const toCoin = (value: bigint | number | string) => {
+      let _v: number = 0
       // if value is string, convert to number
       if (typeof value === 'string') {
-        value = value.replace(',', '')
-        value = Number(value)
+        _v = Number(value.replace(',', ''))
+      }
+      // BigInt
+      if (typeof value === 'bigint') {
+        _v = Number(value)
       }
       // console.debug('toCoin', value, chainId.value);
-      const ret = Number(value) / Math.pow(10, decimals[chainId.value])
+      const ret = _v / Math.pow(10, decimals[chainId.value])
       return ret.toFixed(2) + ' ' + tokens[chainId.value]
     }
 
@@ -974,7 +1009,12 @@ export default defineComponent({
     })
     const getExposure = async () => {
       console.debug('getExposure', stash.value);
-      if (!api) return
+      await getApi();
+      // if (!api) {
+      //   console.warn('api not connected');
+      //   api = await $substrate.getApi(chainId.value)
+      //   // return
+      // }
       loadingE.value = true
       const era: any = (await api.query.staking.activeEra()).toJSON();
       const denom = BigInt(Math.pow(10, decimals[chainId.value]));
@@ -1016,28 +1056,29 @@ export default defineComponent({
     //const nominatorList = computed(() => Array.from(nominators.value.values()))
     const totalNominations = computed(() => {
       return nominators.value.reduce((sum, n) => sum + n.balance, 0)
-      // return 0
     })
     const dnNominations = computed(() => {
       return nominators.value.filter(n => dnNominators.value.includes(n.address)).reduce((sum, n) => sum + n.balance, 0)
-      // return 0
     })
     const nonDnNominations = computed(() => {
       return nominators.value.filter(n => !dnNominators.value.includes(n.address)).reduce((sum, n) => sum + n.balance, 0)
-      // return 0
     })
 
     const getAllNominators = async () => {
       console.debug('get stakingEntries');
-      if(!api) return
+      await getApi();
+      // if (!api) {
+      //   console.warn('api not connected');
+      //   api = await $substrate.getApi(chainId.value)
+      // }
       nominatorStore.loading = true
-      const stakingEntries = await api.query.staking.nominators.entries()
-      const entries = stakingEntries.map(([key, nominations]) => {
+      const stakingEntries = await api?.query.staking.nominators.entries()
+      const entries = stakingEntries?.map(([key, nominations]) => {
         // console.debug('key', key.toString(), value);
         return [key, nominations.toJSON()]
         // nominatorStore.setStakingEntries(key.toString(), value)
       })
-      console.debug('entries', entries.length);
+      console.debug('entries', entries?.length);
       nominatorStore.setStakingEntries(entries)
       nominatorStore.loading = false;
     }
@@ -1046,8 +1087,13 @@ export default defineComponent({
     const page = ref(0)
     const pages = ref(0)
     const getNominators = async () => {
-      if(!api) return
+      await getApi();
+      // if (!api) {
+      //   await $substrate.connect(chainId.value)
+      //   console.warn('api not connected');
+      // }
       if(nominatorStore.stakingEntries.length === 0 ) {
+        console.debug('getAllNominators required...');
         await getAllNominators();
       }
 
@@ -1092,14 +1138,13 @@ export default defineComponent({
         }
 
       }
-
-    //   // const nominatedValidators = nominations.unwrap().targets;
-    //   // nominators.value = _nominators.toJSON()
       loadingN.value = false
     }
 
     return {
+      init,
       isLoading,
+      apiConnected,
       loadingC,
       loadingT,
       loadingE,
@@ -1148,7 +1193,7 @@ export default defineComponent({
       getNominators,
       getAllNominators,
       // getPerformance,
-      isNominated,
+      // isNominated,
       toCoin,
       shortStash,
       // performanceGrade,
