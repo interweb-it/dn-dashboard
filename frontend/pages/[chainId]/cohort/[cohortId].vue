@@ -3,7 +3,7 @@
   <client-only>
     <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar"
       style="position: fixed; padding-top: 25px;">
-      <v-btn flat disabled>&nbsp;</v-btn>
+      <v-btn flat disabled class="d-none d-sm-inline">&nbsp;</v-btn>
       <v-toolbar-title>
         <v-icon size="small"><v-img src="/image/logo-black.png" height="32" width="32"></v-img></v-icon>&nbsp;
         <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" style="border-radius: 20%;"></v-img></v-icon> 
