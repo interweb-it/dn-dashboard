@@ -8,7 +8,7 @@
         <v-icon size="small"><v-img src="/image/logo-black.png" height="32" width="32"></v-img></v-icon>&nbsp;
         <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" style="border-radius: 20%;"></v-img></v-icon> 
         {{ chainId }} cohort {{ cohortId }}</v-toolbar-title>
-      <v-spacer></v-spacer>
+      <!-- <v-spacer></v-spacer> -->
       <!-- <v-text-field v-model="search" placeholder="Search"></v-text-field> -->
 
       <v-btn size="small"icon>
