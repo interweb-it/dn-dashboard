@@ -3,7 +3,7 @@
     <l-map
       :zoom="zoom"
       :center="center"
-      style="height: 500px; width: 100%;"
+      :style="{height: display.mobile ? '300px' : '500px', width: '100%'}"
       :use-global-leaflet="false"
     >
       <l-tile-layer :url="tileUrl" :attribution="attribution" />
@@ -47,6 +47,7 @@ export default {
     },
   },
   setup(props) {
+    const display = useDisplay();
     const markers = computed(() => {
       return props.validators.filter(f => f.IPGeo).map((m) => {
         return {
@@ -62,6 +63,7 @@ export default {
     });
 
     return {
+      display,
       chainId: props.chainId,
       zoom: 2, // Adjust based on your needs
       center: [20, 0], // Latitude, Longitude for the initial map center

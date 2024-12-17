@@ -1,19 +1,19 @@
 <template>
 
   <client-only>
-    <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar">
-      <v-toolbar-title>[DN]
-        <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" rounded></v-img></v-icon> 
+    <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar"
+      style="position: fixed; padding-top: 25px;">
+      <v-btn flat disabled>&nbsp;</v-btn>
+      <v-toolbar-title>
+        <v-icon size="small"><v-img src="/image/logo-black.png" height="32" width="32"></v-img></v-icon>&nbsp;
+        <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" style="border-radius: 20%;"></v-img></v-icon> 
         {{ chainId }} cohort {{ cohortId }}</v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-text-field v-model="search" placeholder="Search"></v-text-field>
+      <!-- <v-text-field v-model="search" placeholder="Search"></v-text-field> -->
 
-      <!-- <v-toolbar-items>
-      </v-toolbar-items> -->
-
-      <v-btn icon>
+      <v-btn size="small"icon>
         <nuxt-link :to="`/${chainId === 'polkadot' ? 'kusama' : 'polkadot'}/cohort/${cohortId}`">
-          <v-img :src="`/image/${chainId === 'polkadot' ? 'kusama' : 'polkadot'}-logo.svg`" height="22" width="22" rounded></v-img>
+            <v-img :src="`/image/${chainId === 'polkadot' ? 'kusama' : 'polkadot'}-logo.svg`" height="22" width="22" rounded></v-img>
         </nuxt-link>
       </v-btn>
 
@@ -22,7 +22,7 @@
       </v-btn>
     </v-toolbar>
 
-    <v-container>
+    <v-container style="padding-top: 75px;">
       <v-card>      
         <client-only>
           <validator-map :chain-id="chainId" :validators="telemetry"></validator-map>
@@ -37,31 +37,43 @@
 
       <v-tabs-window v-model="tab">
         <v-tabs-window-item value="selected">
-          <v-data-table
-            :items="selected"
-            :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'},{title:'DN Status',key: 'status'},
-              {title: 'DN nominated', key: 'nominatedBy'}]"
-            :search="search"
-            :items-per-page="linesPerPage"
-            @update:itemsPerPage="val => linesPerPage = val"
-            @click:row="gotoValidator">
-            <template v-slot:item="{ item }">
-              <tr @click="gotoValidator(null, {item})">
-                <td>{{ item.identity }}</td>
-                <td class="text-overline text-none">{{ shortStash(item.stash) }}</td>
-                <td>{{ item.status }}</td>
-                <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
-                <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
-              </tr>
+          <v-card>
+            <template v-slot:text>
+              <v-text-field
+                v-model="search"
+                label="Search"
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                hide-details
+                single-line
+              ></v-text-field>
             </template>
-          </v-data-table>
+
+            <v-data-table
+              :items="selected"
+              :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'},{title:'DN Status',key: 'status'},
+                {title: 'DN nominated', key: 'nominatedBy'}]"
+              :search="search"
+              :items-per-page="linesPerPage"
+              @update:itemsPerPage="val => linesPerPage = val"
+              @click:row="gotoValidator">
+              <template v-slot:item="{ item }">
+                <tr @click="gotoValidator(null, {item})">
+                  <td>{{ item.identity }}</td>
+                  <td class="text-overline text-none">{{ shortStash(item.stash) }}</td>
+                  <td>{{ item.status }}</td>
+                  <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
+                  <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
+                </tr>
+              </template>
+            </v-data-table>
+          </v-card>
         </v-tabs-window-item>
 
         <v-tabs-window-item value="backups">
           <v-data-table
             :items="backups"
             :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'}]"
-            :search="search"
             @click:row="gotoValidator"></v-data-table>
         </v-tabs-window-item>
 
@@ -103,7 +115,7 @@ import { handleScroll } from "~/utils/helpers";
 import { ApiPromise } from '@polkadot/api';
 import Footer from '~/components/Footer.vue';
 
-import { ISelectedNode, IBackupNode } from '~/utils/types';
+import type { ISelectedNode, IBackupNode } from '~/utils/types';
 
 const QUERY_NODES = gql`
 query queryNodes($chainId: String!, $cohortId:Int!) {
@@ -165,6 +177,7 @@ export default defineComponent({
     const cohortId = ref(Number(route.params.cohortId.toString()))
     const nodeStore = useNodeStore()
     const nominatorStore = useNominatorStore()
+    const stakingEntries = computed(() => nominatorStore.stakingEntries)
     const nominatorStoreLoading = computed(() => nominatorStore.loading)
     const nodes = ref([])
 
@@ -231,8 +244,12 @@ export default defineComponent({
         getNominatorTargets()
       });
 
-      if(nominatorStore.stakingEntries.length === 0) {
+      if(!stakingEntries.value || stakingEntries.value.length === 0) {
+        console.debug('get stakingEntries...');
         getAllNominators();
+      // } else {
+      //   console.debug('stakingEntries already loaded');
+      //   console.debug(stakingEntries.value);
       }
     });
 
@@ -269,7 +286,10 @@ export default defineComponent({
 
     const getAllNominators = async () => {
       console.debug('get stakingEntries');
-      if(!api) return
+      if(!api) {
+        console.error('api not ready');
+        return
+      }
       nominatorStore.loading = true
       const stakingEntries = await api.query.staking.nominators.entries()
       const entries = stakingEntries.map(([key, nominations]) => {
@@ -318,6 +338,19 @@ export default defineComponent({
       console.log('linesPerPage', value);
       nodeStore.linesPerPage = value;
     });
+
+    // watch(route, (value) => {
+    //   console.log('new chainId', value);
+    //   //nodeStore.setChainId(value);
+    //   refresh()
+    // });
+    // const goto = (path: string) => {
+    //   console.log('goto', path);
+    //   // nextTick(() => {
+    //     router.push(path);
+    //     refresh();
+    //   // });
+    // }
 
     const shortStash = (stash: string) => {
       if (!stash) return '';

@@ -1,23 +1,24 @@
 <template>
   <client-only>
 
-    <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar">
+    <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar"
+      style="position: fixed; padding-top: 25px">
       <v-btn icon flat :to="`/${chainId}/cohort/1`">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <v-toolbar-title>
+        <v-icon size="small"><v-img src="/image/logo-black.png" height="32" width="32"></v-img></v-icon>&nbsp;
         <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" rounded></v-img></v-icon> 
-        {{ chainId }} validator {{ node.identity }}</v-toolbar-title>
-      <v-spacer></v-spacer>
-      <v-toolbar-items>
-      </v-toolbar-items>
+        <span class="d-none d-sm-inline">{{ chainId }} validator</span>
+        {{ node.identity }}
+      </v-toolbar-title>
+      <!-- <v-spacer class="d-none d-sm-inline"></v-spacer> -->
       <v-btn icon flat :loading="isLoading" @click="reload">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
-      <!-- <v-btn>{{ isLoading }}</v-btn> -->
     </v-toolbar>
 
-    <v-container>
+    <v-container style="padding-top: 75px;">
 
       <!-- {{ node }} -->
       <v-card>
@@ -51,29 +52,41 @@
             <v-list-item>
               <v-card>
                 <v-row no-gutters>
-                  <v-col class="pa-2 d-flex align-center">
-                    <v-icon :color="hasTelemetry ? 'green' : 'red'">mdi-chart-box-outline</v-icon>
-                    <span> Telemetry</span>
+                  <v-col class="ma-1 d-flex align-center">
+                    <v-btn flat border class="text-none">
+                      <v-icon :color="hasTelemetry ? 'green' : 'red'">mdi-chart-box-outline</v-icon>
+                      <span> Telemetry</span>
+                  </v-btn>
+                </v-col>
+                  <v-col class="ma-1 d-flex align-center">
+                    <v-btn flat border class="text-none">
+                      <v-icon :color="rulesBonded ? 'green' : 'red'">mdi-lock-outline</v-icon>
+                      <span> Bonded</span>
+                    </v-btn>
                   </v-col>
-                  <v-col class="ma-2 d-flex align-center">
-                    <v-icon :color="rulesBonded ? 'green' : 'red'">mdi-lock-outline</v-icon>
-                    <span> Bonded</span>
+                  <v-col class="ma-1 d-flex align-center">
+                    <v-btn flat border class="text-none">
+                      <v-icon :color="rulesRewardDestingation ? 'green' : 'red'">mdi-bank-outline</v-icon>
+                      <span> Rewards</span>
+                    </v-btn>
                   </v-col>
-                  <v-col class="ma-2 d-flex align-center">
-                    <v-icon :color="rulesRewardDestingation ? 'green' : 'red'">mdi-bank-outline</v-icon>
-                    <span> Rewards</span>
+                  <v-col class="ma-1 d-flex align-center">
+                    <v-btn flat border class="text-none">
+                      <v-icon :color="rulesCommission ? 'green' : 'red'">mdi-percent</v-icon>
+                      <span> Commission</span>
+                    </v-btn>
                   </v-col>
-                  <v-col class="ma-2 d-flex align-center">
-                    <v-icon :color="rulesCommission ? 'green' : 'red'">mdi-percent</v-icon>
-                    <span> Commission</span>
+                  <v-col class="ma-1 d-flex align-center">
+                    <v-btn flat border class="text-none">
+                      <v-icon :color="rulesIdentity ? 'green' : 'red'">mdi-passport</v-icon>
+                      <span> Identity</span>
+                    </v-btn>
                   </v-col>
-                  <v-col class="ma-2 d-flex align-center">
-                    <v-icon :color="rulesIdentity ? 'green' : 'red'">mdi-passport</v-icon>
-                    <span> Identity</span>
-                  </v-col>
-                  <v-col class="ma-2 d-flex align-center">
-                    <v-icon :color="rulesPerformance ? 'green' : 'red'">mdi-cogs</v-icon>
-                    <span> Performance</span>
+                  <v-col class="ma-1 d-flex align-center">
+                    <v-btn flat border class="text-none">
+                      <v-icon :color="rulesPerformance ? 'green' : 'red'">mdi-cogs</v-icon>
+                      <span> Performance</span>
+                    </v-btn>
                   </v-col>
                 </v-row>
               </v-card>
@@ -125,69 +138,11 @@
         </v-card-text>
       </v-card>
 
-      <v-card>
-        <v-card-title>Performance ( c/o <a :href="`https://apps.turboflakes.io/?chain=${chainId}#/validator/${node.stash}?mode=history`" target="_blank">
-          turboflakes.io
-          <sup><v-icon size="v-small">mdi-open-in-new</v-icon></sup>
-        </a> )
-        <v-btn icon flat size="small" @click="refetchP()"><v-icon>mdi-refresh</v-icon></v-btn>
-        <v-chip size="small" variant="flat" color="#D1C4E9">Para</v-chip>&nbsp;
-        <v-chip size="small" variant="flat" color="#F8BBD0">Active</v-chip>&nbsp;
-        <v-chip size="small" variant="flat" color="grey">Wait</v-chip>
-        </v-card-title>
-        <v-card-text>
-          <!-- {{ performance }} -->
-          <v-row>
-            <v-col class="text-center">
-              <p>Grade: {{ performance.grade }}</p>
-            </v-col>
-            <v-col class="text-center">
-              <p>Authority: {{ (performance.authority_inclusion * 100).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}%</p>
-            </v-col>
-            <v-col class="text-center">
-              <p>Para: {{ (performance.para_authority_inclusion * 100).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}%</p>
-            </v-col>
-          </v-row>
-          <!-- <v-row>
-            <v-col v-for="(c, idx) in performance.sessions_data" v-bind:key="c.session">
-              <v-chip size="small" :color="c.is_para ? 'purple' : c.is_auth ? 'pink' : 'grey'" variant="flat">
-                {{ c.is_para ? 'P' : 'V' }}
-              </v-chip>
-            </v-col>
-          </v-row> -->
-          <v-table style="border-collapse: collapse;">
-            <tr>
-              <td v-for="(c, idx) in performance.sessions_data" 
-                  v-bind:key="c.session"
-                  style="padding: 0;" class="text-center">
-                <div :style="{ 
-                  'background-color': c.is_para ? '#D1C4E9' : c.is_auth ? '#F8BBD0' : 'grey', 
-                  margin: '3px', 
-                  padding: '10px',
-                  height: `${ ![' ', '-'].includes(c.grade)? '30px' : '3px'}`,
-                  width: `${ ![' ', '-'].includes(c.grade)? '30px' : '3px'}`,
-                  // round border
-                  // borderRadius: `${ ![' ', '-'].includes(c.grade)? '25%' : '50%'}`,
-                  fontSize: '0.6em',
-                  // no wrap
-                  whiteSpace: 'nowrap'
-                }">
-                  {{ ![' ', '-'].includes(c.grade) ? c.grade : '' }}
-                </div>
-              </td>
-            </tr>
-            <!-- <tr>
-              <td v-for="(c, idx) in performance.sessions_data" 
-                  v-bind:key="c.session"
-                  style="padding: 0;" class="text-center">
-                <div>
-                  {{ performanceGrade(c) }}
-                </div>
-              </td>
-            </tr> -->
-          </v-table>
-        </v-card-text>
-      </v-card>
+      <PerformanceCard
+        :chain-id="chainId"
+        :stash="node.stash"
+        :performance="performance"
+        @refresh="refetchP"></PerformanceCard>
 
       <v-card>
         <v-card-title>Exposure
@@ -356,38 +311,18 @@
         </v-card-text>
       </v-card>
 
-      <v-card>
-        <v-card-title>Rules</v-card-title>
-        <v-card-text>
-          [DN] <a href="https://nodes.web3.foundation/rules" target="_blank">Rules</a> <br>
-          <ul>
-            <li>Self bond <v-icon>mdi-check</v-icon></li>
-            <li>Rewards Target <v-icon>mdi-check</v-icon></li>
-            <li>Commission <v-icon>mdi-check</v-icon></li>
-            <li>Telemetry <v-icon>mdi-check</v-icon></li>
-            <li>On Chain Id (email & matrix) <v-icon>mdi-check</v-icon></li>
-            <li>Performance A/A+? - check <a :href="`https://apps.turboflakes.io/?chain=${chainId}#/validator/${node.stash}?mode=history`" target="_blank">
-              apps.turboflakes.io</a>  <v-icon>mdi-check</v-icon></li>
-            <li>Payouts</li>
-            <li>Hardware -  <a href="https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot#requirements" target="_blank">requirements</a></li>
-            <li>IP4 & IP6</li>
-            <li>Client Version - from telemetry (24 hours)</li>
-            <li>dedicated machine</li>
-            <li>No slashes</li>
-          </ul>
-
-        </v-card-text>
-      </v-card>
-
-      </v-container>
+    </v-container>
+    <Footer :chain-id="chainId" :cohort-id="1"></Footer>
   </client-only>
 
 </template>
 
 <script lang="ts">
+import PerformanceChart from '~/components/PerformanceChart.vue';
 // import { NodeDetailsX } from '../../substrate-telemetry/types'
 import { ApiPromise } from '@polkadot/api'
 import { hexToString } from '@polkadot/util'
+import PerformanceCard from '~/components/PerformanceCard.vue';
 
 // import { FeedMessage } from '../substrate-telemetry';
 import type { Maybe } from '~/utils/substrate-telemetry/helpers';
@@ -560,15 +495,20 @@ interface INode {
 
 export default defineComponent({
   name: 'CohortHome',
+  components: {
+    PerformanceChart,
+    PerformanceCard,
+  },
   async setup() {
     const route = useRoute()
     const chainId = ref(route.params.chainId.toString())
     const stash = ref(route.params.stash)
+    const substrateStore = useSubstrateStore()
     const { $substrate } = useNuxtApp();
     var api: ApiPromise | null;
     var apip: ApiPromise | null;
 
-    const apiConnected = computed(() => $substrate.isConnected())
+    const apiConnected = computed(() => substrateStore.apiConnected)
 
     // const nodeStore = useNodeStore()
     const nominatorStore = useNominatorStore()
@@ -612,7 +552,8 @@ export default defineComponent({
     var loadingAN = computed(() => nominatorStore.loading)
 
     const getApi = async () => {
-      if (!apiConnected.value) {
+      if (!api || !apiConnected.value) {
+        console.debug('getApi', chainId.value);
         api = await $substrate.getApi(chainId.value)
         apip = await $substrate.getApip(chainId.value)
       }
@@ -667,10 +608,11 @@ export default defineComponent({
         if (!session.is_para) continue;
         // const grade = performanceGrade(session);
         if (session.grade !== 'A' && session.grade !== 'A+') {
-          console.debug('session', session.session, 'grade', session.grade);
+          //console.debug('session', session.session, 'grade', session);
           ret = false;
         }
       }
+      console.debug('rulesPerformance', ret);
       return ret;
     })
 
@@ -763,9 +705,11 @@ export default defineComponent({
     }
     const performanceGrade = (session: ISession): string => {
       if(!session.is_auth) return ' '
+      if(!session.is_para) return ' '
       if(!session.para_summary) return ' '
+      // console.debug('session', session);
       const mvr = session.para_summary.mv / (session.para_summary.ev + session.para_summary.iv + session.para_summary.mv);
-      console.debug('mvr', mvr);
+      // console.debug('mvr', mvr);
       const bvr = 1 - mvr;
       switch (true) {
         case bvr > 0.99: return 'A+'
@@ -874,10 +818,11 @@ export default defineComponent({
       //   _sessions_data.push({ ...sd, grade: performanceGrade(sd) })
       // }
       const _sessions_data = res.sessions_data.map((s: ISession) => {
-        return { ...s, grade: performanceGrade(s) }
+        return { ...s, is_para: s.para_summary ? true : false, grade: performanceGrade(s) }
         // s.grade = performanceGrade(s)
       })
       performance.value = {...res, sessions_data: _sessions_data};
+      console.debug('performance', performance.value);
       // performance.value = res;
     }
 
@@ -890,7 +835,7 @@ export default defineComponent({
       //   // return
       // }
       const _account = await api?.query.system.account(stash.value)
-      console.log('account', account)
+      console.log('account', stash.value, _account?.toString())
       account.value = _account ? _account : {}
 
       const _locks = await api?.query.balances.locks(stash.value);
@@ -1016,11 +961,13 @@ export default defineComponent({
       //   // return
       // }
       loadingE.value = true
-      const era: any = (await api.query.staking.activeEra()).toJSON();
+      var era: any = await api?.query.staking.activeEra()
+      era = era ? era.toJSON() : {};
       const denom = BigInt(Math.pow(10, decimals[chainId.value]));
 
-      var _exposure: IExposure = (await api.query.staking.erasStakersOverview(era.index, stash.value)).toJSON() as any;
+      var _exposure: any = await api?.query.staking.erasStakersOverview(era.index, stash.value);
       if (!_exposure) return
+      _exposure = _exposure.toJSON() as any;      
       _exposure.total = Number(BigInt(_exposure.total) / denom);
       _exposure.own = Number(BigInt(_exposure.own) / denom);
       console.log('exposure:', _exposure);
@@ -1067,10 +1014,11 @@ export default defineComponent({
     const getAllNominators = async () => {
       console.debug('get stakingEntries');
       await getApi();
-      // if (!api) {
-      //   console.warn('api not connected');
+      if (!api) {
+        console.warn('api not connected');
       //   api = await $substrate.getApi(chainId.value)
-      // }
+      }
+      // loadingAN.value = true
       nominatorStore.loading = true
       const stakingEntries = await api?.query.staking.nominators.entries()
       const entries = stakingEntries?.map(([key, nominations]) => {
@@ -1080,6 +1028,7 @@ export default defineComponent({
       })
       console.debug('entries', entries?.length);
       nominatorStore.setStakingEntries(entries)
+      // loadingAN.value = false
       nominatorStore.loading = false;
     }
 
@@ -1088,11 +1037,11 @@ export default defineComponent({
     const pages = ref(0)
     const getNominators = async () => {
       await getApi();
-      // if (!api) {
+      if (!api) {
       //   await $substrate.connect(chainId.value)
-      //   console.warn('api not connected');
-      // }
-      if(nominatorStore.stakingEntries.length === 0 ) {
+        console.warn('api not connected');
+      }
+      if(!stakingEntries.value || stakingEntries.value?.length === 0 ) {
         console.debug('getAllNominators required...');
         await getAllNominators();
       }
@@ -1103,8 +1052,9 @@ export default defineComponent({
       page.value = 0
       // const stakingEntries = await api.query.staking.nominators.entries()
       // console.debug('stakingEntries', stakingEntries)
-      pages.value = stakingEntries.value.length
+      pages.value = stakingEntries.value?.length || 0
 
+      // console.debug('stakingEntries', stakingEntries.value);
       for (const [key, nominations] of stakingEntries.value as any) {
         const nominatorAddress = key.args[0].toString();
         page.value += 1
@@ -1118,7 +1068,9 @@ export default defineComponent({
 
         if (targets.targets?.includes(stash.value)) {
           // Fetch account balance for the nominator
-          const accountData = (await api.query.system.account(nominatorAddress)).toJSON() as any;
+          var accountData = await api?.query.system.account(nominatorAddress)
+          if (!accountData) return
+          accountData = accountData.toJSON() as any;
           // console.debug('accountData', accountData)
           const balance = Number(BigInt(accountData.data.free)) / 10 ** decimals[chainId.value]; // Available balance
           // pooled

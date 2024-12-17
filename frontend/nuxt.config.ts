@@ -13,7 +13,9 @@ export default defineNuxtConfig({
     '@nuxtjs/apollo',
     // '@nuxtjs/proxy',
   ],
-  plugins: ['~/plugins/telemetry.ts'],
+  plugins: [
+    // '~/plugins/telemetry.ts'
+  ],
   vuetify: {
     moduleOptions: {
       /* module specific options */

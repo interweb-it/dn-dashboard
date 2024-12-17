@@ -43,6 +43,7 @@ export const useNodeStore = defineStore({
   id: 'nodeStore',
   state: () => ({
     chainId: 'kusama',
+    cohortId: 1,
     search: '',
     linesPerPage: 10,
     tab: 'selected', // selected, backup, nominators
