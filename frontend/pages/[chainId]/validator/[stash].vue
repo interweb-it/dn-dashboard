@@ -391,7 +391,9 @@ query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
     stash
     status
   }
-  validators(chainId: $chainId)
+  # validators(chainId: $chainId) {
+  #   address
+  # }
 }`
 const QUERY_TELEMETRY = gql`
 query telemetry($chainId: String!, $name: String!) {
