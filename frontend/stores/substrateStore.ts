@@ -5,6 +5,7 @@ export const useSubstrateStore = defineStore({
   state: () => ({
     chainId: 'kusama',
     loading: false,
+    stakingEntries: [],
     apiConnected: false,
     apipConnected: false,
   }),

@@ -1,7 +1,8 @@
 <template>
 
-  <client-only>
+  <v-container fluid class="pa-0 ma-0">
     <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar"
+      :density="`${display.mdAndUp ? 'default' : 'compact'}`"
       style="position: fixed; padding-top: 25px;">
       <v-btn flat disabled class="d-none d-sm-inline">&nbsp;</v-btn>
       <v-toolbar-title>
@@ -17,95 +18,110 @@
         </nuxt-link>
       </v-btn>
 
-      <v-btn icon flat :loading="loading" @click="refresh">
+      <!-- <v-btn icon flat :loading="loading" @click="refresh">
         <v-icon>mdi-refresh</v-icon>
-      </v-btn>
+      </v-btn> -->
     </v-toolbar>
 
-    <v-container style="padding-top: 75px;">
-      <v-card>      
-        <client-only>
-          <validator-map :chain-id="chainId" :validators="telemetry"></validator-map>
-        </client-only>
-      </v-card>
+    <client-only>
 
-      <v-tabs v-model="tab">
-        <v-tab value="selected">Selected</v-tab>
-        <v-tab value="backups">Backups</v-tab>
-        <v-tab value="nominators">Nominators</v-tab>
-      </v-tabs>
+      <v-container style="padding-top: 75px;">
+        <v-card>      
+          <client-only>
+            <validator-map :chain-id="chainId" :validators="telemetry"></validator-map>
+          </client-only>
+        </v-card>
 
-      <v-tabs-window v-model="tab">
-        <v-tabs-window-item value="selected">
-          <v-card>
-            <template v-slot:text>
-              <v-text-field
-                v-model="search"
-                label="Search"
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                hide-details
-                single-line
-              ></v-text-field>
-            </template>
+        <v-tabs v-model="tab">
+          <v-tab value="selected">Selected</v-tab>
+          <v-tab value="backups">Backups</v-tab>
+          <v-tab value="nominators">Nominators</v-tab>
+        </v-tabs>
 
-            <v-data-table
-              :items="selected"
-              :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'},{title:'DN Status',key: 'status'},
-                {title: 'DN nominated', key: 'nominatedBy'}]"
-              :search="search"
-              :items-per-page="linesPerPage"
-              @update:itemsPerPage="val => linesPerPage = val"
-              @click:row="gotoValidator">
-              <template v-slot:item="{ item }">
-                <tr @click="gotoValidator(null, {item})">
-                  <td>{{ item.identity }}</td>
-                  <td class="text-overline text-none">{{ shortStash(item.stash) }}</td>
-                  <td>{{ item.status }}</td>
-                  <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
-                  <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
-                </tr>
+        <v-tabs-window v-model="tab">
+          <v-tabs-window-item value="selected">
+            <v-card>
+              <template v-slot:text>
+                <v-row>
+                  <v-text-field
+                    v-model="search"
+                    label="Search"
+                    prepend-inner-icon="mdi-magnify"
+                    variant="outlined"
+                    hide-details
+                    single-line
+                    density="compact"
+                  ></v-text-field>
+                  <v-btn icon flat :loading="loading" @click="refresh">
+                    <v-icon>mdi-refresh</v-icon>
+                  </v-btn>
+                </v-row>
               </template>
-            </v-data-table>
-          </v-card>
-        </v-tabs-window-item>
 
-        <v-tabs-window-item value="backups">
-          <v-data-table
-            :items="backups"
-            :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'}]"
-            @click:row="gotoValidator"></v-data-table>
-        </v-tabs-window-item>
+              <v-data-table
+                :items="selected"
+                :headers="[
+                  {title: 'Name', key: 'identity'},
+                  {title: 'Stash',key: 'stash'},
+                  {title:'Commission',key: 'commission'},
+                  {title:'DN Status',key: 'status'},
+                  {title: 'DN nominated', key: 'nominatedBy'}]"
+                :search="search"
+                :items-per-page="linesPerPage"
+                @update:itemsPerPage="val => linesPerPage = val"
+                @click:row="gotoValidator">
+                <template v-slot:item="{ item }">
+                  <tr @click="gotoValidator(null, {item})">
+                    <td>{{ item.identity }}</td>
+                    <td class="text-overline text-none">{{ shortStash(item.stash) }}</td>
+                    <td>{{ Number(item.commission).toLocaleString(undefined, {maximumFractionDigits: 1, minimumFractionDigits: 1}) }}</td>
+                    <td>{{ item.status }}</td>
+                    <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
+                    <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
+                  </tr>
+                </template>
+              </v-data-table>
+            </v-card>
+          </v-tabs-window-item>
 
-        <v-tabs-window-item value="nominators">
-          <!-- {{ nominatorList }} -->
-          <v-list>
-            <v-list-item v-for="item in nominatorList" v-bind:key="item.stash"
-              :to="(item.type === 'subheader') ? '' : `/${chainId}/validator/${item.stash}`">
-              <v-list-item-subtitle v-show="item.type == 'subheader'">
-                {{ item.title }}
-              </v-list-item-subtitle>
-              <v-list-item-title v-show="item.type != 'subheader'">
-                {{ item.title }}
-              </v-list-item-title>
-            </v-list-item>
-            <!-- <template v-slot:subheader="{ item }">
-              <v-subheader>{{ item.title }}</v-subheader>
-            </template>
-            <template v-slot:item="{ item }">
-              <v-list-item>
-                <v-list-item-content>
-                  <v-list-item-title>{{ item.title }}</v-list-item-title>
-                </v-list-item-content>
+          <v-tabs-window-item value="backups">
+            <v-data-table
+              :items="backups"
+              :headers="[{title: 'Name', key: 'identity'}, {title: 'Stash',key: 'stash'}]"
+              @click:row="gotoValidator"></v-data-table>
+          </v-tabs-window-item>
+
+          <v-tabs-window-item value="nominators">
+            <!-- {{ nominatorList }} -->
+            <v-list>
+              <v-list-item v-for="item in nominatorList" v-bind:key="item.stash"
+                :to="(item.type === 'subheader') ? '' : `/${chainId}/validator/${item.stash}`">
+                <v-list-item-subtitle v-show="item.type == 'subheader'">
+                  {{ item.title }}
+                </v-list-item-subtitle>
+                <v-list-item-title v-show="item.type != 'subheader'">
+                  {{ item.title }}
+                </v-list-item-title>
               </v-list-item>
-            </template> -->
-          </v-list>
-        </v-tabs-window-item>
-      </v-tabs-window>
+              <!-- <template v-slot:subheader="{ item }">
+                <v-subheader>{{ item.title }}</v-subheader>
+              </template>
+              <template v-slot:item="{ item }">
+                <v-list-item>
+                  <v-list-item-content>
+                    <v-list-item-title>{{ item.title }}</v-list-item-title>
+                  </v-list-item-content>
+                </v-list-item>
+              </template> -->
+            </v-list>
+          </v-tabs-window-item>
+        </v-tabs-window>
 
-    </v-container>
-    <Footer :chain-id="chainId" :cohort-id="cohortId"></Footer>
-  </client-only>
+      </v-container>
+      <Footer :chain-id="chainId" :cohort-id="cohortId"></Footer>
+    </client-only>
+
+  </v-container>
 
 </template>
 
@@ -123,13 +139,17 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
     identity
     stash
     status
+    commission
   }
   nominators(chainId: $chainId, cohortId: $cohortId) 
   backups(chainId: $chainId, cohortId: $cohortId) {
     identity
     stash
   }
-  validators(chainId: $chainId)
+  validators(chainId: $chainId) {
+    address
+    commission
+  }
   telemetry(chainId: $chainId) {
     NodeId
     IPGeo {
@@ -171,14 +191,17 @@ export default defineComponent({
     Footer
   },
   async setup() {
+    const display = useDisplay()
     const route = useRoute()
     const router = useRouter()
     const chainId = ref(route.params.chainId.toString())
     const cohortId = ref(Number(route.params.cohortId.toString()))
     const nodeStore = useNodeStore()
-    const nominatorStore = useNominatorStore()
-    const stakingEntries = computed(() => nominatorStore.stakingEntries)
-    const nominatorStoreLoading = computed(() => nominatorStore.loading)
+    // const nominatorStore = useNominatorStore()
+    const substrateStore = useSubstrateStore()
+    const stakingEntries = computed(() => substrateStore.stakingEntries)
+    const substrateStoreLoading = computed(() => substrateStore.loading)
+    // const nominatorStoreLoading = computed(() => nominatorStore.loading)
     const nodes = ref([])
 
     const { $substrate } = useNuxtApp();
@@ -285,21 +308,23 @@ export default defineComponent({
     }
 
     const getAllNominators = async () => {
-      console.debug('get stakingEntries');
-      if(!api) {
-        console.error('api not ready');
-        return
-      }
-      nominatorStore.loading = true
-      const stakingEntries = await api.query.staking.nominators.entries()
-      const entries = stakingEntries.map(([key, nominations]) => {
-        // console.debug('key', key.toString(), value);
-        return [key, nominations.toJSON()]
-        // nominatorStore.setStakingEntries(key.toString(), value)
-      })
-      console.debug('entries', entries.length);
-      nominatorStore.setStakingEntries(entries)
-      nominatorStore.loading = false;
+      console.log('getAllNominators');
+      await $substrate.getAllNominators();
+      // console.debug('get stakingEntries');
+      // if(!api) {
+      //   console.error('api not ready');
+      //   return
+      // }
+      // nominatorStore.loading = true
+      // const stakingEntries = await api.query.staking.nominators.entries()
+      // const entries = stakingEntries.map(([key, nominations]) => {
+      //   // console.debug('key', key.toString(), value);
+      //   return [key, nominations.toJSON()]
+      //   // nominatorStore.setStakingEntries(key.toString(), value)
+      // })
+      // console.debug('entries', entries.length);
+      // nominatorStore.setStakingEntries(entries)
+      // nominatorStore.loading = false;
     }
 
     // const getNominatedBy = (stash: string): string => {
@@ -402,8 +427,9 @@ export default defineComponent({
 
     const sel_nom = ref<any>({})
     return {
+      display,
       loading,
-      nominatorStoreLoading,
+      substrateStoreLoading,
       elevation,
       refresh,
       chainId,

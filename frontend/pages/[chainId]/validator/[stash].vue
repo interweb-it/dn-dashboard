@@ -188,7 +188,7 @@
             <v-icon>mdi-refresh</v-icon>
           </v-btn>
           <v-spacer></v-spacer>
-          <v-btn icon flat @click="getAllNominators" :loading="loadingAN">
+          <v-btn icon flat @click="getAllNominators" :loading="substrateStoreLoading">
             <v-icon>mdi-flash-alert-outline</v-icon>
           </v-btn>
         </v-toolbar>
@@ -496,7 +496,7 @@ interface INode {
 export default defineComponent({
   name: 'CohortHome',
   components: {
-    PerformanceChart,
+    // PerformanceChart,
     PerformanceCard,
   },
   async setup() {
@@ -504,16 +504,15 @@ export default defineComponent({
     const chainId = ref(route.params.chainId.toString())
     const stash = ref(route.params.stash)
     const substrateStore = useSubstrateStore()
+    const stakingEntries = computed(() => substrateStore.stakingEntries)
+    const substrateStoreLoading = computed(() => substrateStore.loading)
+    const nominatorStore = useNominatorStore()
     const { $substrate } = useNuxtApp();
     var api: ApiPromise | null;
     var apip: ApiPromise | null;
 
     const apiConnected = computed(() => substrateStore.apiConnected)
 
-    // const nodeStore = useNodeStore()
-    const nominatorStore = useNominatorStore()
-    const stakingEntries = computed(() => nominatorStore.stakingEntries)
-    const nominatorStoreLoading = computed(() => nominatorStore.loading)
     const nodes = ref([])
     var error = ref(null)
     // const selected = ref([])
@@ -966,9 +965,12 @@ export default defineComponent({
       const denom = BigInt(Math.pow(10, decimals[chainId.value]));
 
       var _exposure: any = await api?.query.staking.erasStakersOverview(era.index, stash.value);
-      if (!_exposure) return
-      _exposure = _exposure.toJSON() as any;      
-      _exposure.total = Number(BigInt(_exposure.total) / denom);
+      _exposure = _exposure.toJSON() as any;
+      if (!_exposure) {
+        loadingE.value = false
+        return
+      }
+      _exposure.total = Number(BigInt(_exposure?.total || 0) / denom);
       _exposure.own = Number(BigInt(_exposure.own) / denom);
       console.log('exposure:', _exposure);
 
@@ -1012,24 +1014,26 @@ export default defineComponent({
     })
 
     const getAllNominators = async () => {
-      console.debug('get stakingEntries');
-      await getApi();
-      if (!api) {
-        console.warn('api not connected');
-      //   api = await $substrate.getApi(chainId.value)
-      }
-      // loadingAN.value = true
-      nominatorStore.loading = true
-      const stakingEntries = await api?.query.staking.nominators.entries()
-      const entries = stakingEntries?.map(([key, nominations]) => {
-        // console.debug('key', key.toString(), value);
-        return [key, nominations.toJSON()]
-        // nominatorStore.setStakingEntries(key.toString(), value)
-      })
-      console.debug('entries', entries?.length);
-      nominatorStore.setStakingEntries(entries)
-      // loadingAN.value = false
-      nominatorStore.loading = false;
+      console.debug('getAllNominators');
+      await $substrate.getAllNominators();
+      // console.debug('get stakingEntries');
+      // await getApi();
+      // if (!api) {
+      //   console.warn('api not connected');
+      // //   api = await $substrate.getApi(chainId.value)
+      // }
+      // // loadingAN.value = true
+      // nominatorStore.loading = true
+      // const stakingEntries = await api?.query.staking.nominators.entries()
+      // const entries = stakingEntries?.map(([key, nominations]) => {
+      //   // console.debug('key', key.toString(), value);
+      //   return [key, nominations.toJSON()]
+      //   // nominatorStore.setStakingEntries(key.toString(), value)
+      // })
+      // console.debug('entries', entries?.length);
+      // nominatorStore.setStakingEntries(entries)
+      // // loadingAN.value = false
+      // nominatorStore.loading = false;
     }
 
     const nominators = ref<INominator[]>([])
@@ -1102,7 +1106,7 @@ export default defineComponent({
       loadingE,
       loadingN,
       loadingAN,
-      nominatorStoreLoading,
+      substrateStoreLoading,
       elevation,
       reload,
       chainId,

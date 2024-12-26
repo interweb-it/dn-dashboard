@@ -1,7 +1,9 @@
 import * as fs from 'fs';
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Logger, Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebSocket } from 'ws';
+
+const logger = new Logger('TelemetryService');
 
 // import { telemetryNameMap } from './telemetry.map';
 let telemetryNameMap: Record<string, Record<string, string>> = {
@@ -92,8 +94,8 @@ export interface NodeLocationX {
 //   version: string;
 // };
 
-const parseNodeLocation = (data: NodeLocation): NodeLocationX => {
-  console.debug('Parsing NodeLocation', data);
+const parseNodeLocation = (data: NodeLocation, chainId: string): NodeLocationX => {
+  logger.debug(`${chainId.padEnd(10)} Parsing NodeLocation: ${JSON.stringify(data)}`);
   if (!Array.isArray(data)) {
     return data;
   }
@@ -118,7 +120,7 @@ const parseBlockDetails = (data: BlockDetails): BlockDetailsX => {
 };
 
 const parseNodeSysInfo = (data: NodeSysInfo): NodeSysInfoX => {
-  // console.debug('Parsing NodeSysInfo', data);
+  // logger.debug('Parsing NodeSysInfo', data);
   // if not array, return data
   if (!Array.isArray(data)) {
     return data;
@@ -135,7 +137,7 @@ const parseNodeSysInfo = (data: NodeSysInfo): NodeSysInfoX => {
 };
 
 // const parseChainStats = (data: ChainStats): ChainStats => {
-//   console.debug('parseChainStats', data);
+//   logger.debug('parseChainStats', data);
 //   return data;
 // };
 
@@ -155,7 +157,7 @@ const parseNodeDetails = (data: NodeDetails): NodeDetailsX => {
     NodeSysInfo,
     ChainStats,
   ] = data;
-  //console.debug('Parsing NodeDetails chain stats', ChainStats);
+  //logger.debug('Parsing NodeDetails chain stats', ChainStats);
   return {
     NodeName,
     TelemetryName: null,
@@ -175,10 +177,10 @@ const parseNodeDetails = (data: NodeDetails): NodeDetailsX => {
 };
 
 const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
-  //console.debug('Parsing AddedNodeMessage', data.payload);
+  //logger.debug('Parsing AddedNodeMessage', data.payload);
   const [NodeId, NodeDetails, NodeStats, NodeIO, NodeHardware, BlockDetails, NodeLocation, Timestamp] = data.payload;
   const parsedNodeDetails = parseNodeDetails(NodeDetails);
-  //console.debug('Parsed NodeDetails', parsedNodeDetails);
+  //logger.debug('Parsed NodeDetails', parsedNodeDetails);
   return {
     NodeId: NodeId,
     NodeDetails: parsedNodeDetails, // parseNodeDetails(NodeDetails),
@@ -186,13 +188,13 @@ const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
     NodeIO,
     NodeHardware,
     BlockDetails: parseBlockDetails(BlockDetails),
-    NodeLocation: parseNodeLocation(NodeLocation),
+    NodeLocation: parseNodeLocation(NodeLocation, ''),
     Timestamp,
   };
 };
 
 // const parseRemovedNodeMessage = (data: RemovedNodeMessage): number => {
-//   console.debug('Parsing RemovedNodeMessage', data.payload);
+//   logger.debug('Parsing RemovedNodeMessage', data.payload);
 //   // const [NodeId] = data.payload
 //   // return NodeId
 //   return data.payload;
@@ -200,6 +202,8 @@ const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
 
 @Injectable()
 export class TelemetryService implements OnModuleInit, OnModuleDestroy {
+  //private readonly logger = new Logger(TelemetryService.name);
+
   private polkadotWS: WebSocket | null = null;
   private kusamaWS: WebSocket | null = null;
   private readonly TELEMETRY_WS_URL = 'wss://telemetry-backend.w3f.community/feed';
@@ -231,15 +235,15 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   private connect(chainId: string) {
     const ws = new WebSocket(this.TELEMETRY_WS_URL);
     ws.onopen = () => {
-      console.log(`Connected to ${chainId} telemetry`);
+      logger.log(`Connected to ${chainId} telemetry`);
       const chainHash = this.chains[chainId];
-      console.log(`Subscribing to ${chainId} telemetry for ${chainHash}`);
+      logger.log(`Subscribing to ${chainId} telemetry for ${chainHash}`);
       ws.send(`subscribe:${chainHash}`);
     };
 
     ws.onmessage = async (event) => {
-      // console.log(`Received telemetry message for ${chain}`);
-      // console.debug(event);
+      // logger.log(`Received telemetry message for ${chain}`);
+      // logger.debug(event);
       let rawData: any;
       // Check if the data is a Buffer and convert it to a string
       if (Buffer.isBuffer(event.data)) {
@@ -258,22 +262,22 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
         const messages: any[] = FeedMessage.deserialize(rawData);
 
         messages.forEach((message) => {
-          // console.debug('Received telemetry message:', message);
+          // logger.debug('Received telemetry message:', message);
           // this.listeners.forEach((callback) => callback(message));
           this.handleTelemetryMessage(chainId, message);
         });
       } catch (error) {
-        console.error(`Error parsing telemetry message for ${chainId}:`, error);
+        logger.error(`Error parsing telemetry message for ${chainId}:`, error);
       }
     };
 
     ws.onclose = () => {
-      console.log(`Disconnected from ${chainId} telemetry, reconnecting...`);
+      logger.log(`Disconnected from ${chainId} telemetry, reconnecting...`);
       setTimeout(() => {
         this.connect(chainId);
       }, 5000);
     };
-    ws.onerror = (error) => console.error(`${chainId} telemetry WebSocket error:`, error);
+    ws.onerror = (error) => logger.error(`${chainId} telemetry WebSocket error:`, error);
 
     if (chainId === 'polkadot') {
       this.polkadotWS = ws;
@@ -288,20 +292,20 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   async addNode(chainId: string, message: AddedNodeMessageX) {
-    // console.log('AddedNode', chainId, message.NodeId, message.NodeDetails.NodeName, message.NodeDetails.ChainStats);
-    //console.log('AddedNode', message[1].NodeId, message[1].NodeDetails);
-    console.log(`${chainId}, |${message.NodeDetails.NodeName}|`);
+    // logger.log('AddedNode', chainId, message.NodeId, message.NodeDetails.NodeName, message.NodeDetails.ChainStats);
+    //logger.log('AddedNode', message[1].NodeId, message[1].NodeDetails);
+    logger.debug(`${chainId.padEnd(10)} addNode |${message.NodeDetails.NodeName}|`);
     // TODO: attempt to match the node name with the telemetry name
     this.dataStore[chainId].set(message.NodeId, message);
   }
 
   removeNode(chainId: string, message: RemovedNodeMessage) {
-    // console.log('RemovedNode', message);
+    // logger.log('RemovedNode', message);
     this.dataStore[chainId].delete(message.payload);
   }
 
   getNodes(chainId: string): AddedNodeMessageX[] {
-    console.log('getNodes', chainId);
+    logger.log('getNodes', chainId);
     const ret = Array.from(this.dataStore[chainId].values());
     ret.forEach((node) => {
       if (node.NodeDetails.Address) {
@@ -312,8 +316,8 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   getNode(chainId: string, nodeId: number): AddedNodeMessageX | undefined {
-    console.log('getNode', chainId, nodeId);
-    console.log('size', this.dataStore[chainId].size);
+    logger.log('getNode', chainId, nodeId);
+    logger.log('size', this.dataStore[chainId].size);
     return this.dataStore[chainId].get(nodeId);
   }
 
@@ -322,10 +326,10 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   findOneById(chainId: string, nodeId: number): AddedNodeMessageX {
-    console.log('findOneById', chainId, nodeId);
-    // console.log('size', this.dataStore[chainId]);
+    logger.log('findOneById', chainId, nodeId);
+    // logger.log('size', this.dataStore[chainId]);
     const node = this.dataStore[chainId].get(nodeId);
-    console.debug('findOneById', node);
+    logger.debug('findOneById', node);
     return node;
   }
 
@@ -336,18 +340,18 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   findOneByName(chainId: string, nodeName: string): AddedNodeMessageX {
     let ret: AddedNodeMessageX | undefined;
     const _name = telemetryNameMap[chainId][nodeName] || nodeName;
-    console.log('telemetry.service.ts: findOneByName', chainId, _name, 'from', nodeName);
+    logger.log('telemetry.service.ts: findOneByName', chainId, _name, 'from', nodeName);
     this.dataStore[chainId].forEach((node) => {
       if (node.NodeDetails.NodeName === _name) {
-        // console.log('findOneByName ChainStats:', node.NodeDetails.ChainStats);
+        // logger.log('findOneByName ChainStats:', node.NodeDetails.ChainStats);
         if (!node.NodeDetails.ChainStats) {
-          console.warn('ChainStats is missing:', node.NodeDetails);
+          logger.warn('ChainStats is missing:', node.NodeDetails);
         }
         ret = node;
         if (_name !== nodeName) ret.NodeDetails.TelemetryName = _name;
       }
     });
-    // console.log('findOneByName ChainStats:', ret);
+    // logger.log('findOneByName ChainStats:', ret);
     if (ret?.NodeDetails.Address) {
       ret.IPGeo = this.getGeoForIP(ret.NodeDetails.Address);
     }
@@ -357,15 +361,15 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   getGeoForIP(ip: string): IPGeo | undefined {
     if (!ip) return undefined;
     if (!this.ipGeo.has(ip)) {
-      console.log('IP Geo data not found:', ip);
+      logger.log('IP Geo data not found:', ip);
       return undefined;
     }
-    console.log('IP Geo data found:', ip, this.ipGeo.get(ip));
+    logger.log('IP Geo data found:', ip, this.ipGeo.get(ip));
     return this.ipGeo.get(ip);
   }
 
   private async updateTelemetryNameMap() {
-    console.debug('Fetching telemetry name map...');
+    logger.debug('Fetching telemetry name map...');
     const url =
       'https://raw.githubusercontent.com/metaspan/dn-dashboard/refs/heads/main/backend/config/telemetryNameMap.json';
     try {
@@ -376,18 +380,18 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       const data = await response.json();
       if (data) {
         telemetryNameMap = data;
-        console.log('Telemetry Name Map updated successfully:', telemetryNameMap);
-        console.log('Telemetry Name Map updated successfully:', telemetryNameMap);
+        logger.log('Telemetry Name Map updated successfully:', telemetryNameMap);
+        logger.log('Telemetry Name Map updated successfully:', telemetryNameMap);
       } else {
-        console.error('Failed to update telemetry name map:', data);
+        logger.error('Failed to update telemetry name map:', data);
       }
     } catch (error) {
-      console.error('Error fetching telemetry name map:', error.message);
+      logger.error('Error fetching telemetry name map:', error.message);
     }
   }
 
   private async readIPGeoFile() {
-    console.debug('Reading IP Geo file...');
+    logger.debug('Reading IP Geo file...');
     const filename = 'ipgeo.json';
     try {
       const data = fs.readFileSync(filename, 'utf-8');
@@ -396,9 +400,9 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
         this.ipGeo.set(address, value);
       });
     } catch (error) {
-      console.error('Error reading IP Geo file:', error.message);
+      logger.error('Error reading IP Geo file:', error.message);
     }
-    console.debug('IP Geo:', this.ipGeo);
+    logger.debug('IP Geo:', this.ipGeo);
   }
 
   private async writeIPGeoFile() {
@@ -410,20 +414,20 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       });
       fs.writeFileSync(filename, JSON.stringify(data, null, 2));
     } catch (error) {
-      console.error('Error writing IP Geo file:', error.message);
+      logger.error('Error writing IP Geo file:', error.message);
     }
   }
 
   private async updateGeoIP() {
-    console.log('Fetching GeoIP data...');
+    logger.log('Fetching GeoIP data...');
     let batch = [];
     let updated = 0;
     // for each chain
     for (const chainId of ['kusama', 'polkadot']) {
       // for each node
-      console.log('geoIP for', chainId);
+      logger.log('geoIP for', chainId);
       this.dataStore[chainId].forEach((node) => {
-        // console.log('geoIP for', chainId, node.NodeDetails.NodeName, node.NodeDetails.Address);
+        // logger.log('geoIP for', chainId, node.NodeDetails.NodeName, node.NodeDetails.Address);
         // geoip lookup
         const ip = node.NodeDetails.Address;
         if (ip) {
@@ -434,19 +438,19 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
             const lastUpdate = this.ipGeo.get(ip).timestamp;
             // 24 hours
             if (Date.now() - lastUpdate > 86400 * 1000) {
-              console.log('IP Geo data is stale:', ip);
+              logger.log('IP Geo data is stale:', ip);
               batch.push(ip);
               updated++;
             }
-            // console.log('IP already in cache:', ip);
+            // logger.log('IP already in cache:', ip);
           }
         }
       });
-      console.debug(chainId, 'Batch:', batch.length);
+      logger.debug(chainId, 'Batch:', batch.length);
       if (batch.length > 0) {
         const fields = 'query,status,message,country,city,lat,lon';
         const params = JSON.stringify(batch.slice(0, 10).map((ip) => ({ query: ip, fields })));
-        console.debug('Params:', params);
+        logger.debug('Params:', params);
         try {
           const geo = await fetch(`http://ip-api.com/batch`, {
             method: 'POST',
@@ -456,14 +460,14 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
             body: params,
           });
           const resp = await geo.json();
-          console.log('geo', resp);
+          logger.log('geo', resp);
           resp.forEach((data: IPGeo) => {
             const ip = data.query;
             data.timestamp = Date.now();
             this.ipGeo.set(ip, data);
           });
         } catch (error) {
-          console.error('Error fetching GeoIP data:', error.message);
+          logger.error('Error fetching GeoIP data:', error.message);
         } finally {
           batch = [];
         }
@@ -476,13 +480,13 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   @Cron(CronExpression.EVERY_10_MINUTES)
   // @Cron(CronExpression.EVERY_30_SECONDS)
   handleCron() {
-    console.log('Fetching telemetry name map...');
+    logger.log('Fetching telemetry name map...');
     this.updateTelemetryNameMap();
     this.updateGeoIP();
   }
 
   handleTelemetryMessage(chainId: string, message: any) {
-    // console.log('Received telemetry message:', message);
+    // logger.log('Received telemetry message:', message);
     //let ex: any | null = null;
     let messageX;
     // https://github.com/paritytech/substrate-telemetry/blob/master/frontend/src/common/feed.ts
@@ -501,15 +505,15 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
         // ex = [3,458,'🚂 Zugian Duck 🦆 Retainer','Parity Polkadot',1.16.1-835e0767fe8,,'12D3KooWRLprG6JDs5ZKzqU6ofczisASiZj5jZsddE6jgDBiyen3','185.16.38.241',['object Object'],['object Object'],51,0,48113384,49532904,50902990,52177076,53397204,54705856,55610110,54000116,52617828,51011372,49683310,48384504,4683746.75,4151928.625,4513870.375,1502013.25,836828.25,3588572.5,2417731,1050204.25,1032821,3741390.5,1731022.5,1931825.25,4221619.875,4272979.125,3675492.75,3796463.125,3248460.875,3109559.25,3423068.25,3730033.75,3470817.625,3793650,3887323.875,5391535,1731599504706.75,1731599544709.1875,1731599584711.125,1731599624712.625,1731599664713.4375,1731599704721.875,1731599744724.125,1731599784718.5,1731599824721.75,1731599864722.75,1731599904723.8125,1731599944735.5,25778144,0x790eccd0983be3360a81c003e925be6d30f0a78d18fac3f2b9ddd0521d03ae84,6079,1731599988419,274,,1731311512077]
         // this.nodes.set(message.payload[0], message.payload);
         messageX = parseAddedNodeMessage(message);
-        // console.debug('Pre addNode', messageX.NodeDetails.ChainStats);
+        // logger.debug('Pre addNode', messageX.NodeDetails.ChainStats);
         this.addNode(chainId, messageX);
-        // console.log('AddedNode', message.payload);
+        // logger.log('AddedNode', message.payload);
         break;
       case 4: // RemovedNode
         //ex = [4, 5]
         // this.nodes.delete(message.payload[0]);
         this.removeNode(chainId, message);
-        // console.log('RemovedNode', message.payload);
+        // logger.log('RemovedNode', message.payload);
         break;
       case 5: // LocatedNode
         //ex = [5, 528, 47.5421, 7.5962, 'Basel'];
@@ -554,7 +558,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
         //ex = [22,{"version":{"list":[["1.16.1-835e0767fe8",520],["1.16.2-dba2dd59101",234],["1.16.0-87971b3e927",96],["1.16.1-a3b3f41abf8",8],["1.16.2-835e0767fe8",7],["1.15.2-d6f482d5593",7],["1.15.1-16b0fd09d9e",6],["1.15.0-743dc632fd6",6],["1.14.0-364961445b7",6],["1.14.1-7c4cd60da6d",3]],"other":12,"unknown":0},"target_os":{"list":[["linux",899],["macos",2],["18",1],["freebsd",1]],"other":0,"unknown":2},"target_arch":{"list":[["x86_64",900],["aarch64",2],["refactor/notifications",1]],"other":0,"unknown":2},"cpu":{"list":[["AMD Ryzen 9 7950X3D 16-Core Processor",65],["AMD Ryzen 5 3600 6-Core Processor",38],["AMD Ryzen 9 7950X 16-Core Processor",32],["Intel(R) Xeon(R) E-2386G CPU @ 3.50GHz",32],["AMD Ryzen 9 5950X 16-Core Processor",30],["AMD Ryzen 5 5600X 6-Core Processor",27],["QEMU Virtual CPU version 2.5+",26],["AMD Ryzen 7 3700X 8-Core Processor",26],["AMD Ryzen 9 5900X 12-Core Processor",24],["Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz",23]],"other":576,"unknown":6},"memory":{"list":[[[4,6],8],[[6,8],55],[[8,10],8],[[10,16],56],[[16,24],37],[[24,32],140],[[32,48],78],[[48,56],2],[[56,64],84],[[64,null],431]],"other":0,"unknown":6},"core_count":{"list":[[8,245],[6,209],[16,150],[4,136],[12,59],[32,28],[10,22],[24,12],[5,6],[14,5]],"other":27,"unknown":6},"linux_kernel":{"list":[["5.15.0-124-generic",78],["6.8.0-47-generic",67],["6.8.0-48-generic",67],["5.15.0-122-generic",47],["6.8.4-2-pve",34],["5.15.0-25-generic",33],["6.8.0-31-generic",27],["5.15.0-125-generic",27],["6.8.0-45-generic",25],["5.15.0-91-generic",21]],"other":473,"unknown":6},"linux_distro":{"list":[["Ubuntu 22.04.5 LTS",345],["Ubuntu 24.04.1 LTS",154],["Ubuntu 22.04.4 LTS",114],["Debian GNU/Linux 12 (bookworm)",77],["Ubuntu 20.04.6 LTS",53],["Ubuntu 22.04.3 LTS",47],["Ubuntu 22.04 LTS",24],["Ubuntu 22.04.2 LTS",24],["Ubuntu 22.04.1 LTS",15],["Debian GNU/Linux 11 (bullseye)",8]],"other":38,"unknown":6},"is_virtual_machine":{"list":[[false,675],[true,224]],"other":0,"unknown":6},"cpu_hashrate_score":{"list":[[[110,130],254],[[130,150],220],[[90,110],132],[[150,200],105],[[70,90],53],[[50,70],53],[[30,50],30],[[10,30],10]],"other":0,"unknown":48},"memory_memcpy_score":{"list":[[[0,10],2],[[10,30],64],[[30,50],124],[[50,70],145],[[70,90],146],[[90,110],229],[[110,130],107],[[130,150],28],[[150,200],10],[[300,400],2]],"other":0,"unknown":48},"disk_sequential_write_score":{"list":[[[0,10],14],[[10,30],47],[[30,50],48],[[50,70],47],[[70,90],43],[[90,110],55],[[110,130],28],[[130,150],43],[[150,200],136],[[200,300],175],[[300,400],135],[[400,500],50],[[500,null],36]],"other":0,"unknown":48},"disk_random_write_score":{"list":[[[0,10],16],[[10,30],52],[[30,50],42],[[50,70],76],[[70,90],48],[[90,110],57],[[110,130],45],[[130,150],50],[[150,200],130],[[200,300],191],[[300,400],121],[[400,500],18],[[500,null],11]],"other":0,"unknown":48}},6,[179,[25778181,"0x4ff464aea237f8d696874ef56c352a8e8484e6ea5691d774b4d785615eb42a17",5959,1731600210492,139]]]
         break;
       default:
-        console.log('Unhandled message', message);
+        logger.log('Unhandled message', message);
         break;
     }
   }

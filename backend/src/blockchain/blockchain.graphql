@@ -1,8 +1,27 @@
 scalar BigInt
 
 type Query {
-  validators(chainId: String!): [String]
+  validators(chainId: String!, active: Boolean): [Validator]
+  validator(chainId: String!, address: String!): Validator
+  stakers(chainId: String!): [Nominator]
+  staker(chainId: String!, address: String!): Nominator
   # nodeById(chainId: String!, id: Int!): NodeDetailsX
   # nodeByName(chainId: String!, name: String!): NodeDetailsX
   # nodeByNetworkId(chainId: String!, networkId: String!): NodeDetailsX
+}
+
+type Nominator {
+  chainId: String!
+  address: String!
+  balance: BigInt!
+  targets: [String]
+}
+
+type Validator {
+  chainId: String!
+  address: String!
+  name: String
+  balance: BigInt
+  commission: Float
+  active: Boolean
 }

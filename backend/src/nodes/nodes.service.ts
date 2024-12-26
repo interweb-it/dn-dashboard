@@ -1,12 +1,15 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Interval, Cron } from '@nestjs/schedule';
 
+import { BlockchainService } from 'src/blockchain/blockchain.service';
+
 export type NodeStatus = 'Active' | 'Graduated' | 'Pending' | 'Removed';
 export type ChainTerm = 'start' | 'end';
 
 export interface INodeBase {
   identity: string;
   stash: string;
+  commission: number;
 }
 
 export interface INode extends INodeBase {
@@ -50,6 +53,8 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     kusama: {} as TChainData,
   };
 
+  constructor(private blockchainService: BlockchainService) {}
+
   async onModuleInit() {
     for (const cohortId of cohorts) {
       console.log('Fetching chain data for cohort', cohortId);
@@ -60,7 +65,8 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
 
   // Schedule a task to run every 5 minutes
   // @Cron('*/1 * * * * *')
-  @Interval(5 * 60 * 1000) // Every 5 minutes
+  // @Interval(5 * 60 * 1000) // Every 5 minutes
+  @Interval(30 * 1000) // every 30 seconds
   async handleInterval() {
     console.log('Running scheduled task to fetch chain data');
     for (const cohortId of cohorts) {
@@ -85,6 +91,15 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
       }
       const data: ICohortData = await response.json();
       console.log('Data fetched:', data);
+      // for each data.node, update the node commission
+      for (const node of data.selected) {
+        const _val = await this.blockchainService.getValidator(chainId, node.stash);
+        node.commission = _val?.commission || 0;
+      }
+      for (const node of data.backups) {
+        const _val = await this.blockchainService.getValidator(chainId, node.stash);
+        node.commission = _val?.commission || 0;
+      }
       this.dataStore[chainId][cohortId] = data;
       console.log(`Data updated for ${chainId}`);
     } catch (error) {
@@ -94,19 +109,19 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
 
   getSelected(chainId: string, cohortId: number): INode[] {
     console.log('getNodes', chainId);
-    const ret = Array.from(this.dataStore[chainId][cohortId].selected);
+    const ret = Array.from(this.dataStore[chainId][cohortId]?.selected || []);
     return ret;
   }
 
   getBackups(chainId: string, cohortId: number): INodeBase[] {
     console.log('getNodes', chainId);
-    const ret = Array.from(this.dataStore[chainId][cohortId].backups);
+    const ret = Array.from(this.dataStore[chainId][cohortId]?.backups || []);
     return ret;
   }
 
   getNominators(chainId: string, cohortId: number): string[] {
     console.log('getNodes', chainId);
-    const ret = Array.from(this.dataStore[chainId][cohortId].nominators);
+    const ret = Array.from(this.dataStore[chainId][cohortId]?.nominators || []);
     return ret;
   }
 

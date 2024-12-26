@@ -12,11 +12,13 @@ type Query {
 type NodeBase {
   identity: String
   stash: String
+  commission: Float
 }
 
 type Node {
   identity: String
   stash: String
+  commission: Float
   status: String
 }
 
