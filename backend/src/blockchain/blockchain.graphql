@@ -12,14 +12,14 @@ type Query {
 
 type Nominator {
   chainId: String!
-  address: String!
+  address: String
   balance: BigInt!
   targets: [String]
 }
 
 type Validator {
   chainId: String!
-  address: String!
+  address: String
   name: String
   balance: BigInt
   commission: Float
