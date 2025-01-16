@@ -58,12 +58,11 @@ export interface NodeDetailsX {
   // NetworkId: Maybe<string>,
   Field4: string;
   NetworkId: string;
-  Address: Maybe<string>;
-  // OperatingSystem: string;
+  // Address: Maybe<string>;
+  OperatingSystem: string;
+  CpuArchitecture: string;
+  TargetEnv: string;
   NodeSysInfo: NodeSysInfoX;
-  // CpuArchitecture: string;
-  // TargetEnv: string;
-  // _undefined: undefined;
   ChainStats: ChainStats;
 }
 
@@ -140,20 +139,43 @@ const parseNodeSysInfo = (data: NodeSysInfo): NodeSysInfoX => {
 //   logger.debug('parseChainStats', data);
 //   return data;
 // };
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const ex_data = [
+  'gaping-ants-1231',
+  'Parity Polkadot',
+  '1.17.0-967989c5d94',
+  null,
+  '12D3KooWNuAt5mbsqfZN4cxm82YYCqQzqCFAAXBqbR8P5ovCs4vU',
+  'linux',
+  'x86_64',
+  'gnu',
+  null,
+  {
+    cpu: 'AMD EPYC 9354P 32-Core Processor',
+    memory: 32000000000,
+    core_count: 8,
+    linux_kernel: '5.15.0-122-generic',
+    linux_distro: 'Ubuntu 24.04.1 LTS',
+    is_virtual_machine: false,
+  },
+  null,
+];
 
 const parseNodeDetails = (data: NodeDetails): NodeDetailsX => {
+  //logger.debug('Parsing NodeDetails', data);
   // const [NodeName, NodeImplementation, NodeVersion, Address, NetworkId, OperatingSystem, CpuArchitecture, TargetEnv, _, NodeSysInfo] = data
   const [
     NodeName,
     NodeImplementation,
     NodeVersion,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     Field4,
-    // OperatingSystem,
     NetworkId,
-    Address,
-    // CpuArchitecture,
-    // TargetEnv,
-    // _,
+    OperatingSystem,
+    CpuArchitecture,
+    TargetEnv,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    Field9,
     NodeSysInfo,
     ChainStats,
   ] = data;
@@ -165,13 +187,12 @@ const parseNodeDetails = (data: NodeDetails): NodeDetailsX => {
     NodeVersion,
     Field4,
     NetworkId: NetworkId || '',
-    Address,
-    // OperatingSystem,
-    // CpuArchitecture,
-    // TargetEnv,
-    // _undefined: _,
+    // Address,
+    OperatingSystem,
+    CpuArchitecture,
+    TargetEnv,
+    // Field9,
     NodeSysInfo: parseNodeSysInfo(NodeSysInfo),
-    // ChainStats: parseChainStats(ChainStats),
     ChainStats,
   };
 };
@@ -206,7 +227,8 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
 
   private polkadotWS: WebSocket | null = null;
   private kusamaWS: WebSocket | null = null;
-  private readonly TELEMETRY_WS_URL = 'wss://telemetry-backend.w3f.community/feed';
+  // private readonly TELEMETRY_WS_URL = 'wss://telemetry-backend.w3f.community/feed';
+  private readonly TELEMETRY_WS_URL = 'wss://feed.telemetry.polkadot.io/feed';
   private chains: Record<string, string> = {
     kusama: '0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe',
     polkadot: '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
@@ -307,11 +329,11 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   getNodes(chainId: string): AddedNodeMessageX[] {
     logger.log('getNodes', chainId);
     const ret = Array.from(this.dataStore[chainId].values());
-    ret.forEach((node) => {
-      if (node.NodeDetails.Address) {
-        node.IPGeo = this.getGeoForIP(node.NodeDetails.Address);
-      }
-    });
+    // ret.forEach((node) => {
+    //   if (node.NodeDetails.Address) {
+    //     node.IPGeo = this.getGeoForIP(node.NodeDetails.Address);
+    //   }
+    // });
     return ret; // this.dataStore[chainId].forEach((node) => node);
   }
 
@@ -352,9 +374,9 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       }
     });
     // logger.log('findOneByName ChainStats:', ret);
-    if (ret?.NodeDetails.Address) {
-      ret.IPGeo = this.getGeoForIP(ret.NodeDetails.Address);
-    }
+    // if (ret?.NodeDetails.Address) {
+    //   ret.IPGeo = this.getGeoForIP(ret.NodeDetails.Address);
+    // }
     return ret;
   }
 
@@ -418,63 +440,63 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async updateGeoIP() {
-    logger.log('Fetching GeoIP data...');
-    let batch = [];
-    let updated = 0;
-    // for each chain
-    for (const chainId of ['kusama', 'polkadot']) {
-      // for each node
-      logger.log('geoIP for', chainId);
-      this.dataStore[chainId].forEach((node) => {
-        // logger.log('geoIP for', chainId, node.NodeDetails.NodeName, node.NodeDetails.Address);
-        // geoip lookup
-        const ip = node.NodeDetails.Address;
-        if (ip) {
-          if (!this.ipGeo.has(ip)) {
-            batch.push(ip);
-            updated++;
-          } else {
-            const lastUpdate = this.ipGeo.get(ip).timestamp;
-            // 24 hours
-            if (Date.now() - lastUpdate > 86400 * 1000) {
-              logger.log('IP Geo data is stale:', ip);
-              batch.push(ip);
-              updated++;
-            }
-            // logger.log('IP already in cache:', ip);
-          }
-        }
-      });
-      logger.debug(chainId, 'Batch:', batch.length);
-      if (batch.length > 0) {
-        const fields = 'query,status,message,country,city,lat,lon';
-        const params = JSON.stringify(batch.slice(0, 10).map((ip) => ({ query: ip, fields })));
-        logger.debug('Params:', params);
-        try {
-          const geo = await fetch(`http://ip-api.com/batch`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: params,
-          });
-          const resp = await geo.json();
-          logger.log('geo', resp);
-          resp.forEach((data: IPGeo) => {
-            const ip = data.query;
-            data.timestamp = Date.now();
-            this.ipGeo.set(ip, data);
-          });
-        } catch (error) {
-          logger.error('Error fetching GeoIP data:', error.message);
-        } finally {
-          batch = [];
-        }
-      }
-    }
-    if (updated > 0) await this.writeIPGeoFile();
-  }
+  // private async updateGeoIP() {
+  //   logger.log('Fetching GeoIP data...');
+  //   let batch = [];
+  //   let updated = 0;
+  //   // for each chain
+  //   for (const chainId of ['kusama', 'polkadot']) {
+  //     // for each node
+  //     logger.log('geoIP for', chainId);
+  //     // this.dataStore[chainId].forEach((node) => {
+  //     //   // logger.log('geoIP for', chainId, node.NodeDetails.NodeName, node.NodeDetails.Address);
+  //     //   // geoip lookup
+  //     //   const ip = node.NodeDetails.Address;
+  //     //   if (ip) {
+  //     //     if (!this.ipGeo.has(ip)) {
+  //     //       batch.push(ip);
+  //     //       updated++;
+  //     //     } else {
+  //     //       const lastUpdate = this.ipGeo.get(ip).timestamp;
+  //     //       // 24 hours
+  //     //       if (Date.now() - lastUpdate > 86400 * 1000) {
+  //     //         logger.log('IP Geo data is stale:', ip);
+  //     //         batch.push(ip);
+  //     //         updated++;
+  //     //       }
+  //     //       // logger.log('IP already in cache:', ip);
+  //     //     }
+  //     //   }
+  //     // });
+  //     logger.debug(chainId, 'Batch:', batch.length);
+  //     if (batch.length > 0) {
+  //       const fields = 'query,status,message,country,city,lat,lon';
+  //       const params = JSON.stringify(batch.slice(0, 10).map((ip) => ({ query: ip, fields })));
+  //       logger.debug('Params:', params);
+  //       try {
+  //         const geo = await fetch(`http://ip-api.com/batch`, {
+  //           method: 'POST',
+  //           headers: {
+  //             'Content-Type': 'application/json',
+  //           },
+  //           body: params,
+  //         });
+  //         const resp = await geo.json();
+  //         logger.log('geo', resp);
+  //         resp.forEach((data: IPGeo) => {
+  //           const ip = data.query;
+  //           data.timestamp = Date.now();
+  //           this.ipGeo.set(ip, data);
+  //         });
+  //       } catch (error) {
+  //         logger.error('Error fetching GeoIP data:', error.message);
+  //       } finally {
+  //         batch = [];
+  //       }
+  //     }
+  //   }
+  //   if (updated > 0) await this.writeIPGeoFile();
+  // }
 
   // Cron job to periodically update the telemetry map
   @Cron(CronExpression.EVERY_10_MINUTES)
@@ -482,7 +504,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   handleCron() {
     logger.log('Fetching telemetry name map...');
     this.updateTelemetryNameMap();
-    this.updateGeoIP();
+    // this.updateGeoIP();
   }
 
   handleTelemetryMessage(chainId: string, message: any) {

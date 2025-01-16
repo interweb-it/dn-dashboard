@@ -20,6 +20,7 @@ type Node {
   stash: String
   commission: Float
   status: String
+  telemetry: NodeDetails # defined in ../telemtry/telemtry.graphql
 }
 
 type Term {

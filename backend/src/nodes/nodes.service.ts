@@ -2,6 +2,9 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Interval, Cron } from '@nestjs/schedule';
 
 import { BlockchainService } from 'src/blockchain/blockchain.service';
+// import { NodeDetails } from 'src/substrate-telemetry/types';
+import { NodeDetailsX } from 'src/telemetry/telemetry.service';
+import { TelemetryService } from 'src/telemetry/telemetry.service';
 
 export type NodeStatus = 'Active' | 'Graduated' | 'Pending' | 'Removed';
 export type ChainTerm = 'start' | 'end';
@@ -10,6 +13,7 @@ export interface INodeBase {
   identity: string;
   stash: string;
   commission: number;
+  telemetry: NodeDetailsX;
 }
 
 export interface INode extends INodeBase {
@@ -53,7 +57,10 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     kusama: {} as TChainData,
   };
 
-  constructor(private blockchainService: BlockchainService) {}
+  constructor(
+    private blockchainService: BlockchainService,
+    private telemetryService: TelemetryService,
+  ) {}
 
   async onModuleInit() {
     for (const cohortId of cohorts) {
@@ -110,6 +117,13 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   getSelected(chainId: string, cohortId: number): INode[] {
     console.log('getNodes', chainId);
     const ret = Array.from(this.dataStore[chainId][cohortId]?.selected || []);
+    // get telemetry data for each node
+    for (const node of ret) {
+      const _tel = this.telemetryService.findOneByName(chainId, node.identity);
+      if (_tel) {
+        node.telemetry = _tel.NodeDetails;
+      }
+    }
     return ret;
   }
 

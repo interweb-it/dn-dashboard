@@ -61,36 +61,24 @@ export type NodeSysInfo = [
   is_virtual_machine: boolean,
 ];
 
-export type BlockDetails = [
-  BlockNumber,
-  BlockHash,
-  Milliseconds,
-  Timestamp,
-  Maybe<PropagationTime>,
-];
+export type BlockDetails = [BlockNumber, BlockHash, Milliseconds, Timestamp, Maybe<PropagationTime>];
 export type NodeDetails = [
   NodeName,
   NodeImplementation,
   NodeVersion,
-  // Maybe<Address>,
-  OperatingSystem,
-  Maybe<NetworkId>,
-  // OperatingSystem,
   Maybe<Address>,
-  // CpuArchitecture,
-  // TargetEnv,
-  // undefined,
+  Maybe<NetworkId>,
+  OperatingSystem,
+  CpuArchitecture,
+  TargetEnv,
+  Maybe<null>,
   NodeSysInfo,
   ChainStats,
 ];
 
 export type NodeStats = [PeerCount, TransactionCount];
 export type NodeIO = [Array<Bytes>];
-export type NodeHardware = [
-  Array<BytesPerSecond>,
-  Array<BytesPerSecond>,
-  Array<Timestamp>,
-];
+export type NodeHardware = [Array<BytesPerSecond>, Array<BytesPerSecond>, Array<Timestamp>];
 export type NodeLocation = [Latitude, Longitude, City];
 
 export interface Authority {
@@ -100,13 +88,7 @@ export interface Authority {
 }
 export declare type Authorities = Array<Address>;
 export declare type AuthoritySetId = Opaque<number, 'AuthoritySetId'>;
-export declare type AuthoritySetInfo = [
-  AuthoritySetId,
-  Authorities,
-  Address,
-  BlockNumber,
-  BlockHash,
-];
+export declare type AuthoritySetInfo = [AuthoritySetId, Authorities, Address, BlockNumber, BlockHash];
 export declare type Precommit = Opaque<boolean, 'Precommit'>;
 export declare type Prevote = Opaque<boolean, 'Prevote'>;
 export declare type Finalized = Opaque<boolean, 'Finalized'>;

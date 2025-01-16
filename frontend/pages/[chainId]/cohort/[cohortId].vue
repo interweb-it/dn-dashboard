@@ -26,11 +26,12 @@
     <client-only>
 
       <v-container style="padding-top: 75px;">
-        <v-card>      
+
+        <!-- <v-card>      
           <client-only>
             <validator-map :chain-id="chainId" :validators="telemetry"></validator-map>
           </client-only>
-        </v-card>
+        </v-card> -->
 
         <v-tabs v-model="tab">
           <v-tab value="selected">Selected</v-tab>
@@ -63,9 +64,16 @@
                 :headers="[
                   {title: 'Name', key: 'identity'},
                   {title: 'Stash',key: 'stash'},
-                  {title:'Commission',key: 'commission'},
-                  {title:'DN Status',key: 'status'},
-                  {title: 'DN nominated', key: 'nominatedBy'}]"
+                  {title: 'Commission',key: 'commission'},
+                  {title: 'DN Status',key: 'status'},
+                  {title: 'DN nominated', key: 'nominatedBy'},
+                  {title: 'Telemetry (Public)', key: 'telemetry'},
+                  {title: 'Hardware\n(CPU/RAM/Kernel/VM)', key: 'hw'},
+                  // {title: 'Cores', key: 'cores'},
+                  // {title: 'Memory', key: 'memory'},
+                  // {title: 'Kernel', key: 'linux_kernel'},
+                  // {title: 'VM', key: 'is_virtual_machine'},
+                  ]"
                 :search="search"
                 :items-per-page="linesPerPage"
                 @update:itemsPerPage="val => linesPerPage = val"
@@ -78,6 +86,20 @@
                     <td>{{ item.status }}</td>
                     <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
                     <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
+                    <td>{{ item.telemetry ? 'Yes' : 'No' }}</td>
+                    <td>
+                      {{ item.telemetry?.NodeSysInfo?.core_count || '-' }} /
+                      {{ ((item.telemetry?.NodeSysInfo?.memory || 0)/1024/1024/1024).toFixed(0) }} /
+                      {{ item.telemetry?.NodeSysInfo?.linux_kernel || '-' }} /
+                      {{ item.telemetry ? (item.telemetry?.NodeSysInfo?.is_virtual_machine ? 'Yes' : 'No') : '-' }}
+
+                    </td>
+                    <!--
+                    <td>{{ item.telemetry?.NodeSysInfo?.core_count }}</td>
+                    <td>{{ ((item.telemetry?.NodeSysInfo?.memory || 0)/1024/1024/1024).toFixed(0) }}</td>
+                    <td>{{ item.telemetry?.NodeSysInfo?.linux_kernel }}</td>
+                    <td>{{ item.telemetry?.NodeSysInfo?.is_virtual_machine ? 'Yes' : 'No' }}</td>
+                    -->
                   </tr>
                 </template>
               </v-data-table>
@@ -140,6 +162,16 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
     stash
     status
     commission
+    telemetry {
+      NodeName
+      NodeSysInfo {
+        memory
+        core_count
+        linux_kernel
+        linux_distro
+        is_virtual_machine
+      }
+    }
   }
   nominators(chainId: $chainId, cohortId: $cohortId) 
   backups(chainId: $chainId, cohortId: $cohortId) {
