@@ -44,7 +44,13 @@ export const useNodeStore = defineStore({
   state: () => ({
     chainId: 'kusama',
     cohortId: 1,
+    selected: [],
+    backup: [],
+    nominators: [],
+    telemetry: [],
+    validators: [],
     search: '',
+    page: 1,
     linesPerPage: 10,
     tab: 'selected', // selected, backup, nominators
     nodes: new Map<string, any>(),
@@ -53,6 +59,16 @@ export const useNodeStore = defineStore({
   //   nodes: (state) => state.nodes,
   // },
   actions: {
+    setChainId(chainId: string) {
+      this.chainId = chainId
+      this.selected = []
+      this.backup = []
+      this.nominators = []
+      this.telemetry = []
+      this.validators = []
+      this.nodes.clear()
+      this.page = 1
+    },
     setSearch(search: string) {
       this.search = search
     },

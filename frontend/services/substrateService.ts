@@ -71,6 +71,8 @@ export default class SubstrateService {
       // this.emitEvent('connection:offline', { type: 'apip', chainId });
     });
     console.debug('Connected to api', chainId);
+    // reset this if the api is reconnected
+    this.loadingNominators = false;
     this.getAllNominators();
   }
 
@@ -132,40 +134,5 @@ export default class SubstrateService {
     this.loadingNominators = false;
     this.substrateStore.loading = false;
   }
-
-  // // Handle browser online event
-  // private handleOnline = (): void => {
-  //   console.log('Browser is back online');
-  //   this.isBrowserOnline = true;
-  //   this.emitEvent('connection:online', { type: 'browser' });
-
-  //   // Attempt to reconnect if disconnected
-  //   if (!this.apiConnected || !this.apipConnected) {
-  //     this.connect(this.chainId).catch((err) => console.error('Reconnection failed:', err));
-  //   }
-  // };
-
-  // // Handle browser offline event
-  // private handleOffline = (): void => {
-  //   console.log('Browser is offline');
-  //   this.isBrowserOnline = false;
-  //   this.emitEvent('connection:offline', { type: 'browser' });
-  // };
-
-  // // Emit custom events
-  // private emitEvent(eventName: string, detail: Record<string, any>): void {
-  //   if(import.meta.client) {
-  //     document.dispatchEvent(new CustomEvent(eventName, { detail }));
-  //   }
-  // }
-
-  // // Cleanup event listeners
-  // destroy(): void {
-  //   if (import.meta.client) {
-  //     window.removeEventListener('online', this.handleOnline);
-  //     window.removeEventListener('offline', this.handleOffline);
-  //     this.disconnect();
-  //   }
-  // }
 
 }

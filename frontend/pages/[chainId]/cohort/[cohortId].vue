@@ -67,7 +67,7 @@
                   {title: 'Commission',key: 'commission'},
                   {title: 'DN Status',key: 'status'},
                   {title: 'DN nominated', key: 'nominatedBy'},
-                  {title: 'Telemetry (Public)', key: 'telemetry'},
+                  // {title: 'Telemetry (Public)', key: 'telemetry'},
                   {title: 'Hardware\n(CPU/RAM/Kernel/VM)', key: 'hw'},
                   // {title: 'Cores', key: 'cores'},
                   // {title: 'Memory', key: 'memory'},
@@ -75,6 +75,8 @@
                   // {title: 'VM', key: 'is_virtual_machine'},
                   ]"
                 :search="search"
+                :page="page"
+                @update:page="val => page = val"
                 :items-per-page="linesPerPage"
                 @update:itemsPerPage="val => linesPerPage = val"
                 @click:row="gotoValidator">
@@ -86,7 +88,7 @@
                     <td>{{ item.status }}</td>
                     <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
                     <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
-                    <td>{{ item.telemetryX ? 'Yes' : 'No' }}</td>
+                    <!-- <td>{{ item.telemetryX ? 'Yes' : 'No' }}</td> -->
                     <td>
                       {{ item.telemetryX?.NodeSysInfo?.core_count || '-' }} /
                       {{ ((item.telemetryX?.NodeSysInfo?.memory || 0)/1024/1024/1024).toFixed(0) }} /
@@ -229,7 +231,9 @@ export default defineComponent({
     const chainId = ref(route.params.chainId.toString())
     const cohortId = ref(Number(route.params.cohortId.toString()))
     const nodeStore = useNodeStore()
-    // const nominatorStore = useNominatorStore()
+    if (chainId.value !== nodeStore.chainId) {
+      nodeStore.setChainId(chainId.value);
+    }
     const substrateStore = useSubstrateStore()
     const stakingEntries = computed(() => substrateStore.stakingEntries)
     const substrateStoreLoading = computed(() => substrateStore.loading)
@@ -245,13 +249,14 @@ export default defineComponent({
     var refetch = ref<any>(() => {})
     // var grefetch = ref(() => {})
 
-    const selected = ref([])
-    const nominators = ref([])
-    const backups = ref([])
-    const validators = ref([])
-    const telemetry = ref([])
+    const selected = ref(nodeStore.selected)
+    const nominators = ref(nodeStore.nominators)
+    const backups = ref(nodeStore.backups)
+    const validators = ref(nodeStore.validators)
+    const telemetry = ref(nodeStore.telemetry)
     const search = ref(nodeStore.search)
     const tab = ref(nodeStore.tab)
+    const page = ref(nodeStore.page)
     const linesPerPage = ref(nodeStore.linesPerPage)
     const elevation = ref(0)
     var scrollHandler: any = null
@@ -261,6 +266,7 @@ export default defineComponent({
     }),
 
     onBeforeMount(async () => {
+      //console.debug('onBeforeMount');
       api = await $substrate.getApi(chainId.value)
       scrollHandler = handleScroll((scrollY) => {
         elevation.value = scrollY > 0 ? 4 : 0;
@@ -268,6 +274,7 @@ export default defineComponent({
     });
 
     onMounted(async () => {
+      //console.debug('onMounted');
       var {
         error, 
         loading: cLoading,
@@ -286,15 +293,21 @@ export default defineComponent({
         }
         console.log('result', result.data);
         selected.value = result.data?.selected || [];
+        nodeStore.selected = selected.value;
         nominators.value = result.data?.nominators.map(n => {return {stash: n}}) || [];
+        nodeStore.nominators = nominators.value;
         backups.value = result.data?.backups || [];
+        nodeStore.backups = backups.value;
         validators.value = result.data?.validators || [];
+        nodeStore.validators = validators.value;
         telemetry.value = result.data?.telemetry || [];
+
         // console.log('nodes', nodes);
         telemetry.value?.forEach((node: any) => {
           // console.log('node', node);
           nodeStore.addNode(node);
         });
+        nodeStore.telemetry = telemetry.value;
 
         getNominatorTargets()
       });
@@ -391,6 +404,11 @@ export default defineComponent({
       nodeStore.tab = value;
     });
 
+    watch(() => page.value, async (value) => {
+      //console.log('page', value);
+      nodeStore.page = value;
+    });
+
     watch(() => linesPerPage.value, async (value) => {
       console.log('linesPerPage', value);
       nodeStore.linesPerPage = value;
@@ -474,6 +492,7 @@ export default defineComponent({
       telemetry,
       search,
       tab,
+      page,
       linesPerPage,
       // data,
       gotoValidator,
