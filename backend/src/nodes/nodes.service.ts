@@ -13,7 +13,8 @@ export interface INodeBase {
   identity: string;
   stash: string;
   commission: number;
-  telemetry: NodeDetailsX;
+  telemetryX: NodeDetailsX;
+  telemetry: string;
 }
 
 export interface INode extends INodeBase {
@@ -99,9 +100,27 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
       const data: ICohortData = await response.json();
       console.log('Data fetched:', data);
       // for each data.node, update the node commission
+      const ex = [
+        {
+          identity: 'UTSA',
+          stash: '15wnPRex2QwgWNCMRVSqgqp2syDn8Gf6LPGGabRhA8zoohpt',
+          status: 'Active',
+          telemetry: 'UTSA',
+        },
+        {
+          identity: 'VISIONSTAKE 👁‍🗨',
+          stash: '13Hp4FEF7z7famvakw8cgioHqDxcnhnyQkvd1jF4dxn7cayG',
+          status: 'Active',
+          telemetry: null,
+        },
+      ];
       for (const node of data.selected) {
         const _val = await this.blockchainService.getValidator(chainId, node.stash);
         node.commission = _val?.commission || 0;
+        if (node.telemetry && node.telemetry !== '') {
+          // amend the telemetry name map
+          this.telemetryService.updateTelemetryNameForNode(chainId, node.identity, node.telemetry);
+        }
       }
       for (const node of data.backups) {
         const _val = await this.blockchainService.getValidator(chainId, node.stash);
@@ -121,7 +140,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     for (const node of ret) {
       const _tel = this.telemetryService.findOneByName(chainId, node.identity);
       if (_tel) {
-        node.telemetry = _tel.NodeDetails;
+        node.telemetryX = _tel.NodeDetails;
       }
     }
     return ret;

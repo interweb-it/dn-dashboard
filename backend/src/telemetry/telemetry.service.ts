@@ -198,7 +198,8 @@ const parseNodeDetails = (data: NodeDetails): NodeDetailsX => {
 };
 
 const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
-  //logger.debug('Parsing AddedNodeMessage', data.payload);
+  // logger.debug('Parsing AddedNodeMessage', data.payload);
+  //logger.debug('Parsing AddedNodeMessage', data.payload[3]);
   const [NodeId, NodeDetails, NodeStats, NodeIO, NodeHardware, BlockDetails, NodeLocation, Timestamp] = data.payload;
   const parsedNodeDetails = parseNodeDetails(NodeDetails);
   //logger.debug('Parsed NodeDetails', parsedNodeDetails);
@@ -410,6 +411,11 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       logger.error('Error fetching telemetry name map:', error.message);
     }
+  }
+
+  updateTelemetryNameForNode(chainId: string, nodeIdentity: string, telemetryName: string) {
+    logger.log('Updating telemetry name for node:', chainId, nodeIdentity, telemetryName);
+    telemetryNameMap[chainId][nodeIdentity] = telemetryName;
   }
 
   private async readIPGeoFile() {

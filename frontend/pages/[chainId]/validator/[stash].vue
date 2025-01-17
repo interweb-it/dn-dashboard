@@ -169,7 +169,8 @@
           <v-data-table :items="exposure.others" :headers="[{ key: 'who', title: 'Address'}, {key: 'value', title: 'Amount', align: 'end'}]">
             <template v-slot:item.who="{ item }">
               <a :href="`https://${chainId}.subscan.io/nominator/${item.who}`" target="_blank">{{ shortStash(item.who) }}</a>              
-              <v-icon color="purple" v-if="dnNominators.includes(item.who)">mdi-hand</v-icon>
+              <!-- <v-icon color="purple" v-if="dnNominators.includes(item.who)">mdi-hand</v-icon> -->
+              <span v-if="dnNominators.includes(item.who)" style="color: blueviolet; font-weight: bold;"> [DN]</span>
             </template>
             <template v-slot:item.value="{ item }">
               {{ item.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}
@@ -218,7 +219,8 @@
             <template v-slot:item.address="{ item }">
               <a :href="`https://${chainId}.subscan.io/nominator/${item.address}`" target="_blank">{{ shortStash(item.address) }}</a>              
               <v-icon color="red" v-if="exposure.others.map(m => m.who).includes(item.address)">mdi-fire</v-icon>
-              <v-icon color="purple" v-if="dnNominators.includes(item.address)">mdi-hand</v-icon>
+              <!-- <v-icon color="purple" v-if="dnNominators.includes(item.address)">mdi-hand</v-icon> -->
+              <span v-if="dnNominators.includes(item.address)" style="color: blueviolet; font-weight: bold;"> [DN]</span>
               <!-- <a :href="`/${chainId}/validator/${item.address}`">{{ item.address }}</a> -->
             </template>
             <template v-slot:item.balance="{ item }">

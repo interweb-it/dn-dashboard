@@ -86,12 +86,12 @@
                     <td>{{ item.status }}</td>
                     <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
                     <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
-                    <td>{{ item.telemetry ? 'Yes' : 'No' }}</td>
+                    <td>{{ item.telemetryX ? 'Yes' : 'No' }}</td>
                     <td>
-                      {{ item.telemetry?.NodeSysInfo?.core_count || '-' }} /
-                      {{ ((item.telemetry?.NodeSysInfo?.memory || 0)/1024/1024/1024).toFixed(0) }} /
-                      {{ item.telemetry?.NodeSysInfo?.linux_kernel || '-' }} /
-                      {{ item.telemetry ? (item.telemetry?.NodeSysInfo?.is_virtual_machine ? 'Yes' : 'No') : '-' }}
+                      {{ item.telemetryX?.NodeSysInfo?.core_count || '-' }} /
+                      {{ ((item.telemetryX?.NodeSysInfo?.memory || 0)/1024/1024/1024).toFixed(0) }} /
+                      {{ item.telemetryX?.NodeSysInfo?.linux_kernel || '-' }} /
+                      {{ item.telemetryX ? (item.telemetryX?.NodeSysInfo?.is_virtual_machine ? 'Yes' : 'No') : '-' }}
 
                     </td>
                     <!--
@@ -162,7 +162,7 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
     stash
     status
     commission
-    telemetry {
+    telemetryX {
       NodeName
       NodeSysInfo {
         memory

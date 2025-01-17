@@ -4,6 +4,7 @@
         turboflakes.io
         <sup><v-icon size="v-small">mdi-open-in-new</v-icon></sup>
       </a> )
+      <!-- |{{ stash }}| -->
       <v-btn icon flat size="small" @click="onClickRefresh"><v-icon>mdi-refresh</v-icon></v-btn>
       <v-chip size="small" variant="flat" color="#D1C4E9">Para</v-chip>&nbsp;
       <v-chip size="small" variant="flat" color="#F8BBD0">Active</v-chip>&nbsp;
@@ -69,6 +70,9 @@ export default defineComponent({
   // emits: ['refresh'],
   setup(props, { emit }) {
 
+    const chainId = computed(() => props.chainId)
+    const stash = computed(() => props.stash)
+
     const onClickRefresh = () => {
       console.debug('refresh')
       emit('refresh')
@@ -76,8 +80,8 @@ export default defineComponent({
     const performance = computed(() => props.performance)
 
     return {
-      chainId: props.chainId,
-      stash: props.stash,
+      chainId,
+      stash,
       performance,
       onClickRefresh
     }
