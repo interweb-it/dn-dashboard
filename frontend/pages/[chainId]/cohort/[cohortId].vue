@@ -246,7 +246,7 @@ export default defineComponent({
     var error = ref(null)
     var loading = ref<any>(false)
     // var loadingG = ref<any>(false)
-    var refetch = ref<any>(() => {})
+    var refetch = ref<any>(null)
     // var grefetch = ref(() => {})
 
     const selected = ref(nodeStore.selected)
@@ -275,14 +275,27 @@ export default defineComponent({
 
     onMounted(async () => {
       //console.debug('onMounted');
+      if(nodeStore.selected.length === 0) {
+        setupRefetch();
+      } else {
+        getNominatorTargets()
+      }
+
+      // if(!stakingEntries.value || stakingEntries.value.length === 0) {
+      //   console.debug('get stakingEntries...');
+      //   getAllNominators();
+      // }
+    });
+
+    const setupRefetch = () => {
       var {
         error, 
         loading: cLoading,
         refetch: cRefetch,
         onResult } = useQuery(QUERY_NODES, {
-        chainId: chainId.value,
-        cohortId: cohortId.value
-      })
+          chainId: chainId.value,
+          cohortId: cohortId.value
+        })
       refetch.value = cRefetch
       loading = cLoading
 
@@ -311,31 +324,37 @@ export default defineComponent({
 
         getNominatorTargets()
       });
+    }
 
-      if(!stakingEntries.value || stakingEntries.value.length === 0) {
-        console.debug('get stakingEntries...');
-        getAllNominators();
-      // } else {
-      //   console.debug('stakingEntries already loaded');
-      //   console.debug(stakingEntries.value);
-      }
-    });
+    const doRefetch = async () => {
+      console.log('doRefetch');
+      if (!refetch.value)
+        setupRefetch();
+      else
+        refetch.value();
+    }
 
     const nominations = ref<Record<string, string[]>>({});
     const nominatedBy = ref<Record<string, string[]>>({});
 
     const getNominatorTargets = async () => {
       console.log('getNominatorTargets');
-      api = await $substrate.getApi(chainId.value)
+      if (!api) api = await $substrate.getApi(chainId.value)
       // console.log('api', api);
       for(let i = 0; i < nominators.value.length; i++) {
         const nominator = nominators.value[i]; // DN nominator
         // console.log('nominator', nominator);
         const res = await api?.query.staking.nominators(nominator.stash) || [];
-        const { targets } = res?.toJSON() || [];
+        //console.debug('nominator', nominator.stash, 'res', res);
+        let _targets = [];
+        try {
+          const { targets } = res?.toJSON();
+          _targets = targets;
+        } catch(e) {
+        }
         //console.log('targets', targets);
-        for(let j = 0; j < targets.length; j++) {
-          const target = targets[j];
+        for(let j = 0; j < _targets.length; j++) {
+          const target = _targets[j];
           // console.log('nominator', nominator.stash, 'target', target);
           if (nominations.value[nominator.stash]) {
             nominations.value[nominator.stash].push(target);
@@ -350,27 +369,28 @@ export default defineComponent({
           nominatedBy.value[target] = nominator.stash;
         }
       }
+      console.debug('...done');
     }
 
-    const getAllNominators = async () => {
-      console.log('getAllNominators');
-      await $substrate.getAllNominators();
-      // console.debug('get stakingEntries');
-      // if(!api) {
-      //   console.error('api not ready');
-      //   return
-      // }
-      // nominatorStore.loading = true
-      // const stakingEntries = await api.query.staking.nominators.entries()
-      // const entries = stakingEntries.map(([key, nominations]) => {
-      //   // console.debug('key', key.toString(), value);
-      //   return [key, nominations.toJSON()]
-      //   // nominatorStore.setStakingEntries(key.toString(), value)
-      // })
-      // console.debug('entries', entries.length);
-      // nominatorStore.setStakingEntries(entries)
-      // nominatorStore.loading = false;
-    }
+    // const getAllNominators = async () => {
+    //   console.log('getAllNominators');
+    //   await $substrate.getAllNominators();
+    //   // console.debug('get stakingEntries');
+    //   // if(!api) {
+    //   //   console.error('api not ready');
+    //   //   return
+    //   // }
+    //   // nominatorStore.loading = true
+    //   // const stakingEntries = await api.query.staking.nominators.entries()
+    //   // const entries = stakingEntries.map(([key, nominations]) => {
+    //   //   // console.debug('key', key.toString(), value);
+    //   //   return [key, nominations.toJSON()]
+    //   //   // nominatorStore.setStakingEntries(key.toString(), value)
+    //   // })
+    //   // console.debug('entries', entries.length);
+    //   // nominatorStore.setStakingEntries(entries)
+    //   // nominatorStore.loading = false;
+    // }
 
     // const getNominatedBy = (stash: string): string => {
     //   const nominators: string[] = []
@@ -481,7 +501,7 @@ export default defineComponent({
       loading,
       substrateStoreLoading,
       elevation,
-      refresh,
+      refresh: doRefetch,
       chainId,
       cohortId,
       selected,

@@ -12,13 +12,18 @@ type Query {
 type NodeDetailsX {
   NodeId: Int!
   NodeDetails: NodeDetails
-  NodeStats: [[Int]]
+  NodeStats: NodeStatsX
   NodeIO: [[Int]]
   NodeHardware: [[Float]]
   BlockDetails: BlockDetails
   NodeLocation: NodeLocationX
   IPGeo: IPGeo
   Timestamp: String
+}
+
+type NodeStatsX {
+  PeerCount: Int
+  TransactionCount: Int
 }
 
 type NodeLocationX {

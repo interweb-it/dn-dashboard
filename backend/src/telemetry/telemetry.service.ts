@@ -36,10 +36,14 @@ type IPGeo = {
   lon: number;
   timestamp: number;
 };
+export type NodeStatsX = {
+  PeerCount: number;
+  TransactionCount: number;
+};
 export interface AddedNodeMessageX {
   NodeId: number;
   NodeDetails: NodeDetailsX;
-  NodeStats: NodeStats;
+  NodeStats: NodeStatsX;
   NodeIO: NodeIO;
   NodeHardware: NodeHardware;
   BlockDetails: BlockDetailsX;
@@ -162,7 +166,7 @@ const ex_data = [
 ];
 
 const parseNodeDetails = (data: NodeDetails): NodeDetailsX => {
-  //logger.debug('Parsing NodeDetails', data);
+  // logger.debug(`Parsing NodeDetails ${data.length} sections`);
   // const [NodeName, NodeImplementation, NodeVersion, Address, NetworkId, OperatingSystem, CpuArchitecture, TargetEnv, _, NodeSysInfo] = data
   const [
     NodeName,
@@ -179,7 +183,7 @@ const parseNodeDetails = (data: NodeDetails): NodeDetailsX => {
     NodeSysInfo,
     ChainStats,
   ] = data;
-  //logger.debug('Parsing NodeDetails chain stats', ChainStats);
+  // logger.debug('Parsing NodeDetails chain stats', ChainStats);
   return {
     NodeName,
     TelemetryName: null,
@@ -197,6 +201,14 @@ const parseNodeDetails = (data: NodeDetails): NodeDetailsX => {
   };
 };
 
+const parseNodeStats = (data: NodeStats): NodeStatsX => {
+  const [PeerCount, TransactionCount] = data;
+  return {
+    PeerCount,
+    TransactionCount,
+  };
+};
+
 const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
   // logger.debug('Parsing AddedNodeMessage', data.payload);
   //logger.debug('Parsing AddedNodeMessage', data.payload[3]);
@@ -206,7 +218,7 @@ const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
   return {
     NodeId: NodeId,
     NodeDetails: parsedNodeDetails, // parseNodeDetails(NodeDetails),
-    NodeStats,
+    NodeStats: parseNodeStats(NodeStats),
     NodeIO,
     NodeHardware,
     BlockDetails: parseBlockDetails(BlockDetails),

@@ -180,6 +180,13 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     if (!node) {
       node = this.dataStore[chainId][cohortId].backups.find((node) => node.stash === stash);
     }
+    // get telemetry data for the node
+    if (node.telemetry) {
+      const _tel = this.telemetryService.findOneByName(chainId, node.telemetry)
+      if (_tel) {
+        node.telemetryX = _tel.NodeDetails;
+      }
+    }
     return node;
   }
 }

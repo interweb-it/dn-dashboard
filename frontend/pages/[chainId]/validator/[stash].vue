@@ -12,7 +12,6 @@
         <span class="d-none d-sm-inline">{{ chainId }} validator</span>
         {{ node.identity }}
       </v-toolbar-title>
-      <!-- <v-spacer class="d-none d-sm-inline"></v-spacer> -->
       <v-btn icon flat :loading="isLoading" @click="reload">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
@@ -42,12 +41,8 @@
             </v-list-item>
             <v-list-item>
               <v-list-item-subtitle>Status (in the program)</v-list-item-subtitle>
-              <v-list-item-title>{{ getStatus(node.stash) }}</v-list-item-title>
+              <v-list-item-title>{{ node.status }}</v-list-item-title>
             </v-list-item>
-            <!-- <v-list-item>
-              <v-list-item-subtitle>Nominated (by the program)</v-list-item-subtitle>
-              <v-list-item-title>{{ isNominated(node.stash) }}</v-list-item-title>
-            </v-list-item> -->
 
             <v-list-item>
               <v-card>
@@ -90,8 +85,6 @@
                   </v-col>
                 </v-row>
               </v-card>
-              <!-- <v-list-item-subtitle text-color="red">Has Telemetry</v-list-item-subtitle> -->
-              <!-- <v-list-item-title>{{ telemetryError }}</v-list-item-title> -->
             </v-list-item>
           </v-list>
         </v-card-text>
@@ -103,7 +96,11 @@
           <v-list>
             <v-list-item>
               <v-list-item-subtitle>Account</v-list-item-subtitle>
-              <v-list-item-title>{{ toCoin(account.data?.free || 0) }}</v-list-item-title>
+              <v-list-item-title>
+                {{ toCoin(
+                  (account.data?.free || 0) + (account.data?.reserved || 0) + (account.data?.miscFrozen || 0)
+                ) }}
+              </v-list-item-title>
             </v-list-item>
             <v-list-item>
               <v-list-item-subtitle>Bonded</v-list-item-subtitle>
@@ -123,7 +120,6 @@
             </v-list-item>
             <v-list-item>
               <v-list-item-subtitle>Identity</v-list-item-subtitle>
-              <!-- <v-list-item-title>{{ identity }}</v-list-item-title> -->
               <v-list-item-title>
                 <p>Display: {{ identity?.info?.display }}{{ identity?.subId ? `/${identity?.subId}` : '' }}</p>
                 <p>Email: {{ identity?.info?.email }}</p>
@@ -166,10 +162,11 @@
             </v-row>
           </v-container>
 
-          <v-data-table :items="exposure.others" :headers="[{ key: 'who', title: 'Address'}, {key: 'value', title: 'Amount', align: 'end'}]">
+          <v-data-table :items="exposure.others"
+            :headers="[{ key: 'who', title: 'Address'}, {key: 'value', title: 'Amount', align: 'end'}]"
+            :sort-by="[{ key: 'value', order: 'desc' }]">
             <template v-slot:item.who="{ item }">
               <a :href="`https://${chainId}.subscan.io/nominator/${item.who}`" target="_blank">{{ shortStash(item.who) }}</a>              
-              <!-- <v-icon color="purple" v-if="dnNominators.includes(item.who)">mdi-hand</v-icon> -->
               <span v-if="dnNominators.includes(item.who)" style="color: blueviolet; font-weight: bold;"> [DN]</span>
             </template>
             <template v-slot:item.value="{ item }">
@@ -179,10 +176,7 @@
         </v-card-text>
       </v-card>
 
-      <!-- {{ dnNominators }} -->
-
       <v-card>
-        <!-- <v-card-title>Nominators {{ nominatorStoreLoading }}</v-card-title> -->
         <v-toolbar fluid color="background" density="compact">
           <v-toolbar-title>Nominators</v-toolbar-title>
           <v-btn icon flat @click="getNominators" :loading="loadingN">
@@ -219,9 +213,7 @@
             <template v-slot:item.address="{ item }">
               <a :href="`https://${chainId}.subscan.io/nominator/${item.address}`" target="_blank">{{ shortStash(item.address) }}</a>              
               <v-icon color="red" v-if="exposure.others.map(m => m.who).includes(item.address)">mdi-fire</v-icon>
-              <!-- <v-icon color="purple" v-if="dnNominators.includes(item.address)">mdi-hand</v-icon> -->
               <span v-if="dnNominators.includes(item.address)" style="color: blueviolet; font-weight: bold;"> [DN]</span>
-              <!-- <a :href="`/${chainId}/validator/${item.address}`">{{ item.address }}</a> -->
             </template>
             <template v-slot:item.balance="{ item }">
               {{ item.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}
@@ -271,43 +263,33 @@
               <v-list-item-subtitle>Network Id</v-list-item-subtitle>
               <v-list-item-title>{{ telemetry?.NetworkId }}</v-list-item-title>
             </v-list-item>
-            <!-- <v-list-item>
-              <v-list-item-subtitle>Address</v-list-item-subtitle>
-              <v-list-item-title>{{ telemetry?.Address }}</v-list-item-title>
-            </v-list-item> -->
             <v-list-item>
               <v-list-item-subtitle>NodeSysInfo</v-list-item-subtitle>
-              <!-- <v-list-item-subtitle> -->
               <span text-color="grey">
-                <!-- {{ telemetry?.CpuArchitecture }} -->
                 CPU: {{ telemetry?.NodeSysInfo?.cpu }},
                 Memory: {{ Number(telemetry?.NodeSysInfo?.memory/1024/1024/1024).toFixed(2) }} GB,
                 Cores: {{ telemetry?.NodeSysInfo?.core_count }}<br>
                 Kernel: {{ telemetry?.NodeSysInfo?.linux_kernel }},
                 Distro: {{ telemetry?.NodeSysInfo?.linux_distro }},
-                VM: {{ telemetry?.NodeSysInfo?.is_virtual_machine }}
+                VM: {{ telemetry?.NodeSysInfo?.is_virtual_machine ? 'Yes' : 'No' }}
               </span>
-              <!-- </v-list-item-subtitle> -->
             </v-list-item>
             <!-- <v-list-item>
               <v-list-item-title>Target Env</v-list-item-title>
               <v-list-item-subtitle>{{ telemetry?.TargetEnv }}</v-list-item-subtitle>
             </v-list-item> -->
-            <!-- <v-list-item>
-              <v-list-item-title>Node Sys Info</v-list-item-title>
-              <v-list-item-subtitle>{{ telemetry?.NodeSysInfo }}</v-list-item-subtitle>
-            </v-list-item> -->
+            <!-- {{ telemetry?.ChainStats }} -->
+            <!--
             <v-list-item>
               <v-list-item-subtitle>Chain Stats</v-list-item-subtitle>
               <v-list-item-title>
-                <!-- {{ telemetry?.ChainStats }} -->
                 CPU Hashrate: {{ telemetry?.ChainStats?.cpu_hashrate_score }},
                 Memory Memcpy: {{ telemetry?.ChainStats?.memory_memcpy_score }},
                 Disk Seq Write: {{ telemetry?.ChainStats?.disk_sequential_write_score }},
                 Disk Rand Write: {{ telemetry?.ChainStats?.disk_random_write_score }}
               </v-list-item-title>
             </v-list-item>
-
+            -->
             </span>
           </v-list>
         </v-card-text>
@@ -373,47 +355,39 @@ export interface NodeDetailsX {
   ChainStats: ChainStats;
 }
 
-import type { ISelectedNode, IBackupNode } from '~/utils/types';
+import type { IBackupNode } from '~/utils/types';
 
 const QUERY_NODE = gql`
 query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
-  nominators(chainId: $chainId, cohortId: $cohortId) 
-  selected(chainId: $chainId, cohortId: $cohortId) {
+  nodeByStash(chainId:$chainId, cohortId:1, stash: $stash){
     identity
     stash
+    commission
     status
+    telemetryX {
+      NodeName
+      NodeSysInfo {
+        memory
+        core_count
+        linux_kernel
+        linux_distro
+        is_virtual_machine
+      }
+    }
   }
-  # nominators(chainId: $chainId) 
-  backups(chainId: $chainId, cohortId: $cohortId) {
-    identity
-    stash
-  }
-  nodeByStash(chainId: $chainId, cohortId: $cohortId, stash: $stash) {
-    identity
-    stash
-    status
-  }
-  # validators(chainId: $chainId) {
-  #   address
-  # }
+  # dn nominators
+  nominators(chainId: $chainId, cohortId: $cohortId)
 }`
+
 const QUERY_TELEMETRY = gql`
 query telemetry($chainId: String!, $name: String!) {
   telemetryByName(chainId: $chainId, name: $name) {
     NodeId
-    # IPGeo {
-    #   query
-    #   lat
-    #   lon
-    #   city
-    #   country
-    # }
     NodeDetails {
       NodeName
       TelemetryName
       NodeImplementation
       NodeVersion
-      # Address
       NetworkId
       # OperatingSystem
       NodeSysInfo {
@@ -500,7 +474,6 @@ interface INode {
 export default defineComponent({
   name: 'CohortHome',
   components: {
-    // PerformanceChart,
     PerformanceCard,
   },
   async setup() {
@@ -519,10 +492,7 @@ export default defineComponent({
 
     const nodes = ref([])
     var error = ref(null)
-    // const selected = ref([])
     const node = ref<INode>({ identity: '', stash: '', status: '' })
-    const selected = ref<ISelectedNode[]>([])
-    const backups = ref<IBackupNode[]>([])
     const dnNominators = ref<string[]>([])
     const validators = ref([])
     const telemetry = ref({})
@@ -755,8 +725,6 @@ export default defineComponent({
         }
         console.log('main result', result.data);
         node.value = result.data.nodeByStash;
-        selected.value = result.data.selected || [];
-        backups.value = result.data.backups || [];
         dnNominators.value = result.data.nominators || [];
         validators.value = result.data.validators || [];
         // use the name to get telemetry data
@@ -838,8 +806,8 @@ export default defineComponent({
       //   // return
       // }
       const _account = await api?.query.system.account(stash.value)
-      console.log('account', stash.value, _account?.toString())
-      account.value = _account ? _account : {}
+      console.log('account', stash.value, _account?.toJSON())
+      account.value = _account ? _account.toJSON() : {}
 
       const _locks = await api?.query.balances.locks(stash.value);
       const _locksStr: any = _locks?.toJSON() as any[] || []
@@ -881,29 +849,27 @@ export default defineComponent({
 
     }
 
-    const getStatus = (stash: string) => {
-      // console.debug('getStatus', stash);
-      let foundS: ISelectedNode | undefined = selected.value.find(n => n.stash === stash)
-      // console.debug('found', found);
-      if (foundS) return foundS.status
-      let foundB: IBackupNode | undefined = backups.value.find(n => n.stash === stash)
-      // console.debug('found', found);
-      if (foundB) return 'Backup'
-      return 'Unknown'
-    }
-
     const toCoin = (value: bigint | number | string) => {
+      // console.debug('toCoin', value, typeof value);
       let _v: number = 0
       // if value is string, convert to number
       if (typeof value === 'string') {
+        // console.debug('toCoin string');
         _v = Number(value.replace(',', ''))
       }
       // BigInt
       if (typeof value === 'bigint') {
+        // console.debug('toCoin bigint');
         _v = Number(value)
       }
-      // console.debug('toCoin', value, chainId.value);
+      // number
+      if (typeof value === 'number') {
+        // console.debug('toCoin number');
+        _v = value
+      }
+      // console.debug('toCoin', _v, chainId.value);
       const ret = _v / Math.pow(10, decimals[chainId.value])
+      // console.debug('toCoin', ret);
       return ret.toFixed(2) + ' ' + tokens[chainId.value]
     }
 
@@ -1134,29 +1100,21 @@ export default defineComponent({
       telemetryError,
       refetchT,
       nominators,
-      //backups,
       validators,
       exposure,
-      // page,
-      // pages,
 
       performance,
       refetchP,
 
-      // data,
       totalNominations,
       dnNominations,
       nonDnNominations,
       getTelemetry: refetchT,
-      getStatus,
       getExposure,
       getNominators,
       getAllNominators,
-      // getPerformance,
-      // isNominated,
       toCoin,
       shortStash,
-      // performanceGrade,
     }
   }
 })

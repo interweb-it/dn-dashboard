@@ -42,7 +42,7 @@ export interface NodeDetailsX {
 export const useNodeStore = defineStore({
   id: 'nodeStore',
   state: () => ({
-    chainId: 'kusama',
+    chainId: '',
     cohortId: 1,
     selected: [],
     backup: [],
