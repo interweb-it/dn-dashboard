@@ -103,20 +103,19 @@ export class TelemetryResolver {
     return this.telemetryService.findOneByNetworkId(chainId, networkId);
   }
 
-  // @Mutation('createCat')
-  // async create(@Args('createCatInput') args: CreateCatDto): Promise<Cat> {
-  //   const createdCat = await this.catsService.create(args);
-  //   pubSub.publish('catCreated', { catCreated: createdCat });
-  //   return createdCat;
-  // }
-
-  // @Subscription('nodeAdded')
-  // nodeAdded() {
-  //   //return pubSub.asyncIterator('catCreated');
-  // }
-
-  // @Subscription('nodeRemoved')
-  // nodeRemoved() {
-  //   //return pubSub.asyncIterator('catCreated');
-  // }
+  @Query('telemetryNameMap')
+  async getNameMap(
+    @Args('chainId')
+    chainId: string,
+  ): Promise<Record<string, string>[]> {
+    console.debug('resolver.ts: getNameMap', chainId);
+    const _map = this.telemetryService.telemetryNameMap(chainId);
+    console.log(_map);
+    return Object.entries(_map).map(([key, value]) => {
+      return {
+        dnIdentity: key,
+        telemetryName: value,
+      };
+    });
+  }
 }

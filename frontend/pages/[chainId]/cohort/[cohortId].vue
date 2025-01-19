@@ -167,6 +167,7 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
     stash
     status
     commission
+    telemetry
     telemetryX {
       NodeName
       NodeSysInfo {
@@ -189,34 +190,34 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
   }
 }`
 
-const QUERY_TELEMETRY = gql`
-query queryTelemetry($chainId: String!) {
-  telemetry(chainId: $chainId) {
-    NodeId
-    NodeDetails {
-      NodeName
-      NodeImplementation
-      NodeVersion
-      Address
-      NetworkId
-      # OperatingSystem
-      NodeSysInfo {
-        cpu
-        memory
-        core_count
-        linux_kernel
-        linux_distro
-        is_virtual_machine
-      }
-      ChainStats {
-        cpu_hashrate_score
-        memory_memcpy_score
-        disk_sequential_write_score
-        disk_random_write_score
-      }
-    }
-  }
-}`
+// const QUERY_TELEMETRY = gql`
+// query queryTelemetry($chainId: String!) {
+//   telemetry(chainId: $chainId) {
+//     NodeId
+//     NodeDetails {
+//       NodeName
+//       NodeImplementation
+//       NodeVersion
+//       Address
+//       NetworkId
+//       # OperatingSystem
+//       NodeSysInfo {
+//         cpu
+//         memory
+//         core_count
+//         linux_kernel
+//         linux_distro
+//         is_virtual_machine
+//       }
+//       ChainStats {
+//         cpu_hashrate_score
+//         memory_memcpy_score
+//         disk_sequential_write_score
+//         disk_random_write_score
+//       }
+//     }
+//   }
+// }`
 
 
 export default defineComponent({
@@ -255,7 +256,7 @@ export default defineComponent({
     const nominators = ref(nodeStore.nominators)
     const backups = ref(nodeStore.backups)
     const validators = ref(nodeStore.validators)
-    const telemetry = ref(nodeStore.telemetry)
+    // const telemetry = ref(nodeStore.telemetry)
     const search = ref(nodeStore.search)
     const tab = ref(nodeStore.tab)
     const page = ref(nodeStore.page)
@@ -311,37 +312,37 @@ export default defineComponent({
         backups.value = result.data?.backups || [];
         nodeStore.backups = backups.value;
 
-        refetchT.value()
+        // refetchT.value()
         console.log('...done');
       });
 
-      var {
-        // error, 
-        loading: tLoading,
-        refetch: tRefetch,
-        onResult: tonResult } = useQuery(QUERY_TELEMETRY, {
-          chainId: chainId.value,
-          cohortId: cohortId.value
-        })
-      refetchT.value = tRefetch
+      // var {
+      //   // error, 
+      //   loading: tLoading,
+      //   refetch: tRefetch,
+      //   onResult: tonResult } = useQuery(QUERY_TELEMETRY, {
+      //     chainId: chainId.value,
+      //     cohortId: cohortId.value
+      //   })
+      // refetchT.value = tRefetch
 
-      tonResult(async (result: any) => {
-        if (result.loading) {
-          console.log('still loading...');
-          return;
-        }
-        console.log('result 2', result);
-        telemetry.value = result.data?.telemetry || [];
-        console.log('adding telemetry');
-        // if (telemetry.value.length > 0) {
-        //   for (const node of telemetry.value) {
-        //     await nodeStore.addNode(node);
-        //   }
-        // }
-        nodeStore.telemetry = telemetry.value;
-        console.log('...done');
-        // await updateNominatorTargets()
-      });
+      // tonResult(async (result: any) => {
+      //   if (result.loading) {
+      //     console.log('still loading...');
+      //     return;
+      //   }
+      //   console.log('result 2', result);
+      //   telemetry.value = result.data?.telemetry || [];
+      //   console.log('adding telemetry');
+      //   // if (telemetry.value.length > 0) {
+      //   //   for (const node of telemetry.value) {
+      //   //     await nodeStore.addNode(node);
+      //   //   }
+      //   // }
+      //   nodeStore.telemetry = telemetry.value;
+      //   console.log('...done');
+      //   // await updateNominatorTargets()
+      // });
     });
 
     const nominations = ref<Record<string, string[]>>({});
@@ -463,7 +464,7 @@ export default defineComponent({
       nominations,
       backups,
       validators,
-      telemetry,
+      // telemetry,
       search,
       tab,
       page,

@@ -367,6 +367,7 @@ query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
     stash
     commission
     status
+    telemetry
     telemetryX {
       NodeName
       NodeSysInfo {

@@ -246,6 +246,9 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     kusama: '0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe',
     polkadot: '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
   };
+  /**
+   * Data store for telemetry messages
+   */
   private dataStore: Record<string, Map<number, AddedNodeMessageX>> = {
     polkadot: new Map<number, AddedNodeMessageX>(), // [],
     kusama: new Map<number, AddedNodeMessageX>(), // [],
@@ -256,7 +259,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     this.connect('polkadot');
     this.connect('kusama');
     this.updateTelemetryNameMap();
-    this.readIPGeoFile();
+    // this.readIPGeoFile();
     // wait 30 secnds
     // setTimeout(() => {
     //   this.updateGeoIP();
@@ -372,16 +375,17 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     return Array.from(this.dataStore[chainId].values()).find((node) => node.NodeDetails.NetworkId === networkId);
   }
 
+  // find by node identity
   findOneByName(chainId: string, nodeName: string): AddedNodeMessageX {
     let ret: AddedNodeMessageX | undefined;
     const _name = telemetryNameMap[chainId][nodeName] || nodeName;
-    logger.log('telemetry.service.ts: findOneByName', chainId, _name, 'from', nodeName);
+    logger.log(`telemetry.service.ts: findOneByName: ${chainId}, ${_name}, from: ${nodeName}`);
     this.dataStore[chainId].forEach((node) => {
       if (node.NodeDetails.NodeName === _name) {
         // logger.log('findOneByName ChainStats:', node.NodeDetails.ChainStats);
-        if (!node.NodeDetails.ChainStats) {
-          logger.warn('ChainStats is missing:', node.NodeDetails);
-        }
+        // if (!node.NodeDetails.ChainStats) {
+        //   logger.warn('ChainStats is missing:', node.NodeDetails);
+        // }
         ret = node;
         if (_name !== nodeName) ret.NodeDetails.TelemetryName = _name;
       }
@@ -390,6 +394,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     // if (ret?.NodeDetails.Address) {
     //   ret.IPGeo = this.getGeoForIP(ret.NodeDetails.Address);
     // }
+    if (!ret) logger.warn(`Telemetry not found: ${chainId}, ${nodeName}`);
     return ret;
   }
 
@@ -425,38 +430,42 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  telemetryNameMap(chainId: string): Record<string, string> {
+    return telemetryNameMap[chainId];
+  }
+
   updateTelemetryNameForNode(chainId: string, nodeIdentity: string, telemetryName: string) {
     logger.log('Updating telemetry name for node:', chainId, nodeIdentity, telemetryName);
     telemetryNameMap[chainId][nodeIdentity] = telemetryName;
   }
 
-  private async readIPGeoFile() {
-    logger.debug('Reading IP Geo file...');
-    const filename = 'ipgeo.json';
-    try {
-      const data = fs.readFileSync(filename, 'utf-8');
-      const geo: Record<string, IPGeo> = JSON.parse(data);
-      Object.entries(geo).forEach(([address, value]) => {
-        this.ipGeo.set(address, value);
-      });
-    } catch (error) {
-      logger.error('Error reading IP Geo file:', error.message);
-    }
-    logger.debug('IP Geo:', this.ipGeo);
-  }
+  // private async readIPGeoFile() {
+  //   logger.debug('Reading IP Geo file...');
+  //   const filename = 'ipgeo.json';
+  //   try {
+  //     const data = fs.readFileSync(filename, 'utf-8');
+  //     const geo: Record<string, IPGeo> = JSON.parse(data);
+  //     Object.entries(geo).forEach(([address, value]) => {
+  //       this.ipGeo.set(address, value);
+  //     });
+  //   } catch (error) {
+  //     logger.error('Error reading IP Geo file:', error.message);
+  //   }
+  //   logger.debug('IP Geo:', this.ipGeo);
+  // }
 
-  private async writeIPGeoFile() {
-    const filename = 'ipgeo.json';
-    try {
-      const data = {};
-      this.ipGeo.forEach((value, key) => {
-        data[key] = value;
-      });
-      fs.writeFileSync(filename, JSON.stringify(data, null, 2));
-    } catch (error) {
-      logger.error('Error writing IP Geo file:', error.message);
-    }
-  }
+  // private async writeIPGeoFile() {
+  //   const filename = 'ipgeo.json';
+  //   try {
+  //     const data = {};
+  //     this.ipGeo.forEach((value, key) => {
+  //       data[key] = value;
+  //     });
+  //     fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+  //   } catch (error) {
+  //     logger.error('Error writing IP Geo file:', error.message);
+  //   }
+  // }
 
   // private async updateGeoIP() {
   //   logger.log('Fetching GeoIP data...');
