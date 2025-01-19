@@ -53,7 +53,7 @@
                     single-line
                     density="compact"
                   ></v-text-field>
-                  <v-btn icon flat :loading="loading" @click="refresh">
+                  <v-btn icon flat :loading="loading" @click="refetch">
                     <v-icon>mdi-refresh</v-icon>
                   </v-btn>
                 </v-row>
@@ -61,9 +61,10 @@
 
               <v-data-table
                 :items="selected"
+                :loading="loading"
                 :headers="[
                   {title: 'Name', key: 'identity'},
-                  {title: 'Stash',key: 'stash'},
+                  // {title: 'Stash',key: 'stash'},
                   {title: 'Commission',key: 'commission'},
                   {title: 'DN Status',key: 'status'},
                   {title: 'DN nominated', key: 'nominatedBy'},
@@ -82,8 +83,10 @@
                 @click:row="gotoValidator">
                 <template v-slot:item="{ item }">
                   <tr @click="gotoValidator(null, {item})">
-                    <td>{{ item.identity }}</td>
-                    <td class="text-overline text-none">{{ shortStash(item.stash) }}</td>
+                    <td>
+                      {{ item.identity }}<br>{{ shortStash(item.stash) }}
+                    </td>
+                    <!-- <td class="text-overline text-none"></td> -->
                     <td>{{ Number(item.commission).toLocaleString(undefined, {maximumFractionDigits: 1, minimumFractionDigits: 1}) }}</td>
                     <td>{{ item.status }}</td>
                     <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
@@ -184,15 +187,12 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
     address
     commission
   }
+}`
+
+const QUERY_TELEMETRY = gql`
+query queryTelemetry($chainId: String!) {
   telemetry(chainId: $chainId) {
     NodeId
-    IPGeo {
-      # query # do not dox the IP
-      lat
-      lon
-      city
-      country
-    }
     NodeDetails {
       NodeName
       NodeImplementation
@@ -217,6 +217,7 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
     }
   }
 }`
+
 
 export default defineComponent({
   name: 'CohortHome',
@@ -247,6 +248,7 @@ export default defineComponent({
     var loading = ref<any>(false)
     // var loadingG = ref<any>(false)
     var refetch = ref<any>(null)
+    var refetchT = ref<any>(() => { console.log('refetchT not ready') })
     // var grefetch = ref(() => {})
 
     const selected = ref(nodeStore.selected)
@@ -275,21 +277,8 @@ export default defineComponent({
 
     onMounted(async () => {
       //console.debug('onMounted');
-      if(nodeStore.selected.length === 0) {
-        setupRefetch();
-      } else {
-        getNominatorTargets()
-      }
-
-      // if(!stakingEntries.value || stakingEntries.value.length === 0) {
-      //   console.debug('get stakingEntries...');
-      //   getAllNominators();
-      // }
-    });
-
-    const setupRefetch = () => {
       var {
-        error, 
+        // error, 
         loading: cLoading,
         refetch: cRefetch,
         onResult } = useQuery(QUERY_NODES, {
@@ -297,48 +286,69 @@ export default defineComponent({
           cohortId: cohortId.value
         })
       refetch.value = cRefetch
-      loading = cLoading
+      // loading.value = cLoading.value;
+      watch(() => cLoading.value, (value) => {
+        console.log('loading', value);
+        loading.value = value;
+      });
 
-      onResult((result: any) => {
+      onResult(async (result: any) => {
         if (result.loading) {
           console.log('still loading...');
           return;
         }
-        console.log('result', result.data);
-        selected.value = result.data?.selected || [];
-        nodeStore.selected = selected.value;
-        nominators.value = result.data?.nominators.map(n => {return {stash: n}}) || [];
-        nodeStore.nominators = nominators.value;
-        backups.value = result.data?.backups || [];
-        nodeStore.backups = backups.value;
+        console.log('result 1', result.data);
         validators.value = result.data?.validators || [];
         nodeStore.validators = validators.value;
-        telemetry.value = result.data?.telemetry || [];
 
-        // console.log('nodes', nodes);
-        telemetry.value?.forEach((node: any) => {
-          // console.log('node', node);
-          nodeStore.addNode(node);
-        });
-        nodeStore.telemetry = telemetry.value;
+        selected.value = result.data?.selected || [];
+        updateNominatorTargets();
+        nodeStore.selected = selected.value;
 
-        getNominatorTargets()
+        nominators.value = result.data?.nominators.map(n => {return {stash: n}}) || [];
+        nodeStore.nominators = nominators.value;
+
+        backups.value = result.data?.backups || [];
+        nodeStore.backups = backups.value;
+
+        refetchT.value()
+        console.log('...done');
       });
-    }
 
-    const doRefetch = async () => {
-      console.log('doRefetch');
-      if (!refetch.value)
-        setupRefetch();
-      else
-        refetch.value();
-    }
+      var {
+        // error, 
+        loading: tLoading,
+        refetch: tRefetch,
+        onResult: tonResult } = useQuery(QUERY_TELEMETRY, {
+          chainId: chainId.value,
+          cohortId: cohortId.value
+        })
+      refetchT.value = tRefetch
+
+      tonResult(async (result: any) => {
+        if (result.loading) {
+          console.log('still loading...');
+          return;
+        }
+        console.log('result 2', result);
+        telemetry.value = result.data?.telemetry || [];
+        console.log('adding telemetry');
+        // if (telemetry.value.length > 0) {
+        //   for (const node of telemetry.value) {
+        //     await nodeStore.addNode(node);
+        //   }
+        // }
+        nodeStore.telemetry = telemetry.value;
+        console.log('...done');
+        // await updateNominatorTargets()
+      });
+    });
 
     const nominations = ref<Record<string, string[]>>({});
     const nominatedBy = ref<Record<string, string[]>>({});
 
-    const getNominatorTargets = async () => {
-      console.log('getNominatorTargets');
+    const updateNominatorTargets = async () => {
+      console.log('updateNominatorTargets');
       if (!api) api = await $substrate.getApi(chainId.value)
       // console.log('api', api);
       for(let i = 0; i < nominators.value.length; i++) {
@@ -369,44 +379,8 @@ export default defineComponent({
           nominatedBy.value[target] = nominator.stash;
         }
       }
-      console.debug('...done');
+      console.debug('updateNominatorTargets...done');
     }
-
-    // const getAllNominators = async () => {
-    //   console.log('getAllNominators');
-    //   await $substrate.getAllNominators();
-    //   // console.debug('get stakingEntries');
-    //   // if(!api) {
-    //   //   console.error('api not ready');
-    //   //   return
-    //   // }
-    //   // nominatorStore.loading = true
-    //   // const stakingEntries = await api.query.staking.nominators.entries()
-    //   // const entries = stakingEntries.map(([key, nominations]) => {
-    //   //   // console.debug('key', key.toString(), value);
-    //   //   return [key, nominations.toJSON()]
-    //   //   // nominatorStore.setStakingEntries(key.toString(), value)
-    //   // })
-    //   // console.debug('entries', entries.length);
-    //   // nominatorStore.setStakingEntries(entries)
-    //   // nominatorStore.loading = false;
-    // }
-
-    // const getNominatedBy = (stash: string): string => {
-    //   const nominators: string[] = []
-    //   for (let i = 0; i < nominators.value.length; i++) {
-    //     const n = nominators.value[i];
-    //     if (nominations.value[n.stash].includes(stash)) {
-    //       nominators.push(n.stash);
-    //     }
-    //   }
-    //   for (let [n, targets] of nominations.value.entries()) {
-    //     if (targets.includes(stash)) {
-    //       nominators.push(n);
-    //     }
-    //   }
-    //   return nominators[0] || '';
-    // }
 
     const gotoValidator = (event, row) => {
       console.log('item', row.item);
@@ -434,19 +408,6 @@ export default defineComponent({
       nodeStore.linesPerPage = value;
     });
 
-    // watch(route, (value) => {
-    //   console.log('new chainId', value);
-    //   //nodeStore.setChainId(value);
-    //   refresh()
-    // });
-    // const goto = (path: string) => {
-    //   console.log('goto', path);
-    //   // nextTick(() => {
-    //     router.push(path);
-    //     refresh();
-    //   // });
-    // }
-
     const shortStash = (stash: string) => {
       if (!stash) return '';
       return stash.substring(0, 6) + '...' + stash.substring(stash.length - 6);
@@ -460,13 +421,6 @@ export default defineComponent({
       lon: string;
     }
     const locations = ref<Record<string, ILocation>>({});
-
-    const refresh = async () => {
-      console.log('refreshing');
-      // loading.value = true;
-      refetch.value();
-      // grefetch.value();
-    }
 
     const getIdentity = (stash: string) => {
       const foundS: ISelectedNode | undefined = selected.value.find((s: any) => s.stash === stash);
@@ -501,7 +455,7 @@ export default defineComponent({
       loading,
       substrateStoreLoading,
       elevation,
-      refresh: doRefetch,
+      refetch,
       chainId,
       cohortId,
       selected,

@@ -45,7 +45,7 @@ export const useNodeStore = defineStore({
     chainId: '',
     cohortId: 1,
     selected: [],
-    backup: [],
+    backups: [],
     nominators: [],
     telemetry: [],
     validators: [],
@@ -62,7 +62,7 @@ export const useNodeStore = defineStore({
     setChainId(chainId: string) {
       this.chainId = chainId
       this.selected = []
-      this.backup = []
+      this.backups = []
       this.nominators = []
       this.telemetry = []
       this.validators = []
@@ -72,7 +72,7 @@ export const useNodeStore = defineStore({
     setSearch(search: string) {
       this.search = search
     },
-    addNode(node: AddedNodeMessageX) {
+    async addNode(node: AddedNodeMessageX) {
       // console.log('Adding node', node);
       if (!(this.nodes instanceof Map)) {
         this.nodes = new Map(); // Reinitialize if something goes wrong

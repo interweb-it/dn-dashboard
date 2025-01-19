@@ -73,7 +73,6 @@ export default class SubstrateService {
     console.debug('Connected to api', chainId);
     // reset this if the api is reconnected
     this.loadingNominators = false;
-    this.getAllNominators();
   }
 
   // Disconnect the API
@@ -108,31 +107,31 @@ export default class SubstrateService {
   }
 
   protected loadingNominators: boolean = false;
-  getAllNominators = async () => {
-    console.debug('get stakingEntries');
-    if(!this.api) {
-      if (this.chainId) {
-        await this.connect(this.chainId);
-      } else {
-        console.warn('api not ready, backing off...');
-        return
-      }
-    }
-    if(this.loadingNominators) {
-      console.warn('already loadingNominators');
-      return
-    }
-    this.loadingNominators = true;
-    this.substrateStore.loading = true;
-    const stakingEntries = await this.api.query.staking.nominators.entries()
-    const entries = stakingEntries.map(([key, nominations]) => {
-      // console.debug('key', key.toString(), value);
-      return [key, nominations.toJSON()]
-    })
-    console.debug('entries', entries.length);
-    this.substrateStore.stakingEntries = entries
-    this.loadingNominators = false;
-    this.substrateStore.loading = false;
-  }
+  // getAllNominators = async () => {
+  //   console.debug('get stakingEntries');
+  //   if(!this.api) {
+  //     if (this.chainId) {
+  //       await this.connect(this.chainId);
+  //     } else {
+  //       console.warn('api not ready, backing off...');
+  //       return
+  //     }
+  //   }
+  //   if(this.loadingNominators) {
+  //     console.warn('already loadingNominators');
+  //     return
+  //   }
+  //   this.loadingNominators = true;
+  //   this.substrateStore.loading = true;
+  //   const stakingEntries = await this.api.query.staking.nominators.entries()
+  //   const entries = stakingEntries.map(([key, nominations]) => {
+  //     // console.debug('key', key.toString(), value);
+  //     return [key, nominations.toJSON()]
+  //   })
+  //   console.debug('entries', entries.length);
+  //   this.substrateStore.stakingEntries = entries
+  //   this.loadingNominators = false;
+  //   this.substrateStore.loading = false;
+  // }
 
 }

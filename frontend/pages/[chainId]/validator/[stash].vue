@@ -141,7 +141,9 @@
         @refresh="refetchP"></PerformanceCard>
 
       <v-card>
-        <v-card-title>Exposure
+        <v-card-title>
+          Exposure
+          <v-icon color="red">mdi-fire</v-icon>
           <v-btn icon flat @click="getExposure" :loading="loadingE">
             <v-icon>mdi-refresh</v-icon>
           </v-btn>
@@ -151,13 +153,13 @@
           <v-container fluid class="ma-0 pa-0">
             <v-row no-gutters>
               <v-col>
-                Total: {{ exposure.total.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+                Total: {{ exposure.total.toLocaleString(undefined, {maximumFractionDigits:  decimalPlaces, minimumFractionDigits:  decimalPlaces}) }}
               </v-col>
               <v-col>
-                Own: {{ exposure.own.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+                Own: {{ exposure.own.toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
               </v-col>
               <v-col>
-                Others: {{ exposure.others.reduce((sum, m) => sum + m.value, 0).toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+                Others: {{ exposure.others.reduce((sum, m) => sum + m.value, 0).toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
               </v-col>
             </v-row>
           </v-container>
@@ -170,7 +172,7 @@
               <span v-if="dnNominators.includes(item.who)" style="color: blueviolet; font-weight: bold;"> [DN]</span>
             </template>
             <template v-slot:item.value="{ item }">
-              {{ item.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}
+              {{ item.value.toLocaleString(undefined, {minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces}) }}
             </template>
           </v-data-table>
         </v-card-text>
@@ -179,13 +181,10 @@
       <v-card>
         <v-toolbar fluid color="background" density="compact">
           <v-toolbar-title>Nominators</v-toolbar-title>
-          <v-btn icon flat @click="getNominators" :loading="loadingN">
+          <v-btn icon flat @click="refetchN" :loading="loadingN">
             <v-icon>mdi-refresh</v-icon>
           </v-btn>
           <v-spacer></v-spacer>
-          <v-btn icon flat @click="getAllNominators" :loading="substrateStoreLoading">
-            <v-icon>mdi-flash-alert-outline</v-icon>
-          </v-btn>
         </v-toolbar>
         <v-card-text>
           <!-- <p v-show="loadingN" color="red">Scanning chain nominators, building nominator list... {{ page }} of {{ pages }}</p> -->
@@ -193,13 +192,13 @@
           <v-container fluid class="ma-0 pa-0">
             <v-row no-gutters>
               <v-col>
-                Total: {{ totalNominations.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+                Total: {{ totalNominations.toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
               </v-col>
               <v-col>
-                DN: {{ dnNominations.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+                DN: {{ dnNominations.toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
               </v-col>
               <v-col>
-                Non-DN: {{ nonDnNominations.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2}) }}
+                Non-DN: {{ nonDnNominations.toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
               </v-col>
             </v-row>
           </v-container>
@@ -216,7 +215,11 @@
               <span v-if="dnNominators.includes(item.address)" style="color: blueviolet; font-weight: bold;"> [DN]</span>
             </template>
             <template v-slot:item.balance="{ item }">
-              {{ item.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}
+              <span style="color: red;" v-if="exposure.others.map(m => m.who).includes(item.address)">
+                {{ exposure.others.find(m => m.who === item.address)?.value.toLocaleString(undefined, {minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces}) }} /
+              </span>
+              {{ item.balance.toLocaleString(undefined, {minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces}) }}
+              <!-- item exposure -->
             </template>
           </v-data-table>
         </v-card-text>
@@ -379,6 +382,15 @@ query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
   nominators(chainId: $chainId, cohortId: $cohortId)
 }`
 
+const QUERY_NOMINATORS = gql`
+query stakers($chainId: String!, $stash: String!) {
+  stakersForStash(chainId:$chainId, stash: $stash) {
+    address
+    balance
+    # targets
+  }
+}`
+
 const QUERY_TELEMETRY = gql`
 query telemetry($chainId: String!, $name: String!) {
   telemetryByName(chainId: $chainId, name: $name) {
@@ -487,6 +499,7 @@ export default defineComponent({
     const { $substrate } = useNuxtApp();
     var api: ApiPromise | null;
     var apip: ApiPromise | null;
+    const decimalPlaces: number = 0;
 
     const apiConnected = computed(() => substrateStore.apiConnected)
 
@@ -512,6 +525,7 @@ export default defineComponent({
     var refetchC = () => {}
     var refetchT = ref(() => {})
     var refetchP = ref(() => {})
+    var refetchN = ref(() => {})
 
     onBeforeUnmount(() => {
       if(scrollHandler) scrollHandler();
@@ -522,7 +536,7 @@ export default defineComponent({
     var loadingP = ref<any>()
     var loadingE = ref<boolean>(false)
     var loadingN = ref<boolean>(false)
-    var loadingAN = computed(() => nominatorStore.loading)
+    var loadingAN = ref<any>()
 
     const getApi = async () => {
       if (!api || !apiConnected.value) {
@@ -591,12 +605,13 @@ export default defineComponent({
 
     const reload = async () => {
       console.log('reload');
-      await refetchC()
+      await refetchC() // chain
       // await refetchT() // refetchC will call the telemetry
       await getAccount()
       await getExposure()
       // await getNominators()
-      await refetchP.value()
+      await refetchP.value() // performance
+      await refetchN.value() // all nominators
     }
 
     // rules: https://github.com/turboflakes/one-t/blob/main/LEGENDS.md#val-performance-report-legend
@@ -710,6 +725,7 @@ export default defineComponent({
     });
 
     onMounted(async () => {
+      // node
       var { error, loading: cLoading, refetch: cRefetch, onResult } = useQuery(QUERY_NODE, {
         chainId: chainId.value,
         cohortId: 1,
@@ -754,6 +770,35 @@ export default defineComponent({
           : `No telemetry data found - does your node have '--name "${node.value.identity}"''`;
       });
 
+      // all nominators/stakers
+      var { error, loading: nLoading, refetch: nRefetch, onResult: nonResult } = useQuery(QUERY_NOMINATORS, {
+        chainId: chainId.value,
+        stash: stash.value || ''
+      });
+
+      loadingN = nLoading
+      refetchN.value = nRefetch
+
+      nonResult((result: any) => {
+        if (result.loading) {
+          console.log('still loading...');
+          return;
+        }
+        console.log('nominators result', result.data);
+        nominators.value = result.data?.stakersForStash.map((staker: any) => {
+          return {
+            address: staker.address,
+            balance: Number(staker.balance) / Math.pow(10, decimals[chainId.value])
+          }
+        }) || [];
+        // nominatorStore.setNominators(result.data?.stakers || [])
+        // result.data?.stakers?.forEach((n: any) => {
+        //   nominatorStore.addNominator(n)
+        // })
+        // recalc the nominators
+        // getNominators()
+      });
+
       // performance
       var { error, loading: pLoading, refetch: pRefetch, onResult: ponResult } = useQuery(QUERY_PERFORMANCE, {
         chainId: chainId.value,
@@ -767,7 +812,7 @@ export default defineComponent({
 
       await getAccount()
       await getExposure()
-      await getNominators()
+      // await getNominators()
       init.value = false
     });
 
@@ -924,11 +969,6 @@ export default defineComponent({
     const getExposure = async () => {
       console.debug('getExposure', stash.value);
       await getApi();
-      // if (!api) {
-      //   console.warn('api not connected');
-      //   api = await $substrate.getApi(chainId.value)
-      //   // return
-      // }
       loadingE.value = true
       var era: any = await api?.query.staking.activeEra()
       era = era ? era.toJSON() : {};
@@ -974,103 +1014,85 @@ export default defineComponent({
     // const nominators = computed(() => nominatorStore.nominators)
     //const nominatorList = computed(() => Array.from(nominators.value.values()))
     const totalNominations = computed(() => {
-      return nominators.value.reduce((sum, n) => sum + n.balance, 0)
+      return nominators.value.reduce((sum, n) => sum + Number(n.balance), 0)
     })
     const dnNominations = computed(() => {
-      return nominators.value.filter(n => dnNominators.value.includes(n.address)).reduce((sum, n) => sum + n.balance, 0)
+      return nominators.value.filter(n => dnNominators.value.includes(n.address)).reduce((sum, n) => sum + Number(n.balance), 0)
     })
     const nonDnNominations = computed(() => {
-      return nominators.value.filter(n => !dnNominators.value.includes(n.address)).reduce((sum, n) => sum + n.balance, 0)
+      return nominators.value.filter(n => !dnNominators.value.includes(n.address)).reduce((sum, n) => sum + Number(n.balance), 0)
     })
 
-    const getAllNominators = async () => {
-      console.debug('getAllNominators');
-      await $substrate.getAllNominators();
-      // console.debug('get stakingEntries');
-      // await getApi();
-      // if (!api) {
-      //   console.warn('api not connected');
-      // //   api = await $substrate.getApi(chainId.value)
-      // }
-      // // loadingAN.value = true
-      // nominatorStore.loading = true
-      // const stakingEntries = await api?.query.staking.nominators.entries()
-      // const entries = stakingEntries?.map(([key, nominations]) => {
-      //   // console.debug('key', key.toString(), value);
-      //   return [key, nominations.toJSON()]
-      //   // nominatorStore.setStakingEntries(key.toString(), value)
-      // })
-      // console.debug('entries', entries?.length);
-      // nominatorStore.setStakingEntries(entries)
-      // // loadingAN.value = false
-      // nominatorStore.loading = false;
-    }
+    // const getAllNominators = async () => {
+    //   console.debug('getAllNominators');
+    //   await $substrate.getAllNominators();
+    // }
 
     const nominators = ref<INominator[]>([])
     const page = ref(0)
     const pages = ref(0)
-    const getNominators = async () => {
-      await getApi();
-      if (!api) {
-      //   await $substrate.connect(chainId.value)
-        console.warn('api not connected');
-      }
-      if(!stakingEntries.value || stakingEntries.value?.length === 0 ) {
-        console.debug('getAllNominators required...');
-        await getAllNominators();
-      }
+    // const getNominators = async () => {
+    //   await getApi();
+    //   if (!api) {
+    //     console.warn('api not connected');
+    //   }
+    //   // if(!stakingEntries.value || stakingEntries.value?.length === 0 ) {
+    //   //   console.debug('getAllNominators required...');
+    //   //   await getAllNominators();
+    //   // }
 
-      loadingN.value = true
-      console.debug('getNominators', stash.value);
-      nominators.value = []
-      page.value = 0
-      // const stakingEntries = await api.query.staking.nominators.entries()
-      // console.debug('stakingEntries', stakingEntries)
-      pages.value = stakingEntries.value?.length || 0
+    //   loadingN.value = true
+    //   console.debug('getNominators', stash.value);
+    //   nominators.value = []
+    //   page.value = 0
+    //   // const stakingEntries = await api.query.staking.nominators.entries()
+    //   // console.debug('stakingEntries', stakingEntries)
+    //   pages.value = stakingEntries.value?.length || 0
 
-      // console.debug('stakingEntries', stakingEntries.value);
-      for (const [key, nominations] of stakingEntries.value as any) {
-        const nominatorAddress = key.args[0].toString();
-        page.value += 1
+    //   // console.debug('stakingEntries', stakingEntries.value);
+    //   for (const [key, nominations] of stakingEntries.value as any) {
+    //     const nominatorAddress = key.args[0].toString();
+    //     page.value += 1
 
-        // const identity = parseIdentity(await idApi.query.identity.identityOf(nominatorAddress));
-        // const identityInfo = identity ? identity.info : {};
+    //     // const identity = parseIdentity(await idApi.query.identity.identityOf(nominatorAddress));
+    //     // const identityInfo = identity ? identity.info : {};
 
-        // targets
-        const targets = nominations; // .toJSON() as any;
-        // console.debug('targets', targets)
+    //     // targets
+    //     const targets = nominations; // .toJSON() as any;
+    //     // console.debug('targets', targets)
 
-        if (targets.targets?.includes(stash.value)) {
-          // Fetch account balance for the nominator
-          var accountData = await api?.query.system.account(nominatorAddress)
-          if (!accountData) return
-          accountData = accountData.toJSON() as any;
-          // console.debug('accountData', accountData)
-          const balance = Number(BigInt(accountData.data.free)) / 10 ** decimals[chainId.value]; // Available balance
-          // pooled
-          // const pooled = api.query.nominationPools.poolMembers(nominatorAddress);
-          // console.debug('nominator', nominatorAddress, balance, targets);
-          nominators.value.push({
-            address: nominatorAddress,
-            balance,
-            // identity: identity ? identity.display : nominatorAddress,
-            // identityInfo,
-            // locks,
-            // pooled,
-            // nominations: nominations.toJSON(),
-          });
-        } else {
-          continue;
-        }
+    //     if (targets.targets?.includes(stash.value)) {
+    //       // Fetch account balance for the nominator
+    //       var accountData = await api?.query.system.account(nominatorAddress)
+    //       if (!accountData) return
+    //       accountData = accountData.toJSON() as any;
+    //       // console.debug('accountData', accountData)
+    //       const balance = Number(BigInt(accountData.data.free)) / 10 ** decimals[chainId.value]; // Available balance
+    //       // pooled
+    //       // const pooled = api.query.nominationPools.poolMembers(nominatorAddress);
+    //       // console.debug('nominator', nominatorAddress, balance, targets);
+    //       nominators.value.push({
+    //         address: nominatorAddress,
+    //         balance,
+    //         // identity: identity ? identity.display : nominatorAddress,
+    //         // identityInfo,
+    //         // locks,
+    //         // pooled,
+    //         // nominations: nominations.toJSON(),
+    //       });
+    //     } else {
+    //       continue;
+    //     }
 
-      }
-      loadingN.value = false
-    }
+    //   }
+    //   loadingN.value = false
+    // }
 
     return {
       init,
       isLoading,
       apiConnected,
+      decimalPlaces,
       loadingC,
       loadingT,
       loadingE,
@@ -1079,6 +1101,7 @@ export default defineComponent({
       substrateStoreLoading,
       elevation,
       reload,
+      refetchN,
       chainId,
       stash,
 
@@ -1111,8 +1134,8 @@ export default defineComponent({
       nonDnNominations,
       getTelemetry: refetchT,
       getExposure,
-      getNominators,
-      getAllNominators,
+      // getNominators,
+      // getAllNominators,
       toCoin,
       shortStash,
     }

@@ -5,6 +5,7 @@ type Query {
   validator(chainId: String!, address: String!): Validator
   stakers(chainId: String!): [Nominator]
   staker(chainId: String!, address: String!): Nominator
+  stakersForStash(chainId: String!, stash: String!): [Nominator]
   # nodeById(chainId: String!, id: Int!): NodeDetailsX
   # nodeByName(chainId: String!, name: String!): NodeDetailsX
   # nodeByNetworkId(chainId: String!, networkId: String!): NodeDetailsX

@@ -259,4 +259,9 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     this.logger.debug(`${chainId.padEnd(10)} getNominator, ${address}`);
     return this.chains[chainId].nominators.find((nom) => nom.address === address);
   }
+
+  getNominatorsForStash(chainId: string, stash: string) {
+    this.logger.debug(`${chainId.padEnd(10)} getNominatorsForStash, ${stash}`);
+    return this.chains[chainId].nominators.filter((nom) => nom.targets.includes(stash));
+  }
 }
