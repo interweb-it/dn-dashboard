@@ -138,11 +138,12 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     const ret = Array.from(this.dataStore[chainId][cohortId]?.selected || []);
     // get telemetry data for each node
     for (const node of ret) {
-      const _tel = this.telemetryService.findOneByName(chainId, node.identity);
+      const _tel = this.telemetryService.findOneByDNIdentity(chainId, node.identity);
       if (_tel) {
         node.telemetryX = _tel.NodeDetails;
       }
     }
+    console.log('getNodes', chainId, ret);
     return ret;
   }
 
@@ -181,8 +182,8 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
       node = this.dataStore[chainId][cohortId].backups.find((node) => node.stash === stash);
     }
     // get telemetry data for the node
-    if (node.telemetry) {
-      const _tel = this.telemetryService.findOneByName(chainId, node.telemetry);
+    if (node.telemetry) { // this is the telemetry name
+      const _tel = this.telemetryService.findOneByTelemetryName(chainId, node.telemetry);
       if (_tel) {
         node.telemetryX = _tel.NodeDetails;
       }

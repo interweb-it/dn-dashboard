@@ -87,7 +87,7 @@ export class TelemetryResolver {
     name: string,
   ): Promise<AddedNodeMessageX> {
     console.debug('telemetry.resolver.ts: findOneByName', chainId, `|${name}|`);
-    const node = this.telemetryService.findOneByName(chainId, name);
+    const node = this.telemetryService.findOneByTelemetryName(chainId, name);
     // console.log('telemetryByName: ', node?.NodeDetails?.ChainStats);
     return node;
   }

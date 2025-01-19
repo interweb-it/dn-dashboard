@@ -375,38 +375,46 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     return Array.from(this.dataStore[chainId].values()).find((node) => node.NodeDetails.NetworkId === networkId);
   }
 
-  // find by node identity
-  findOneByName(chainId: string, nodeName: string): AddedNodeMessageX {
+  /**
+   * find by node identity on DN
+   */
+  findOneByDNIdentity(chainId: string, identity: string): AddedNodeMessageX {
     let ret: AddedNodeMessageX | undefined;
-    const _name = telemetryNameMap[chainId][nodeName] || nodeName;
-    logger.log(`telemetry.service.ts: findOneByName: ${chainId}, ${_name}, from: ${nodeName}`);
+    const _name = telemetryNameMap[chainId][identity] || identity;
+    logger.log(`telemetry.service.ts: findOneByDNIdentity: ${chainId}, ${_name}, from: ${identity}`);
     this.dataStore[chainId].forEach((node) => {
       if (node.NodeDetails.NodeName === _name) {
-        // logger.log('findOneByName ChainStats:', node.NodeDetails.ChainStats);
-        // if (!node.NodeDetails.ChainStats) {
-        //   logger.warn('ChainStats is missing:', node.NodeDetails);
-        // }
         ret = node;
-        if (_name !== nodeName) ret.NodeDetails.TelemetryName = _name;
       }
     });
-    // logger.log('findOneByName ChainStats:', ret);
-    // if (ret?.NodeDetails.Address) {
-    //   ret.IPGeo = this.getGeoForIP(ret.NodeDetails.Address);
-    // }
+    if (!ret) logger.warn(`Telemetry not found: ${chainId}, ${identity}`);
+    return ret;
+  }
+
+  /**
+   * find by node name on telemetry
+   */
+  findOneByTelemetryName(chainId: string, nodeName: string): AddedNodeMessageX {
+    let ret: AddedNodeMessageX | undefined;
+    logger.log(`telemetry.service.ts: findOneByName: ${chainId}, ${nodeName}`);
+    this.dataStore[chainId].forEach((node) => {
+      if (node.NodeDetails.NodeName === nodeName) {
+        ret = node;
+      }
+    });
     if (!ret) logger.warn(`Telemetry not found: ${chainId}, ${nodeName}`);
     return ret;
   }
 
-  getGeoForIP(ip: string): IPGeo | undefined {
-    if (!ip) return undefined;
-    if (!this.ipGeo.has(ip)) {
-      logger.log('IP Geo data not found:', ip);
-      return undefined;
-    }
-    logger.log('IP Geo data found:', ip, this.ipGeo.get(ip));
-    return this.ipGeo.get(ip);
-  }
+  // getGeoForIP(ip: string): IPGeo | undefined {
+  //   if (!ip) return undefined;
+  //   if (!this.ipGeo.has(ip)) {
+  //     logger.log('IP Geo data not found:', ip);
+  //     return undefined;
+  //   }
+  //   logger.log('IP Geo data found:', ip, this.ipGeo.get(ip));
+  //   return this.ipGeo.get(ip);
+  // }
 
   private async updateTelemetryNameMap() {
     logger.debug('Fetching telemetry name map...');
@@ -435,95 +443,9 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   updateTelemetryNameForNode(chainId: string, nodeIdentity: string, telemetryName: string) {
-    logger.log('Updating telemetry name for node:', chainId, nodeIdentity, telemetryName);
+    logger.log(`Updating telemetry name for node: ${chainId}, ${nodeIdentity}, ${telemetryName}`);
     telemetryNameMap[chainId][nodeIdentity] = telemetryName;
   }
-
-  // private async readIPGeoFile() {
-  //   logger.debug('Reading IP Geo file...');
-  //   const filename = 'ipgeo.json';
-  //   try {
-  //     const data = fs.readFileSync(filename, 'utf-8');
-  //     const geo: Record<string, IPGeo> = JSON.parse(data);
-  //     Object.entries(geo).forEach(([address, value]) => {
-  //       this.ipGeo.set(address, value);
-  //     });
-  //   } catch (error) {
-  //     logger.error('Error reading IP Geo file:', error.message);
-  //   }
-  //   logger.debug('IP Geo:', this.ipGeo);
-  // }
-
-  // private async writeIPGeoFile() {
-  //   const filename = 'ipgeo.json';
-  //   try {
-  //     const data = {};
-  //     this.ipGeo.forEach((value, key) => {
-  //       data[key] = value;
-  //     });
-  //     fs.writeFileSync(filename, JSON.stringify(data, null, 2));
-  //   } catch (error) {
-  //     logger.error('Error writing IP Geo file:', error.message);
-  //   }
-  // }
-
-  // private async updateGeoIP() {
-  //   logger.log('Fetching GeoIP data...');
-  //   let batch = [];
-  //   let updated = 0;
-  //   // for each chain
-  //   for (const chainId of ['kusama', 'polkadot']) {
-  //     // for each node
-  //     logger.log('geoIP for', chainId);
-  //     // this.dataStore[chainId].forEach((node) => {
-  //     //   // logger.log('geoIP for', chainId, node.NodeDetails.NodeName, node.NodeDetails.Address);
-  //     //   // geoip lookup
-  //     //   const ip = node.NodeDetails.Address;
-  //     //   if (ip) {
-  //     //     if (!this.ipGeo.has(ip)) {
-  //     //       batch.push(ip);
-  //     //       updated++;
-  //     //     } else {
-  //     //       const lastUpdate = this.ipGeo.get(ip).timestamp;
-  //     //       // 24 hours
-  //     //       if (Date.now() - lastUpdate > 86400 * 1000) {
-  //     //         logger.log('IP Geo data is stale:', ip);
-  //     //         batch.push(ip);
-  //     //         updated++;
-  //     //       }
-  //     //       // logger.log('IP already in cache:', ip);
-  //     //     }
-  //     //   }
-  //     // });
-  //     logger.debug(chainId, 'Batch:', batch.length);
-  //     if (batch.length > 0) {
-  //       const fields = 'query,status,message,country,city,lat,lon';
-  //       const params = JSON.stringify(batch.slice(0, 10).map((ip) => ({ query: ip, fields })));
-  //       logger.debug('Params:', params);
-  //       try {
-  //         const geo = await fetch(`http://ip-api.com/batch`, {
-  //           method: 'POST',
-  //           headers: {
-  //             'Content-Type': 'application/json',
-  //           },
-  //           body: params,
-  //         });
-  //         const resp = await geo.json();
-  //         logger.log('geo', resp);
-  //         resp.forEach((data: IPGeo) => {
-  //           const ip = data.query;
-  //           data.timestamp = Date.now();
-  //           this.ipGeo.set(ip, data);
-  //         });
-  //       } catch (error) {
-  //         logger.error('Error fetching GeoIP data:', error.message);
-  //       } finally {
-  //         batch = [];
-  //       }
-  //     }
-  //   }
-  //   if (updated > 0) await this.writeIPGeoFile();
-  // }
 
   // Cron job to periodically update the telemetry map
   @Cron(CronExpression.EVERY_10_MINUTES)

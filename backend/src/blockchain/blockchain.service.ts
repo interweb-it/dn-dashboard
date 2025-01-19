@@ -71,6 +71,10 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
 
   private async connect(chainId: string) {
     // const ws = new WebSocket(this.TELEMETRY_WS_URL);
+    if (this.chains[chainId].api) {
+      this.logger.warn(`API already connected for ${chainId}`);
+      return;
+    }
     const provider = new WsProvider(this.WSS_BASE_URL + chainId);
     const api = new ApiPromise({ provider, noInitWarn: true });
     await api.isReady;
