@@ -5,7 +5,6 @@ import { WebSocket } from 'ws';
 
 const logger = new Logger('TelemetryService');
 
-// import { telemetryNameMap } from './telemetry.map';
 let telemetryNameMap: Record<string, Record<string, string>> = {
   kusama: {},
   polkadot: {},
@@ -258,7 +257,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     this.connect('polkadot');
     this.connect('kusama');
-    this.updateTelemetryNameMap();
+    // this.updateTelemetryNameMap();
     // this.readIPGeoFile();
     // wait 30 secnds
     // setTimeout(() => {
@@ -438,7 +437,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  telemetryNameMap(chainId: string): Record<string, string> {
+  getTelemetryNameMap(chainId: string): Record<string, string> {
     return telemetryNameMap[chainId];
   }
 

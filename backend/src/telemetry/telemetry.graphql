@@ -6,6 +6,7 @@ type Query {
   telemetryForIds(chainId: String!, ids: [Int]!): [NodeDetailsX]
   telemetryNames(chainId: String!): [String]
   telemetryByName(chainId: String!, name: String!): NodeDetailsX
+  telemetryByIdentity(chainId: String!, identity: String!): NodeDetailsX
   telemetryByNetworkId(chainId: String!, networkId: String!): NodeDetailsX
   telemetryNameMap(chainId: String!): [nameMap]
 }

@@ -92,6 +92,19 @@ export class TelemetryResolver {
     return node;
   }
 
+  @Query('telemetryByIdentity')
+  async findOneByIdentity(
+    @Args('chainId')
+    chainId: string,
+    @Args('identity')
+    identity: string,
+  ): Promise<AddedNodeMessageX> {
+    console.debug(`telemetry.resolver.ts: findOneByIdentity, ${chainId}, |${identity}|`);
+    const node = this.telemetryService.findOneByDNIdentity(chainId, identity);
+    // console.log('telemetryByName: ', node?.NodeDetails?.ChainStats);
+    return node;
+  }
+
   @Query('telemetryByNetworkId')
   async findOneByNetworkId(
     @Args('chainId')
@@ -104,12 +117,12 @@ export class TelemetryResolver {
   }
 
   @Query('telemetryNameMap')
-  async getNameMap(
+  async getTelemetryNameMap(
     @Args('chainId')
     chainId: string,
   ): Promise<Record<string, string>[]> {
     console.debug('resolver.ts: getNameMap', chainId);
-    const _map = this.telemetryService.telemetryNameMap(chainId);
+    const _map = this.telemetryService.getTelemetryNameMap(chainId);
     console.log(_map);
     return Object.entries(_map).map(([key, value]) => {
       return {

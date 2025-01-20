@@ -1,6 +1,7 @@
 # version: "3.9"
 services:
   dnd-frontend:
+    image: dn-dashboard-frontend:latest
     build:
       context: ../frontend
       dockerfile: Dockerfile
@@ -8,12 +9,15 @@ services:
       - "3002:3000" # Map Nuxt.js app to localhost:3000
     environment:
       NODE_ENV: production
+      GRAPHQL_BACKEND_URL: http://192.168.1.209:4000
+    restart: unless-stopped
     volumes:
       - ../frontend:/app # Optional: Mount the frontend code for local development
     depends_on:
       - dnd-backend
 
   dnd-backend:
+    image: dn-dashboard-backend:latest
     build:
       context: ../backend
       dockerfile: Dockerfile
@@ -21,5 +25,6 @@ services:
       - "4000:3002" # Map NestJS app to localhost:4000
     environment:
       NODE_ENV: production
+    restart: unless-stopped
     volumes:
       - ../backend:/app # Optional: Mount the backend code for local development

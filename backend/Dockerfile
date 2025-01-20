@@ -4,12 +4,13 @@ FROM node:18 AS builder
 WORKDIR /app
 
 COPY package*.json ./
+COPY . .
+
 # RUN npm install
 RUN yarn install
 
-COPY . .
-
 # RUN npm run build
+RUN rm -rf dist
 RUN yarn build
 
 # Production stage

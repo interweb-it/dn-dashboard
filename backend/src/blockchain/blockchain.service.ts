@@ -198,7 +198,6 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn('api not ready, backing off...');
       return;
     }
-    this.chains[chainId].nominators = [];
     let stakingEntries: any[] = [];
     try {
       stakingEntries = await this.chains[chainId].api.query.staking.nominators.entries();
@@ -207,6 +206,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     this.logger.debug(`${chainId.padEnd(10)}, stakingEntries, ${stakingEntries?.length || 0}`);
+    this.chains[chainId].nominators = [];
     for (const [key, nominations] of stakingEntries) {
       try {
         const nominatorAddress = key.args[0].toString();
