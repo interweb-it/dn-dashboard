@@ -93,7 +93,7 @@ export class TelemetryResolver {
   }
 
   @Query('telemetryByIdentity')
-  async findOneByIdentity(
+  async findOneByDNIdentity(
     @Args('chainId')
     chainId: string,
     @Args('identity')

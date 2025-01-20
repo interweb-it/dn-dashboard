@@ -393,8 +393,8 @@ query stakers($chainId: String!, $stash: String!) {
 }`
 
 const QUERY_TELEMETRY = gql`
-query telemetry($chainId: String!, $name: String!) {
-  telemetryByName(chainId: $chainId, name: $name) {
+query telemetry($chainId: String!, $identity: String!) {
+  telemetryByIdentity(chainId: $chainId, identity: $identity) {
     NodeId
     NodeDetails {
       NodeName
@@ -747,14 +747,14 @@ export default defineComponent({
         // use the name to get telemetry data
         tRefetch({
           chainId: chainId.value,
-          name: result.data.nodeByStash.identity
+          identity: result.data.nodeByStash.identity
         });
       });
 
       // telemetry
       var { error, loading: tLoading, refetch: tRefetch, onResult: tonResult } = useQuery(QUERY_TELEMETRY, {
         chainId: chainId.value,
-        name: node.value.identity || ''
+        identity: node.value.identity || ''
       });
       refetchT.value = tRefetch
       loadingT = tLoading
@@ -764,9 +764,9 @@ export default defineComponent({
           console.log('still loading...');
           return;
         }
-        console.log('telemetry result', result.data.telemetryByName);
-        telemetry.value = result.data?.telemetryByName?.NodeDetails || {};
-        telemetryError.value = result.data?.telemetryByName?.NodeDetails 
+        console.log('telemetry result', result.data.telemetryByIdentity);
+        telemetry.value = result.data?.telemetryByIdentity?.NodeDetails || {};
+        telemetryError.value = result.data?.telemetryByIdentity?.NodeDetails 
           ? null 
           : `No telemetry data found - does your node have '--name "${node.value.identity}"''`;
       });
