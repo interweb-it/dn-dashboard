@@ -1,7 +1,8 @@
-import { ParseIntPipe } from '@nestjs/common';
+import { ParseIntPipe, Logger } from '@nestjs/common';
 import { Args, Query, Resolver, Subscription } from '@nestjs/graphql';
 import { BlockchainService, INominator, IValidator } from './blockchain.service';
 
+const logger = new Logger('BlockchainResolver'.padEnd(17));
 // const pubSub = new PubSub();
 
 @Resolver('Blockchain')
@@ -14,7 +15,7 @@ export class BlockchainResolver {
   //   @Args('chainId')
   //   chainId: string,
   // ): Promise<any[]> {
-  //   console.debug('resolver.ts: getBlockchain', 'chainId', chainId);
+  //   logger.debug('resolver.ts: getBlockchain', 'chainId', chainId);
   //   return [];
   // }
 
@@ -25,7 +26,7 @@ export class BlockchainResolver {
     @Args('active')
     active: boolean,
   ): Promise<IValidator[]> {
-    console.debug('resolver.ts: getValidators', 'chainId', chainId);
+    logger.debug(`getValidators ${chainId}`);
     let vals: IValidator[] = [];
     if (active) {
       vals = await this.blockchainService.getSessionValidators(chainId);
@@ -42,7 +43,7 @@ export class BlockchainResolver {
     @Args('address')
     address: string,
   ): Promise<IValidator> {
-    console.debug('resolver.ts: getValidator', 'chainId', chainId, 'address', address);
+    logger.debug(`${chainId.padEnd(10)} getValidator ${address}`);
     const val = await this.blockchainService.getValidator(chainId, address);
     if (!val) {
       return null;
@@ -58,7 +59,7 @@ export class BlockchainResolver {
     @Args('chainId')
     chainId: string,
   ): Promise<INominator[]> {
-    console.debug('resolver.ts: getNominators', 'chainId', chainId);
+    logger.debug(`${chainId.padEnd(10)} getNominators`);
     const noms = await this.blockchainService.getNominators(chainId);
     return noms;
   }
@@ -70,7 +71,7 @@ export class BlockchainResolver {
     @Args('address')
     address: string,
   ): Promise<INominator> {
-    console.debug('resolver.ts: getStaker', 'chainId', chainId, 'address', address);
+    logger.debug(`${chainId.padEnd(10)} getStaker ${address}`);
     const nom = await this.blockchainService.getNominator(chainId, address);
     return nom;
   }
@@ -82,7 +83,7 @@ export class BlockchainResolver {
     @Args('stash')
     stash: string,
   ): Promise<INominator[]> {
-    console.debug('resolver.ts: getStakersForStash', 'chainId', chainId, 'stash', stash);
+    logger.debug(`${chainId.padEnd(10)} getStakersForStash ${stash}`);
     const noms = await this.blockchainService.getNominatorsForStash(chainId, stash);
     return noms;
   }
