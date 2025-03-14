@@ -3,15 +3,18 @@
 
     <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar"
       style="position: fixed; padding-top: 25px">
-      <v-btn icon flat :to="`/${chainId}/cohort/1`">
-        <v-icon>mdi-arrow-left</v-icon>
+      
+      <v-btn icon flat :to="`/${chainId}/cohort/2`">
+        <v-icon size="small">mdi-arrow-left</v-icon>
       </v-btn>
+
       <v-toolbar-title>
         <v-icon size="small"><v-img src="/image/logo-black.png" height="32" width="32"></v-img></v-icon>&nbsp;
-        <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" rounded></v-img></v-icon> 
-        <span class="d-none d-sm-inline">{{ chainId }} validator</span>
+        <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" style="border-radius: 20%;"></v-img></v-icon>
+        <span class="d-none d-sm-inline">&nbsp;{{ chainId }} validator</span>
         {{ node.identity }}
       </v-toolbar-title>
+
       <v-btn icon flat :loading="isLoading" @click="reload">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
@@ -143,7 +146,7 @@
       <v-card>
         <v-card-title>
           Exposure
-          <v-icon color="red">mdi-fire</v-icon>
+          <v-icon color="red" size="small">mdi-fire</v-icon>
           <v-btn icon flat @click="getExposure" :loading="loadingE">
             <v-icon>mdi-refresh</v-icon>
           </v-btn>
@@ -179,13 +182,20 @@
       </v-card>
 
       <v-card>
-        <v-toolbar fluid color="background" density="compact">
+        <!-- <v-toolbar fluid color="background" density="compact">
           <v-toolbar-title>Nominators</v-toolbar-title>
           <v-btn icon flat @click="refetchN" :loading="loadingN">
             <v-icon>mdi-refresh</v-icon>
           </v-btn>
           <v-spacer></v-spacer>
-        </v-toolbar>
+        </v-toolbar> -->
+        <v-card-title>
+          Nominators
+          <v-icon color="red" size="small">mdi-sack</v-icon>
+          <v-btn icon flat @click="refetchN" :loading="loadingN">
+            <v-icon>mdi-refresh</v-icon>
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <!-- <p v-show="loadingN" color="red">Scanning chain nominators, building nominator list... {{ page }} of {{ pages }}</p> -->
           <!-- {{ nominators }} -->
@@ -226,7 +236,9 @@
       </v-card>
 
       <v-card>
-        <v-card-title>Telemetry
+        <v-card-title>
+          Telemetry
+          <v-icon color="red" size="small">mdi-satellite-uplink</v-icon>
           <v-btn icon flat @click="refetchT()" :loading="loadingT">
             <v-icon>mdi-refresh</v-icon>
           </v-btn>
@@ -241,8 +253,9 @@
                   <p>No telemetry found for "{{ node.identity }}"</p>
                   <p>If the `DN identity` does not match `telemetry name``.</p>
                   <p>
+                    Submit a PR to add your details 
                     <a href="https://github.com/metaspan/dn-dashboard/blob/main/backend/config/telemetryNameMap.json" target="_blank">
-                      Submit a PR to add your details here...
+                      [here...]
                     </a>
                   </p>
                 </v-list-item-title>
@@ -305,10 +318,9 @@
 </template>
 
 <script lang="ts">
-import PerformanceChart from '~/components/PerformanceChart.vue';
-// import { NodeDetailsX } from '../../substrate-telemetry/types'
 import { ApiPromise } from '@polkadot/api'
 import { hexToString } from '@polkadot/util'
+import { gql } from 'graphql-tag'
 import PerformanceCard from '~/components/PerformanceCard.vue';
 
 // import { FeedMessage } from '../substrate-telemetry';
@@ -325,10 +337,6 @@ import type {
   NodeSysInfo,
   ChainStats,
 } from '~/utils/substrate-telemetry/types';
-// import {
-//   AddedNodeMessage,
-//   RemovedNodeMessage,
-// } from '../../substrate-telemetry/feed';
 import type { BlockDetailsX } from '~/utils/types';
 import { shortStash } from '~/utils/helpers';
 
@@ -567,8 +575,6 @@ export default defineComponent({
         }
       })
       console.debug('_bonded', _bonded, locks.value);
-      // const _bondedCoin = _bonded ? Number(_bonded.amount) / Math.pow(10, decimals[chainId.value]) : 0
-      // console.debug('rulesBonded', _bonded, rules.selfBond[chainId.value]);
       return _bonded >= rules[chainId.value].selfBond
     })
 
@@ -607,10 +613,8 @@ export default defineComponent({
     const reload = async () => {
       console.log('reload');
       await refetchC() // chain
-      // await refetchT() // refetchC will call the telemetry
       await getAccount()
       await getExposure()
-      // await getNominators()
       await refetchP.value() // performance
       await refetchN.value() // all nominators
     }
@@ -786,18 +790,12 @@ export default defineComponent({
           return;
         }
         console.log('nominators result', result.data);
-        nominators.value = result.data?.stakersForStash.map((staker: any) => {
+        nominators.value = result.data?.stakersForStash?.map((staker: any) => {
           return {
             address: staker.address,
             balance: Number(staker.balance) / Math.pow(10, decimals[chainId.value])
           }
         }) || [];
-        // nominatorStore.setNominators(result.data?.stakers || [])
-        // result.data?.stakers?.forEach((n: any) => {
-        //   nominatorStore.addNominator(n)
-        // })
-        // recalc the nominators
-        // getNominators()
       });
 
       // performance
@@ -817,11 +815,6 @@ export default defineComponent({
       init.value = false
     });
 
-    // if (error) {
-    //   // eslint-disable-next-line no-console
-    //   console.error(error)
-    // }
-
     const handlePerformanceResult = (result: any) => {
       if (result.loading) {
         console.log('still loading...');
@@ -829,11 +822,7 @@ export default defineComponent({
       }
       console.log('performance result', result.data);
       var res = result.data?.performance || {};
-      // const _sessions_data: any[] = []
-      // for (let i = 0; i < res.sessions_data.length; i++) {
-      //   const sd = res.sessions_data[i];
-      //   _sessions_data.push({ ...sd, grade: performanceGrade(sd) })
-      // }
+
       const _sessions_data = res.sessions_data.map((s: ISession) => {
         return { ...s, is_para: s.para_summary ? true : false, grade: performanceGrade(s) }
         // s.grade = performanceGrade(s)
@@ -846,14 +835,10 @@ export default defineComponent({
     const getAccount = async () => {
       console.debug('getAccount', stash.value);
       await getApi();
-      // if (!api) {
-      //   console.warn('api not connected');
-      //   api = await $substrate.getApi(chainId.value)
-      //   // return
-      // }
+
       const _account = await api?.query.system.account(stash.value)
       console.log('account', stash.value, _account?.toJSON())
-      account.value = _account ? _account.toJSON() : {}
+      account.value = _account ? _account.toJSON() as any : {}
 
       const _locks = await api?.query.balances.locks(stash.value);
       const _locksStr: any = _locks?.toJSON() as any[] || []
@@ -1012,8 +997,6 @@ export default defineComponent({
       nominations?: any;
     }
 
-    // const nominators = computed(() => nominatorStore.nominators)
-    //const nominatorList = computed(() => Array.from(nominators.value.values()))
     const totalNominations = computed(() => {
       return nominators.value.reduce((sum, n) => sum + Number(n.balance), 0)
     })
@@ -1024,70 +1007,9 @@ export default defineComponent({
       return nominators.value.filter(n => !dnNominators.value.includes(n.address)).reduce((sum, n) => sum + Number(n.balance), 0)
     })
 
-    // const getAllNominators = async () => {
-    //   console.debug('getAllNominators');
-    //   await $substrate.getAllNominators();
-    // }
-
     const nominators = ref<INominator[]>([])
     const page = ref(0)
     const pages = ref(0)
-    // const getNominators = async () => {
-    //   await getApi();
-    //   if (!api) {
-    //     console.warn('api not connected');
-    //   }
-    //   // if(!stakingEntries.value || stakingEntries.value?.length === 0 ) {
-    //   //   console.debug('getAllNominators required...');
-    //   //   await getAllNominators();
-    //   // }
-
-    //   loadingN.value = true
-    //   console.debug('getNominators', stash.value);
-    //   nominators.value = []
-    //   page.value = 0
-    //   // const stakingEntries = await api.query.staking.nominators.entries()
-    //   // console.debug('stakingEntries', stakingEntries)
-    //   pages.value = stakingEntries.value?.length || 0
-
-    //   // console.debug('stakingEntries', stakingEntries.value);
-    //   for (const [key, nominations] of stakingEntries.value as any) {
-    //     const nominatorAddress = key.args[0].toString();
-    //     page.value += 1
-
-    //     // const identity = parseIdentity(await idApi.query.identity.identityOf(nominatorAddress));
-    //     // const identityInfo = identity ? identity.info : {};
-
-    //     // targets
-    //     const targets = nominations; // .toJSON() as any;
-    //     // console.debug('targets', targets)
-
-    //     if (targets.targets?.includes(stash.value)) {
-    //       // Fetch account balance for the nominator
-    //       var accountData = await api?.query.system.account(nominatorAddress)
-    //       if (!accountData) return
-    //       accountData = accountData.toJSON() as any;
-    //       // console.debug('accountData', accountData)
-    //       const balance = Number(BigInt(accountData.data.free)) / 10 ** decimals[chainId.value]; // Available balance
-    //       // pooled
-    //       // const pooled = api.query.nominationPools.poolMembers(nominatorAddress);
-    //       // console.debug('nominator', nominatorAddress, balance, targets);
-    //       nominators.value.push({
-    //         address: nominatorAddress,
-    //         balance,
-    //         // identity: identity ? identity.display : nominatorAddress,
-    //         // identityInfo,
-    //         // locks,
-    //         // pooled,
-    //         // nominations: nominations.toJSON(),
-    //       });
-    //     } else {
-    //       continue;
-    //     }
-
-    //   }
-    //   loadingN.value = false
-    // }
 
     return {
       init,
@@ -1135,8 +1057,6 @@ export default defineComponent({
       nonDnNominations,
       getTelemetry: refetchT,
       getExposure,
-      // getNominators,
-      // getAllNominators,
       toCoin,
       shortStash,
     }

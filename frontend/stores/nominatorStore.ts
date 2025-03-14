@@ -6,8 +6,7 @@ interface INominator {
   targets: string[]
 }
 
-export const useNominatorStore = defineStore({
-  id: 'nominatorStore',
+export const useNominatorStore = defineStore('nominatorStore', {
   state: () => ({
     chainId: 'kusama',
     search: '',

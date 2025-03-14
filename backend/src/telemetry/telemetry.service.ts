@@ -1,9 +1,9 @@
-import * as fs from 'fs';
+// import * as fs from 'fs';
 import { Logger, Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebSocket } from 'ws';
 
-const logger = new Logger('TelemetryService');
+const logger = new Logger('TelemetryService'.padEnd(17));
 
 let telemetryNameMap: Record<string, Record<string, string>> = {
   kusama: {},
@@ -208,7 +208,7 @@ const parseNodeStats = (data: NodeStats): NodeStatsX => {
   };
 };
 
-const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
+const parseAddedNodeMessage = (chainId: string, data: AddedNodeMessage): AddedNodeMessageX => {
   // logger.debug('Parsing AddedNodeMessage', data.payload);
   //logger.debug('Parsing AddedNodeMessage', data.payload[3]);
   const [NodeId, NodeDetails, NodeStats, NodeIO, NodeHardware, BlockDetails, NodeLocation, Timestamp] = data.payload;
@@ -221,7 +221,7 @@ const parseAddedNodeMessage = (data: AddedNodeMessage): AddedNodeMessageX => {
     NodeIO,
     NodeHardware,
     BlockDetails: parseBlockDetails(BlockDetails),
-    NodeLocation: parseNodeLocation(NodeLocation, ''),
+    NodeLocation: parseNodeLocation(NodeLocation, chainId),
     Timestamp,
   };
 };
@@ -442,7 +442,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   updateTelemetryNameForNode(chainId: string, nodeIdentity: string, telemetryName: string) {
-    logger.log(`Updating telemetry name for node: ${chainId}, ${nodeIdentity}, ${telemetryName}`);
+    logger.debug(`${chainId.padEnd(10)} Updating telemetry name for node: ${nodeIdentity}, ${telemetryName}`);
     telemetryNameMap[chainId][nodeIdentity] = telemetryName;
   }
 
@@ -474,7 +474,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       case 3: // AddedNode: NodeId,NodeDetails,NodeStats,NodeIO,NodeHardware,BlockDetails,Maybe<NodeLocation>,Maybe<Timestamp>
         // ex = [3,458,'🚂 Zugian Duck 🦆 Retainer','Parity Polkadot',1.16.1-835e0767fe8,,'12D3KooWRLprG6JDs5ZKzqU6ofczisASiZj5jZsddE6jgDBiyen3','185.16.38.241',['object Object'],['object Object'],51,0,48113384,49532904,50902990,52177076,53397204,54705856,55610110,54000116,52617828,51011372,49683310,48384504,4683746.75,4151928.625,4513870.375,1502013.25,836828.25,3588572.5,2417731,1050204.25,1032821,3741390.5,1731022.5,1931825.25,4221619.875,4272979.125,3675492.75,3796463.125,3248460.875,3109559.25,3423068.25,3730033.75,3470817.625,3793650,3887323.875,5391535,1731599504706.75,1731599544709.1875,1731599584711.125,1731599624712.625,1731599664713.4375,1731599704721.875,1731599744724.125,1731599784718.5,1731599824721.75,1731599864722.75,1731599904723.8125,1731599944735.5,25778144,0x790eccd0983be3360a81c003e925be6d30f0a78d18fac3f2b9ddd0521d03ae84,6079,1731599988419,274,,1731311512077]
         // this.nodes.set(message.payload[0], message.payload);
-        messageX = parseAddedNodeMessage(message);
+        messageX = parseAddedNodeMessage(chainId, message);
         // logger.debug('Pre addNode', messageX.NodeDetails.ChainStats);
         this.addNode(chainId, messageX);
         // logger.log('AddedNode', message.payload);

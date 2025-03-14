@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { Maybe } from '../pages/substrate-telemetry/helpers'
+import type { Maybe } from '../utils/substrate-telemetry/helpers'
 import type {
   NodeDetails,
   NodeStats,
@@ -9,7 +9,7 @@ import type {
   NodeLocation,
   Timestamp,
   NodeSysInfo
-} from '../pages/substrate-telemetry/types'
+} from '../utils/substrate-telemetry/types'
 
 export interface AddedNodeMessageX {
   NodeId: number
@@ -39,11 +39,11 @@ export interface NodeDetailsX {
 
 // import type { Message, AddedNodeMessage, RemovedNodeMessage } from '../pages/substrate-telemetry/feed'
 
-export const useNodeStore = defineStore({
-  id: 'nodeStore',
+export const useNodeStore = defineStore('nodeStore', {
   state: () => ({
     chainId: '',
-    cohortId: 1,
+    cohortIds: [1, 2],
+    cohortId: 2, // was never used
     selected: [],
     backups: [],
     nominators: [],
@@ -71,6 +71,16 @@ export const useNodeStore = defineStore({
     },
     setSearch(search: string) {
       this.search = search
+    },
+    setCohortId(cohortId: number) {
+      // if cohort is different from current, reset the store
+      if (cohortId !== this.cohortId) {
+        this.cohortId = cohortId
+        this.selected = []
+        this.backups = []
+        this.nominators = []
+        this.telemetry = []
+      }
     },
     async addNode(node: AddedNodeMessageX) {
       // console.log('Adding node', node);

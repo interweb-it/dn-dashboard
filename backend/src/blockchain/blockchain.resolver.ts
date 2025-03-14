@@ -77,14 +77,14 @@ export class BlockchainResolver {
   }
 
   @Query('stakersForStash')
-  async getStakersForStash(
+  async getStakersForStashX(
     @Args('chainId')
     chainId: string,
     @Args('stash')
     stash: string,
   ): Promise<INominator[]> {
     logger.debug(`${chainId.padEnd(10)} getStakersForStash ${stash}`);
-    const noms = await this.blockchainService.getNominatorsForStash(chainId, stash);
+    const noms = await this.blockchainService.getNominatorsForStashX(chainId, stash);
     return noms;
   }
 }

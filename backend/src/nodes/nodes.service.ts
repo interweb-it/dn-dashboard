@@ -1,10 +1,12 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { Interval, Cron } from '@nestjs/schedule';
 
 import { BlockchainService } from 'src/blockchain/blockchain.service';
 // import { NodeDetails } from 'src/substrate-telemetry/types';
 import { NodeDetailsX } from 'src/telemetry/telemetry.service';
 import { TelemetryService } from 'src/telemetry/telemetry.service';
+
+const logger = new Logger('NodesService'.padEnd(17));
 
 export type NodeStatus = 'Active' | 'Graduated' | 'Pending' | 'Removed';
 export type ChainTerm = 'start' | 'end';
@@ -41,7 +43,7 @@ export type TChainData = Record<number, ICohortData>;
 
 const BASE_URL = 'https://nodes.web3.foundation/api/cohort/COHORT_ID/CHAIN_ID';
 
-const cohorts = [1];
+const cohorts = [1, 2];
 
 @Injectable()
 export class NodesService implements OnModuleInit, OnModuleDestroy {
@@ -65,7 +67,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     for (const cohortId of cohorts) {
-      console.log('Fetching chain data for cohort', cohortId);
+      logger.debug(`Fetching chain data for cohort ${cohortId}`);
       await this.fetchChainData('polkadot', cohortId);
       await this.fetchChainData('kusama', cohortId);
     }
@@ -76,7 +78,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   // @Interval(5 * 60 * 1000) // Every 5 minutes
   @Interval(30 * 1000) // every 30 seconds
   async handleInterval() {
-    console.log('Running scheduled task to fetch chain data');
+    logger.debug('Running scheduled task to fetch chain data');
     for (const cohortId of cohorts) {
       await this.fetchChainData('polkadot', cohortId);
       await this.fetchChainData('kusama', cohortId);
@@ -87,54 +89,60 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     // this.disconnect();
   }
 
-  private async fetchChainData(chainId: string, cohortId: number) {
-    console.log('fetchChainData', chainId);
+  private async fetchChainData(chainId: string, cohortId: number = 1) {
+    logger.debug(`${chainId.padEnd(10)} fetchChainData`);
+    let data: ICohortData = {
+      backups: [],
+      nominators: [],
+      selected: [],
+      statuses: {} as Record<NodeStatus, string>,
+      term: { start: '', end: '' },
+    };
     try {
-      const url = BASE_URL.replace('COHORT_ID', '1')
-        .replace('CHAIN_ID', chainId)
-        .replace('COHORT_ID', cohortId.toString());
+      const url = BASE_URL.replace('COHORT_ID', cohortId.toString()).replace('CHAIN_ID', chainId);
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const data: ICohortData = await response.json();
-      console.log('Data fetched:', data);
-      // for each data.node, update the node commission
-      const ex = [
-        {
-          identity: 'UTSA',
-          stash: '15wnPRex2QwgWNCMRVSqgqp2syDn8Gf6LPGGabRhA8zoohpt',
-          status: 'Active',
-          telemetry: 'UTSA',
-        },
-        {
-          identity: 'VISIONSTAKE 👁‍🗨',
-          stash: '13Hp4FEF7z7famvakw8cgioHqDxcnhnyQkvd1jF4dxn7cayG',
-          status: 'Active',
-          telemetry: null,
-        },
-      ];
-      for (const node of data.selected) {
-        const _val = await this.blockchainService.getValidator(chainId, node.stash);
-        node.commission = _val?.commission || 0;
-        if (node.telemetry && node.telemetry !== '') {
-          // amend the telemetry name map
-          this.telemetryService.updateTelemetryNameForNode(chainId, node.identity, node.telemetry);
-        }
-      }
-      for (const node of data.backups) {
-        const _val = await this.blockchainService.getValidator(chainId, node.stash);
-        node.commission = _val?.commission || 0;
-      }
-      this.dataStore[chainId][cohortId] = data;
-      console.log(`Data updated for ${chainId}`);
+      data = await response.json();
+      logger.debug(`${chainId.padEnd(10)} got data`, data);
     } catch (error) {
-      console.error(`Failed to fetch data for ${chainId}:`, error.message);
+      logger.error(`${chainId.padEnd(10)} Failed to fetch data for nodes`, error);
     }
+
+    // for each data.node, update the node commission
+    const ex = [
+      {
+        identity: 'UTSA',
+        stash: '15wnPRex2QwgWNCMRVSqgqp2syDn8Gf6LPGGabRhA8zoohpt',
+        status: 'Active',
+        telemetry: 'UTSA',
+      },
+      {
+        identity: 'VISIONSTAKE 👁‍🗨',
+        stash: '13Hp4FEF7z7famvakw8cgioHqDxcnhnyQkvd1jF4dxn7cayG',
+        status: 'Active',
+        telemetry: null,
+      },
+    ];
+    for (const node of data.selected) {
+      const _val = await this.blockchainService.getValidator(chainId, node.stash);
+      node.commission = _val?.commission || 0;
+      if (node.telemetry && node.telemetry !== '') {
+        // amend the telemetry name map
+        this.telemetryService.updateTelemetryNameForNode(chainId, node.identity, node.telemetry);
+      }
+    }
+    for (const node of data.backups) {
+      const _val = await this.blockchainService.getValidator(chainId, node.stash);
+      node.commission = _val?.commission || 0;
+    }
+    this.dataStore[chainId][cohortId] = data;
+    logger.debug(`${chainId.padEnd(10)} Nodes data updated`);
   }
 
   getSelected(chainId: string, cohortId: number): INode[] {
-    console.log('getNodes', chainId);
+    logger.debug(`${chainId.padEnd(10)} getSelectecd`);
     const ret = Array.from(this.dataStore[chainId][cohortId]?.selected || []);
     // get telemetry data for each node
     for (const node of ret) {
@@ -143,29 +151,29 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
         node.telemetryX = _tel.NodeDetails;
       }
     }
-    console.log('getNodes', chainId, ret);
+    logger.debug('getNodes', chainId, ret);
     return ret;
   }
 
   getBackups(chainId: string, cohortId: number): INodeBase[] {
-    console.log('getNodes', chainId);
+    logger.debug(`${chainId.padEnd(10)} getBackups`);
     const ret = Array.from(this.dataStore[chainId][cohortId]?.backups || []);
     return ret;
   }
 
   getNominators(chainId: string, cohortId: number): string[] {
-    console.log('getNodes', chainId);
+    logger.debug(`${chainId.padEnd(10)} getNomintors`);
     const ret = Array.from(this.dataStore[chainId][cohortId]?.nominators || []);
     return ret;
   }
 
   getTerm(chainId: string, cohortId): ITerm {
-    console.log('getNodes', chainId);
+    logger.debug(`${chainId.padEnd(10)} getTerm`);
     return this.dataStore[chainId][cohortId].term;
   }
 
   findNodeByName(chainId: string, cohortId: number, name: string): INode | INodeBase {
-    console.log('findNodeByName', chainId, name);
+    logger.debug(`${chainId.padEnd(10)} findNodeByName ${name}`);
     let node: INode | INodeBase;
     node = this.dataStore[chainId][cohortId].selected.find((node) => node.identity === name);
     if (!node) {
@@ -175,7 +183,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   }
 
   findNodeByStash(chainId: string, cohortId: number, stash: string): INode | INodeBase {
-    console.log('findNodeByStash', chainId, stash);
+    logger.debug(`${chainId.padEnd(10)} findNodeByStash ${stash}`);
     let node: INode | INodeBase;
     node = this.dataStore[chainId][cohortId].selected.find((node) => node.stash === stash);
     if (!node) {

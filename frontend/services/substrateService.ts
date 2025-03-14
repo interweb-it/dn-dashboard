@@ -1,6 +1,11 @@
 // services/substrateService.ts
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { useSubstrateStore } from '~/stores/substrateStore';
+import { createPinia } from 'pinia';
+const pinia = createPinia();
+// const app = useNuxtApp();
+// app.use(pinia);
+
 
 export default class SubstrateService {
   private api: ApiPromise | null = null;
@@ -14,7 +19,10 @@ export default class SubstrateService {
 
   constructor() {
     console.log('SubstrateService constructor');
-    this.substrateStore = useSubstrateStore();
+    // const isSSR = import.meta.client;
+    // if (!isSSR) {
+      this.substrateStore = useSubstrateStore(pinia);
+    // }
   }
 
   // Connect to the rpc server

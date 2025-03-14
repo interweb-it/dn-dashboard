@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 
-export const useSubstrateStore = defineStore({
-  id: 'substrateStore',
+export const useSubstrateStore = defineStore('substrateStore', {
   state: () => ({
     chainId: 'kusama',
     loading: false,

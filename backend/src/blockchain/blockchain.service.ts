@@ -1,5 +1,6 @@
 import { Logger, Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ApiPromise, WsProvider } from '@polkadot/api';
+import { ApolloClient, InMemoryCache, gql } from '@apollo/client/core';
 
 export interface INominator {
   address: string;
@@ -27,6 +28,7 @@ export interface IValidator {
 interface IChainState {
   chainHash: string;
   api: any;
+  wss_url: string;
   subscription: any;
   session: number;
   sessionValidators: string[]; // session validators and exposures?
@@ -36,12 +38,15 @@ interface IChainState {
 
 @Injectable()
 export class BlockchainService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(BlockchainService.name);
+  private readonly logger = new Logger(BlockchainService.name.padEnd(17));
+  private readonly apolloClient: ApolloClient<any>;
 
   private chains: Record<string, IChainState> = {
     kusama: {
       chainHash: '0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe',
       api: null,
+      wss_url: 'ws://192.168.1.92:40425', // DEV
+      // wss_url: 'ws://192.168.10.92:40425', // boot
       subscription: null,
       session: 0,
       sessionValidators: [],
@@ -51,6 +56,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     polkadot: {
       chainHash: '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
       api: null,
+      wss_url: 'ws://192.168.1.92:30325', // DEV
       subscription: null,
       session: 0,
       sessionValidators: [],
@@ -58,7 +64,18 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
       nominators: [],
     },
   };
-  private readonly WSS_BASE_URL = 'wss://rpc.ibp.network/';
+  // private readonly WSS_BASE_URL = 'wss://rpc.ibp.network/';
+  private readonly WSS_BASE_URL = 'wss://rpc.metaspan.io/';
+
+  constructor() {
+    this.apolloClient = new ApolloClient({
+      uri: 'https://gql.metaspan.io/graphql',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: new InMemoryCache(),
+    });
+  }
 
   onModuleInit() {
     this.connect('polkadot');
@@ -75,7 +92,8 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`API already connected for ${chainId}`);
       return;
     }
-    const provider = new WsProvider(this.WSS_BASE_URL + chainId);
+    // const provider = new WsProvider(this.WSS_BASE_URL + chainId);
+    const provider = new WsProvider(this.chains[chainId].wss_url);
     const api = new ApiPromise({ provider, noInitWarn: true });
     await api.isReady;
 
@@ -124,7 +142,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     this.chains[chainId].session = session;
     await this._getAllValidators(chainId);
     await this._getSessionValidators(chainId);
-    await this._getAllNominators(chainId);
+    //await this._getAllNominators(chainId);
   }
 
   async handleEvents(chainId: string, events: any[]) {
@@ -191,38 +209,147 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`${chainId.padEnd(10)} validators ${this.chains[chainId].allValidators.length}`);
   }
 
+  getNomsActive = {
+    kusama: false,
+    polkadot: false,
+  };
+
+  /**
+   * Get all nominators for DN validators
+   */
   async _getAllNominators(chainId: string) {
-    // loadingN.value = true
     this.logger.debug(`${chainId.padEnd(10)}, getAllNominators`);
-    if (!this.chains[chainId].api) {
-      this.logger.warn('api not ready, backing off...');
-      return;
-    }
-    let stakingEntries: any[] = [];
-    try {
-      stakingEntries = await this.chains[chainId].api.query.staking.nominators.entries();
-    } catch (err) {
-      this.logger.error('stakingEntries error', err);
-      return;
-    }
-    this.logger.debug(`${chainId.padEnd(10)}, stakingEntries, ${stakingEntries?.length || 0}`);
-    this.chains[chainId].nominators = [];
-    for (const [key, nominations] of stakingEntries) {
+    // Define your GraphQL query
+    const QUERY = gql`
+      query allNominators($chainId: String!, $offset: Int, $limit: Int) {
+        Nominators(chain: $chainId, offset: $offset, limit: $limit) {
+          accountId
+          account {
+            data {
+              feeFrozen
+              free
+              miscFrozen
+            }
+          }
+          targetIds
+        }
+      }
+    `;
+
+    let hasMore = true;
+    let offset = 0;
+    const limit = 200;
+
+    while (hasMore) {
+      this.logger.debug(`${chainId.padEnd(10)}, fetching batch ${offset}`);
       try {
-        const nominatorAddress = key.args[0].toString();
-        // console.debug('nominatorAddress', nominatorAddress);
-        const targets = nominations.toJSON() as any;
-        const accountData = (await this.chains[chainId].api.query.system.account(nominatorAddress)).toJSON() as any;
-        // console.debug('accountData', accountData);
-        const balance = Number(BigInt(accountData.data.free)); // Available balance
-        this.chains[chainId].nominators.push({ address: nominatorAddress, balance: balance, targets: targets.targets });
-        // this.logger.debug(chainId.padEnd(10), 'nominatorAddress', nominatorAddress, targets.targets?.length || 0);
-      } catch (err) {
-        this.logger.error('stakingEntries error', err);
-        continue;
+        // Send the query to the external Apollo server
+        const response = await this.apolloClient.query({
+          query: QUERY,
+          variables: {
+            chainId,
+            offset,
+            limit,
+          },
+        });
+        const batch: any[] = response.data.Nominators;
+        hasMore = batch.length === limit;
+        // Return the data from the response
+        // return response.data;
+        for (const nominator of batch) {
+          this.chains[chainId].nominators.push(nominator);
+        }
+      } catch (error) {
+        // Handle errors as needed
+        console.error('Error fetching blockchain data:', error);
+        hasMore = false;
+        // throw error;
+      } finally {
+        // Increment the offset for the next iteration
+        offset += limit;
       }
     }
-    this.logger.log(`${chainId.padEnd(10)} nominators ${this.chains[chainId].nominators.length}`);
+
+    // if (this.getNomsActive[chainId]) {
+    //   this.logger.warn('getAllNominators already running, backing off...');
+    //   return;
+    // }
+    // if (!this.chains[chainId].api) {
+    //   this.logger.warn('api not ready, backing off...');
+    //   return;
+    // }
+    // this.getNomsActive[chainId] = true;
+
+    // let nominatorEntries: any[] = [];
+    // try {
+    //   nominatorEntries = await this.chains[chainId].api.query.staking.nominators.entries();
+    // } catch (err) {
+    //   this.logger.error('nominatorEntries error', err);
+    //   this.getNomsActive[chainId] = false;
+    //   return;
+    // }
+    // this.logger.debug(`${chainId.padEnd(10)}, nominatorEntries, ${nominatorEntries?.length || 0}`);
+
+    // this.chains[chainId].nominators = nominatorEntries.map(([key, value]) => {
+    //   const address = key.args[0].toString();
+    //   const targets = value.toJSON().targets;
+    //   return { address, balance: 0, targets };
+    // });
+
+    // // Extract all nominator addresses
+    // const nominatorAddresses = nominatorEntries.map(([key]) => key.args[0].toString());
+
+    // // Helper function to process chunks
+    // const chunkArray = <T>(array: T[], chunkSize: number): T[][] => {
+    //   const chunks: T[][] = [];
+    //   for (let i = 0; i < array.length; i += chunkSize) {
+    //     chunks.push(array.slice(i, i + chunkSize));
+    //   }
+    //   return chunks;
+    // };
+
+    // const chunks = chunkArray(nominatorAddresses, 100); // Chunk size of 200
+    // this.logger.debug(`${chainId.padEnd(10)} Processing ${chunks.length} chunks of nominators`);
+
+    // let chunkIndex = 0;
+    // const _nominators = [];
+    // try {
+    //   for (const chunk of chunks) {
+    //     this.logger.debug(`${chainId.padEnd(10)} processing chunk ${++chunkIndex} of ${chunks.length}`);
+    //     // Batch query for the current chunk
+    //     const accountDataArray = await this.chains[chainId].api.queryMulti(
+    //       chunk.map((address) => [this.chains[chainId].api.query.system.account, address]),
+    //     );
+
+    //     // Process each account in the chunk
+    //     for (let i = 0; i < chunk.length; i++) {
+    //       const nominatorAddress = chunk[i];
+    //       const accountData = accountDataArray[i].toJSON() as any;
+
+    //       const balance = Number(
+    //         BigInt(accountData.data.free || 0) +
+    //           BigInt(accountData.data.reserved || 0) +
+    //           BigInt(accountData.data.miscFrozen || 0)
+    //       );
+
+    //       const stakingEntry = nominatorEntries.find(([key]) => key.args[0].toString() === nominatorAddress);
+    //       const targets = stakingEntry ? stakingEntry[1].toJSON() : { targets: [] };
+
+    //       _nominators.push({
+    //         address: nominatorAddress,
+    //         balance: balance,
+    //         targets: targets.targets,
+    //       });
+    //     }
+    //   }
+
+    //   this.logger.log(`${chainId.padEnd(10)} nominators ${_nominators.length}`);
+    //   this.chains[chainId].nominators = _nominators;
+    // } catch (err) {
+    //   this.logger.error('Error processing chunks', err);
+    // } finally {
+    //   this.getNomsActive[chainId] = false;
+    // }
   }
 
   getSessionValidators(chainId: string) {
@@ -264,8 +391,54 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     return this.chains[chainId].nominators.find((nom) => nom.address === address);
   }
 
-  getNominatorsForStash(chainId: string, stash: string) {
+  async getNominatorsForStashX(chainId: string, stash: string): Promise<INominator[]> {
     this.logger.debug(`${chainId.padEnd(10)} getNominatorsForStash, ${stash}`);
-    return this.chains[chainId].nominators.filter((nom) => nom.targets.includes(stash));
+    // return this.chains[chainId].nominators.filter((nom) => nom.targets.includes(stash));
+    const QUERY = gql`
+      query allNominators($chainId: String!, $stash: String!) {
+        Validator(chain: $chainId, stash: $stash) {
+          nominators {
+            accountId
+            account {
+              data {
+                free
+                reserved
+                miscFrozen
+                feeFrozen
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      // Send the query to the external Apollo server
+      const response = await this.apolloClient.query({
+        query: QUERY,
+        variables: {
+          chainId,
+          stash,
+        },
+      });
+      console.debug('response', response);
+      // this.logger.debug(`${chainId.padEnd(10)} getNominatorsForStash, ${stash}, ${response.data.length}`);
+      return response.data?.Validator?.nominators?.map((nom) => {
+        return {
+          address: nom.accountId,
+          balance: Number(
+            BigInt(nom.account.data.free || 0) +
+              BigInt(nom.account.data.reserved || 0) +
+              BigInt(nom.account.data.miscFrozen || 0) +
+              BigInt(nom.account.data.feeFrozen || 0),
+          ),
+          targets: [],
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching blockchain data:', error);
+      // throw error;
+      return [];
+    }
   }
 }

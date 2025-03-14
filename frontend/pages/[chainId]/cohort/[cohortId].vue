@@ -1,41 +1,42 @@
 <template>
 
   <v-container fluid class="pa-0 ma-0">
+
     <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar"
-      :density="`${display.mdAndUp ? 'default' : 'compact'}`"
       style="position: fixed; padding-top: 25px;">
-      <v-btn flat disabled class="d-none d-sm-inline">&nbsp;</v-btn>
+
+      <v-btn icon flat :to="`/${chainId}`">
+        <v-icon size="small">mdi-arrow-left</v-icon>
+      </v-btn>
+
       <v-toolbar-title>
         <v-icon size="small"><v-img src="/image/logo-black.png" height="32" width="32"></v-img></v-icon>&nbsp;
         <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" style="border-radius: 20%;"></v-img></v-icon> 
-        {{ chainId }} cohort {{ cohortId }}</v-toolbar-title>
-      <!-- <v-spacer></v-spacer> -->
-      <!-- <v-text-field v-model="search" placeholder="Search"></v-text-field> -->
+        {{ chainId }}
+        <span v-for="cId in cohortIds" :key="cId">
+          <span v-if="cId === cohortId">
+            &nbsp;cohort {{ cId }}
+          </span>
+          <span v-if="cId !== cohortId">
+            &nbsp;[<nuxt-link :to="`/${chainId}/cohort/${cId}`">cohort {{ cId }}</nuxt-link>]
+          </span>
+        </span>
+      </v-toolbar-title>
 
       <v-btn size="small"icon>
         <nuxt-link :to="`/${chainId === 'polkadot' ? 'kusama' : 'polkadot'}/cohort/${cohortId}`">
             <v-img :src="`/image/${chainId === 'polkadot' ? 'kusama' : 'polkadot'}-logo.svg`" height="22" width="22" rounded></v-img>
         </nuxt-link>
       </v-btn>
-
-      <!-- <v-btn icon flat :loading="loading" @click="refresh">
-        <v-icon>mdi-refresh</v-icon>
-      </v-btn> -->
     </v-toolbar>
 
     <client-only>
 
       <v-container style="padding-top: 75px;">
 
-        <!-- <v-card>      
-          <client-only>
-            <validator-map :chain-id="chainId" :validators="telemetry"></validator-map>
-          </client-only>
-        </v-card> -->
-
         <v-tabs v-model="tab">
           <v-tab value="selected">Selected</v-tab>
-          <v-tab value="backups">Backups</v-tab>
+          <v-tab value="backups" v-show="backups.length > 0">Backups</v-tab>
           <v-tab value="nominators">Nominators</v-tab>
         </v-tabs>
 
@@ -190,36 +191,6 @@ query queryNodes($chainId: String!, $cohortId:Int!) {
   }
 }`
 
-// const QUERY_TELEMETRY = gql`
-// query queryTelemetry($chainId: String!) {
-//   telemetry(chainId: $chainId) {
-//     NodeId
-//     NodeDetails {
-//       NodeName
-//       NodeImplementation
-//       NodeVersion
-//       Address
-//       NetworkId
-//       # OperatingSystem
-//       NodeSysInfo {
-//         cpu
-//         memory
-//         core_count
-//         linux_kernel
-//         linux_distro
-//         is_virtual_machine
-//       }
-//       ChainStats {
-//         cpu_hashrate_score
-//         memory_memcpy_score
-//         disk_sequential_write_score
-//         disk_random_write_score
-//       }
-//     }
-//   }
-// }`
-
-
 export default defineComponent({
   name: 'CohortHome',
   components: {
@@ -227,7 +198,7 @@ export default defineComponent({
     Footer
   },
   async setup() {
-    const display = useDisplay()
+    // const display = useDisplay()
     const route = useRoute()
     const router = useRouter()
     const chainId = ref(route.params.chainId.toString())
@@ -236,11 +207,12 @@ export default defineComponent({
     if (chainId.value !== nodeStore.chainId) {
       nodeStore.setChainId(chainId.value);
     }
-    const substrateStore = useSubstrateStore()
-    const stakingEntries = computed(() => substrateStore.stakingEntries)
-    const substrateStoreLoading = computed(() => substrateStore.loading)
+    const cohortIds = ref(nodeStore.cohortIds);
+    const substrateStore = useSubstrateStore();
+    const stakingEntries = computed(() => substrateStore.stakingEntries);
+    const substrateStoreLoading = computed(() => substrateStore.loading);
     // const nominatorStoreLoading = computed(() => nominatorStore.loading)
-    const nodes = ref([])
+    const nodes = ref([]);
 
     const { $substrate } = useNuxtApp();
     var api: ApiPromise | null;
@@ -315,34 +287,6 @@ export default defineComponent({
         // refetchT.value()
         console.log('...done');
       });
-
-      // var {
-      //   // error, 
-      //   loading: tLoading,
-      //   refetch: tRefetch,
-      //   onResult: tonResult } = useQuery(QUERY_TELEMETRY, {
-      //     chainId: chainId.value,
-      //     cohortId: cohortId.value
-      //   })
-      // refetchT.value = tRefetch
-
-      // tonResult(async (result: any) => {
-      //   if (result.loading) {
-      //     console.log('still loading...');
-      //     return;
-      //   }
-      //   console.log('result 2', result);
-      //   telemetry.value = result.data?.telemetry || [];
-      //   console.log('adding telemetry');
-      //   // if (telemetry.value.length > 0) {
-      //   //   for (const node of telemetry.value) {
-      //   //     await nodeStore.addNode(node);
-      //   //   }
-      //   // }
-      //   nodeStore.telemetry = telemetry.value;
-      //   console.log('...done');
-      //   // await updateNominatorTargets()
-      // });
     });
 
     const nominations = ref<Record<string, string[]>>({});
@@ -452,12 +396,13 @@ export default defineComponent({
 
     const sel_nom = ref<any>({})
     return {
-      display,
+      // display,
       loading,
       substrateStoreLoading,
       elevation,
       refetch,
       chainId,
+      cohortIds,
       cohortId,
       selected,
       nominators,

@@ -1,6 +1,5 @@
 {
   "name": "nuxt-app",
-  "version": "0.0.5",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,31 +10,24 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@nuxtjs/apollo": "^5.0.0-alpha.14",
-    "@nuxtjs/proxy": "^2.1.0",
-    "@nuxtjs/vuetify": "^1.12.3",
-    "@pinia/nuxt": "^0.7.0",
-    "@polkadot/api": "^14.3.1",
-    "@polkadot/vue-identicon": "^3.11.3",
+    "@nuxt/kit": "^3.16.0",
+    "@pinia/nuxt": "0.10.1",
+    "@polkadot/api": "^15.8.1",
     "@vue-leaflet/vue-leaflet": "^0.10.1",
-    "chart.js": "^4.4.7",
-    "from": "^0.1.7",
-    "gql": "^1.1.2",
-    "gql-tag": "^1.0.1",
-    "import": "^0.0.6",
     "leaflet": "^1.9.4",
-    "nuxt": "^3.14.159",
-    "nuxt-graphql-client": "^0.2.40",
-    "pinia": "^2.2.6",
-    "sass": "^1.80.7",
-    "vite-plugin-vuetify": "^2.0.4",
-    "vue": "latest",
-    "vue-chartjs": "^5.3.2",
-    "vue-router": "latest",
-    "vuetify": "^3.7.4",
-    "vuetify-nuxt-module": "^0.18.3"
+    "nuxt": "^3.16.0",
+    "pinia": "^3.0.1",
+    "sass": "^1.85.1",
+    "sass-loader": "^16.0.5",
+    "vue": "^3.5.13",
+    "vue-cli-plugin-vuetify": "^2.5.8",
+    "vue-router": "^4.5.0",
+    "vuetify": "^3.7.15",
+    "vuetify-loader": "^1.9.2",
+    "vuetify-nuxt-module": "0.18.3"
   },
+  "packageManager": "yarn@1.22.21+sha1.1959a18351b811cdeedbd484a8f86c3cc3bbaf72",
   "devDependencies": {
-    "graphql": "^16.9.0"
+    "@nuxtjs/apollo": "^5.0.0-alpha.14"
   }
 }
