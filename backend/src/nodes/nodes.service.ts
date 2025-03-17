@@ -70,13 +70,14 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
       logger.debug(`Fetching chain data for cohort ${cohortId}`);
       await this.fetchChainData('polkadot', cohortId);
       await this.fetchChainData('kusama', cohortId);
+      await this.handleInterval();
     }
   }
 
   // Schedule a task to run every 5 minutes
   // @Cron('*/1 * * * * *')
-  // @Interval(5 * 60 * 1000) // Every 5 minutes
-  @Interval(30 * 1000) // every 30 seconds
+  @Interval(5 * 60 * 1000) // Every 5 minutes
+  // @Interval(30 * 1000) // every 30 seconds
   async handleInterval() {
     logger.debug('Running scheduled task to fetch chain data');
     for (const cohortId of cohorts) {
@@ -187,10 +188,16 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     let node: INode | INodeBase;
     node = this.dataStore[chainId][cohortId].selected.find((node) => node.stash === stash);
     if (!node) {
-      node = this.dataStore[chainId][cohortId].backups.find((node) => node.stash === stash);
+      logger.debug(`${chainId.padEnd(10)} can't find ${stash} in selected... trying backups`);
+      node = this.dataStore[chainId][cohortId]?.backups.find((node) => node.stash === stash);
+      if (!node) {
+        logger.warn(`${chainId.padEnd(10)} can't find ${stash} in cohort ${cohortId}`);
+        return null;
+      }
     }
     // get telemetry data for the node
-    if (node.telemetry) { // this is the telemetry name
+    if (node.telemetry) {
+      // this is the telemetry name
       const _tel = this.telemetryService.findOneByTelemetryName(chainId, node.telemetry);
       if (_tel) {
         node.telemetryX = _tel.NodeDetails;

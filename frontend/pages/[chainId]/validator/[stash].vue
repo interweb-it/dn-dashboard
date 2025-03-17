@@ -12,7 +12,7 @@
         <v-icon size="small"><v-img src="/image/logo-black.png" height="32" width="32"></v-img></v-icon>&nbsp;
         <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" style="border-radius: 20%;"></v-img></v-icon>
         <span class="d-none d-sm-inline">&nbsp;{{ chainId }} validator</span>
-        {{ node.identity }}
+        {{ node?.identity }}
       </v-toolbar-title>
 
       <v-btn icon flat :loading="isLoading" @click="reload">
@@ -29,14 +29,14 @@
           <v-list>
             <v-list-item>
               <v-list-item-subtitle>DN Identity</v-list-item-subtitle>
-              <v-list-item-title>{{ node.identity }}</v-list-item-title>
+              <v-list-item-title>{{ node?.identity }}</v-list-item-title>
             </v-list-item>
             <v-list-item>
               <v-list-item-subtitle>Stash</v-list-item-subtitle>
               <v-list-item-title>
-                {{ node.stash }}
+                {{ node?.stash }}
                 <sup>
-                  <a icon size="small" target="_blank" :href="`https://${chainId}.subscan.io/validator/${node.stash}`">
+                  <a icon size="small" target="_blank" :href="`https://${chainId}.subscan.io/validator/${node?.stash}`">
                     <v-icon>mdi-open-in-new</v-icon>
                   </a>
                 </sup>
@@ -44,7 +44,7 @@
             </v-list-item>
             <v-list-item>
               <v-list-item-subtitle>Status (in the program)</v-list-item-subtitle>
-              <v-list-item-title>{{ node.status }}</v-list-item-title>
+              <v-list-item-title>{{ node?.status }}</v-list-item-title>
             </v-list-item>
 
             <v-list-item>
@@ -139,7 +139,7 @@
 
       <PerformanceCard
         :chain-id="chainId"
-        :stash="node.stash"
+        :stash="node?.stash"
         :performance="performance"
         @refresh="refetchP"></PerformanceCard>
 
@@ -250,7 +250,7 @@
                 <v-list-item-subtitle text-color="red">Telemetry Error</v-list-item-subtitle>
                 <v-list-item-title>
                   <!-- {{ telemetryError }}<br> -->
-                  <p>No telemetry found for "{{ node.identity }}"</p>
+                  <p>No telemetry found for "{{ node?.identity }}"</p>
                   <p>If the `DN identity` does not match `telemetry name``.</p>
                   <p>
                     Submit a PR to add your details 
@@ -370,7 +370,7 @@ import type { IBackupNode } from '~/utils/types';
 
 const QUERY_NODE = gql`
 query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
-  nodeByStash(chainId:$chainId, cohortId:1, stash: $stash){
+  nodeByStash(chainId:$chainId, cohortId:$cohortId, stash: $stash){
     identity
     stash
     commission
@@ -473,15 +473,16 @@ const tokens: Record<string, string> = {
   kusama: 'KSM',
 }
 
+// TODO, count the validators per chain 7500:6000 / 150:100
 const rules: Record<string, Record<string, number|string>> = {
   polkadot: {
     commission: 5,
-    selfBond: 7500,
+    selfBond: 6000,
     rewardDestination: 'Staked',
   },
   kusama: {
     commission: 15,
-    selfBond: 125,
+    selfBond: 100,
     rewardDestination: 'Staked',
   },
 }
@@ -505,6 +506,9 @@ export default defineComponent({
     const stakingEntries = computed(() => substrateStore.stakingEntries)
     const substrateStoreLoading = computed(() => substrateStore.loading)
     const nominatorStore = useNominatorStore()
+    const nodeStore = useNodeStore()
+    // TODO - need to find a better way of setting this...
+    const cohortId = computed(() => nodeStore.cohortId)
     const { $substrate } = useNuxtApp();
     var api: ApiPromise | null;
     var apip: ApiPromise | null;
@@ -514,7 +518,7 @@ export default defineComponent({
 
     const nodes = ref([])
     var error = ref(null)
-    const node = ref<INode>({ identity: '', stash: '', status: '' })
+    const node = ref<INode>({ identity: '', stash: stash.value.toString(), status: '' })
     const dnNominators = ref<string[]>([])
     const validators = ref([])
     const telemetry = ref({})
@@ -733,7 +737,7 @@ export default defineComponent({
       // node
       var { error, loading: cLoading, refetch: cRefetch, onResult } = useQuery(QUERY_NODE, {
         chainId: chainId.value,
-        cohortId: 1,
+        cohortId: cohortId.value,
         stash: stash.value
       })
       refetchC = cRefetch
@@ -745,20 +749,20 @@ export default defineComponent({
           return;
         }
         console.log('main result', result.data);
-        node.value = result.data.nodeByStash;
+        node.value = { ...result.data.nodeByStash, stash: stash.value };
         dnNominators.value = result.data.nominators || [];
         validators.value = result.data.validators || [];
         // use the name to get telemetry data
         tRefetch({
           chainId: chainId.value,
-          identity: result.data.nodeByStash.identity
+          identity: result.data.nodeByStash?.identity || ''
         });
       });
 
       // telemetry
       var { error, loading: tLoading, refetch: tRefetch, onResult: tonResult } = useQuery(QUERY_TELEMETRY, {
         chainId: chainId.value,
-        identity: node.value.identity || ''
+        identity: node.value?.identity || ''
       });
       refetchT.value = tRefetch
       loadingT = tLoading
@@ -772,7 +776,7 @@ export default defineComponent({
         telemetry.value = result.data?.telemetryByIdentity?.NodeDetails || {};
         telemetryError.value = result.data?.telemetryByIdentity?.NodeDetails 
           ? null 
-          : `No telemetry data found - does your node have '--name "${node.value.identity}"''`;
+          : `No telemetry data found - does your node have '--name "${node.value?.identity}"''`;
       });
 
       // all nominators/stakers
