@@ -133,7 +133,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
         this.telemetryService.updateTelemetryNameForNode(chainId, node.identity, node.telemetry);
       }
     }
-    for (const node of data.backups) {
+    for (const node of data?.backups || []) {
       const _val = await this.blockchainService.getValidator(chainId, node.stash);
       node.commission = _val?.commission || 0;
     }
