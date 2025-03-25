@@ -392,7 +392,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getNominatorsForStashX(chainId: string, stash: string): Promise<INominator[]> {
-    this.logger.debug(`${chainId.padEnd(10)} getNominatorsForStash, ${stash}`);
+    this.logger.debug(`${chainId.padEnd(10)} getNominatorsForStashX, ${stash}`);
     // return this.chains[chainId].nominators.filter((nom) => nom.targets.includes(stash));
     const QUERY = gql`
       query allNominators($chainId: String!, $stash: String!) {
@@ -430,7 +430,8 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
             BigInt(nom.account.data.free || 0) +
               BigInt(nom.account.data.reserved || 0) +
               BigInt(nom.account.data.miscFrozen || 0) +
-              BigInt(nom.account.data.feeFrozen || 0),
+              BigInt(nom.account.data.feeFrozen || 0) +
+              BigInt(nom.account.data.bonded || 0),
           ),
           targets: [],
         };
