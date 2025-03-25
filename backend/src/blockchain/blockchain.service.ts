@@ -405,6 +405,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
                 reserved
                 miscFrozen
                 feeFrozen
+                bonded
               }
             }
           }
