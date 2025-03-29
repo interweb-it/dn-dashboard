@@ -1,6 +1,8 @@
-import { Logger, Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Logger, Injectable, Inject, OnModuleInit, OnModuleDestroy, forwardRef } from '@nestjs/common';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { ApolloClient, InMemoryCache, gql } from '@apollo/client/core';
+
+import { NodesService } from 'src/nodes/nodes.service';
 
 export interface INominator {
   address: string;
@@ -21,7 +23,7 @@ export interface IValidator {
   identity?: string;
   commission: number;
   balance: number;
-  exposure: IExposure[];
+  exposure: IExposure; // should be an array of IExposure?
   active?: boolean;
 }
 
@@ -67,7 +69,10 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   // private readonly WSS_BASE_URL = 'wss://rpc.ibp.network/';
   private readonly WSS_BASE_URL = 'wss://rpc.metaspan.io/';
 
-  constructor() {
+  constructor(
+    @Inject(forwardRef(() => NodesService))
+    private readonly nodesService: NodesService,
+  ) {
     this.apolloClient = new ApolloClient({
       uri: 'https://gql.metaspan.io/graphql',
       headers: {
@@ -140,8 +145,8 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   async handleNewSession(chainId: string, session: number) {
     this.logger.debug(`${chainId.padEnd(10)} new session: ${session.toString()}`);
     this.chains[chainId].session = session;
-    await this._getAllValidators(chainId);
-    await this._getSessionValidators(chainId);
+    await this._getAllValidators(chainId); // get all validators
+    await this._getSessionValidators(chainId); // get active validators
     //await this._getAllNominators(chainId);
   }
 
@@ -163,9 +168,14 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /**
+   * Get Session (Active) validators
+   * @param chainId
+   */
   async _getSessionValidators(chainId: string) {
     this.logger.debug(`${chainId.padEnd(10)} _getSessionValidators`);
     this.chains[chainId].sessionValidators = [];
+    // https://polkadot.js.org/docs/substrate/storage#validators-vecaccountid32
     const validators = await this.chains[chainId].api.query.session.validators();
     // this.logger.debug(`${chainId.padEnd(10)} validators: ${validators.length}`);
     // validators.forEach((val) => {
@@ -177,6 +187,11 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`${chainId.padEnd(10)} session validators ${this.chains[chainId].sessionValidators.length}`);
   }
 
+  /**
+   * Get all validators for this session (incl waiting)
+   * @param chainId
+   * @returns
+   */
   async _getAllValidators(chainId: string) {
     this.logger.debug(`${chainId.padEnd(10)} _getAllValidators`);
     if (!this.chains[chainId].api) {
@@ -184,14 +199,55 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     this.chains[chainId].allValidators = [];
+
+    let era: any = await this.chains[chainId].api?.query.staking.activeEra();
+    era = era ? era.toJSON() : {};
+
+    interface IExposureOverview {
+      total: bigint;
+      own: bigint;
+      pageCount: number;
+      nominatorCount: number;
+      // others: IExposureOther[];
+    }
+
+    // https://polkadot.js.org/docs/substrate/storage#validatorsaccountid32-palletstakingvalidatorprefs
+    // The map from (wannabe) validator stash key to the preferences of that validator.
     const stakingEntries: any[] = await this.chains[chainId].api.query.staking.validators.entries();
     this.logger.debug(`${chainId.padEnd(10)} stakingEntries: ${stakingEntries.length}`);
     for (const [key, validatorPrefs] of stakingEntries) {
       try {
         const validatorAddress = key.args[0].toString();
-        const exposure = (
-          await this.chains[chainId].api.query.staking.erasStakers(0, validatorAddress)
-        ).toJSON() as any;
+        const exposure: IExposure = {
+          own: BigInt(0),
+          total: BigInt(0),
+          others: [],
+        };
+
+        // check if validator is in DN any cohort
+        const cohorts = this.nodesService.getCohortsForAddress(chainId, validatorAddress);
+        // if this is DN, then we need to get the exposure for the DN cohort
+        if (cohorts.length > 0) {
+          // https://polkadot.js.org/docs/polkadot/storage#erasstakersu32-accountid32-spstakingexposure
+          const exposureOverview = (
+            await this.chains[chainId].api.query.staking.erasStakersOverview(era.index, validatorAddress)
+          ).toJSON() as IExposureOverview;
+          exposure.total = BigInt(exposureOverview?.total || 0);
+          exposure.own = BigInt(exposureOverview?.own || 0);
+
+          for (let i = 0; i < exposureOverview?.pageCount; i++) {
+            const _exposure = (
+              await this.chains[chainId].api.query.staking.erasStakersPaged(era.index, validatorAddress, i)
+            ).toJSON() as any;
+            exposure.others.push(
+              ..._exposure.others.map((o) => ({
+                who: o.who,
+                value: BigInt(o.value),
+              })),
+            );
+          }
+        }
+
         const accountData = (await this.chains[chainId].api.query.system.account(validatorAddress)).toJSON() as any;
         const balance = Number(BigInt(accountData.data.free)); // Available balance
         this.chains[chainId].allValidators.push({
@@ -199,7 +255,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
           // name: validatorPrefs.toJSON().validatorPrefs?.name,
           commission: Number(BigInt(validatorPrefs.toJSON()?.commission)) / 10_000_000,
           balance: balance,
-          exposure: exposure.others,
+          exposure: exposure, // .others,
         });
       } catch (err) {
         this.logger.error('stakingEntries error', err);
@@ -215,7 +271,7 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   };
 
   /**
-   * Get all nominators for DN validators
+   * Get all nominators ~~for DN validators~~
    */
   async _getAllNominators(chainId: string) {
     this.logger.debug(`${chainId.padEnd(10)}, getAllNominators`);
@@ -352,7 +408,12 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     // }
   }
 
-  getSessionValidators(chainId: string) {
+  /**
+   * Get all session validators
+   * @param chainId
+   * @returns array of IValidator
+   */
+  getSessionValidators(chainId: string): IValidator[] {
     this.logger.debug(`${chainId.padEnd(10)} getSessionValidators`);
     // console.log('this.chains[chainId].sessionValidators', this.chains[chainId].sessionValidators);
     return this.chains[chainId].allValidators.filter((val) =>
@@ -360,6 +421,11 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
+  /**
+   * get all validators
+   * @param chainId
+   * @returns array of IValidator
+   */
   getAllValidators(chainId: string): IValidator[] {
     this.logger.debug(`${chainId.padEnd(10)} getAllValidators`);
     return this.chains[chainId].allValidators.map((val) => {
@@ -369,10 +435,17 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  getValidator(chainId: string, address: string) {
+  /**
+   * Get Validator
+   * @param chainId
+   * @param address
+   * @returns
+   */
+  getValidator(chainId: string, address: string): IValidator {
     this.logger.debug(`${chainId.padEnd(10)} getValidator, ${address}`);
     const val = this.chains[chainId].allValidators.find((val) => val.address === address);
     if (!val) {
+      this.logger.warn(`${chainId.padEnd(10)} getValidator, ${address} not found`);
       return null;
     }
     // check if val is in sessionValidators
@@ -381,16 +454,45 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     return val;
   }
 
-  getNominators(chainId: string) {
+  /**
+   * returns all nominators for this chain
+   * @param chainId
+   * @returns array of INominator
+   */
+  getNominators(chainId: string): INominator[] {
     this.logger.debug(`${chainId.padEnd(10)} getNominators`);
     return this.chains[chainId].nominators;
   }
 
+  /**
+   *
+   * @param chainId
+   * @param address
+   * @returns
+   */
   getNominator(chainId: string, address: string) {
     this.logger.debug(`${chainId.padEnd(10)} getNominator, ${address}`);
     return this.chains[chainId].nominators.find((nom) => nom.address === address);
   }
 
+  /**
+   *
+   * @param chainId
+   * @param address
+   * @returns
+   */
+  getExposure(chainId: string, address: string): IExposure {
+    this.logger.debug(`${chainId.padEnd(10)} getExposure, ${address}`);
+    const exposure =
+      this.chains[chainId].allValidators.find((val) => val.address === address)?.exposure || ({} as IExposure);
+    return exposure;
+  }
+
+  /**
+   * @param chainId
+   * @param stash
+   * @returns
+   */
   async getNominatorsForStashX(chainId: string, stash: string): Promise<INominator[]> {
     this.logger.debug(`${chainId.padEnd(10)} getNominatorsForStashX, ${stash}`);
     // return this.chains[chainId].nominators.filter((nom) => nom.targets.includes(stash));
@@ -422,9 +524,13 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
           stash,
         },
       });
-      console.debug('response', response);
+      //console.debug('response', JSON.stringify(response));
       // this.logger.debug(`${chainId.padEnd(10)} getNominatorsForStash, ${stash}, ${response.data.length}`);
       return response.data?.Validator?.nominators?.map((nom) => {
+        // //console.debug('nom.accountId', nom.accountId);
+        // if (nom.accountId === '13UVJyLnbVp8c4FQeiGDrYotodEcyAzE8tipNEMc61UBJAH4') {
+        //   console.debug('nom.account.data', nom.account.data);
+        // }
         return {
           address: nom.accountId,
           balance: Number(

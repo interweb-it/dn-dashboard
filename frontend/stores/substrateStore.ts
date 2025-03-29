@@ -8,6 +8,17 @@ export const useSubstrateStore = defineStore('substrateStore', {
     apiConnected: false,
     apipConnected: false,
   }),
+  getters: {
+    getChainId: (state) => state.chainId,
+    getDecimals: (state) => {
+      switch (state.chainId) {
+        case 'kusama':
+          return 12
+        case 'polkadot':
+          return 10
+      }
+    }
+  },
   actions: {
     setChainId(chainId: string) {
       if (chainId !== this.chainId) {

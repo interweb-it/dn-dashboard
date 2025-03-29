@@ -35,7 +35,7 @@
 // import { FeedMessage } from '@/pages/substrate-telemetry'
 // import { FeedVersion, NodeDetails } from '../substrate-telemetry/types'
 import { useNodeStore } from '@/stores/nodeStore'
-import { Message } from '@/pages/substrate-telemetry/types'
+import { Message } from '@/utils/substrate-telemetry/types'
 import NodeDetailsCard from '../../components/NodeDetailsCard.vue'
 
 const QUERY_TELEMETRY_NODES = gql`

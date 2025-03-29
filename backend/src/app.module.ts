@@ -15,10 +15,12 @@ import { NodesModule } from './nodes/nodes.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { PerformanceModule } from './performance/performance.module';
+import { NominationModule } from './nomination/nomination.module';
 
 import configuration from './config/configuration';
 // import { join } from 'path';
 // import { upperDirectiveTransformer } from './common/directives/upper-case.directive';
+import { databaseProviders } from './database/database.providers';
 
 @Module({
   imports: [
@@ -28,7 +30,7 @@ import configuration from './config/configuration';
     ScheduleModule.forRoot({}),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      include: [NodesModule, TelemetryModule, BlockchainModule, PerformanceModule],
+      include: [NodesModule, TelemetryModule, BlockchainModule, PerformanceModule, NominationModule],
       // autoSchemaFile: 'schema.gql',
       // autoSchemaFile: join(process.cwd(), 'src/graphql/graphql.schema.gql'),
       // typePaths: ['./**/*.graphql'],
@@ -53,8 +55,10 @@ import configuration from './config/configuration';
     TelemetryModule,
     BlockchainModule,
     PerformanceModule,
+    NominationModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, ...databaseProviders],
+  exports: [...databaseProviders],
 })
 export class AppModule {}

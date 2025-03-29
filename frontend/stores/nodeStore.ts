@@ -10,6 +10,7 @@ import type {
   Timestamp,
   NodeSysInfo
 } from '../utils/substrate-telemetry/types'
+import type { IExposure } from '../utils/types'
 
 export interface AddedNodeMessageX {
   NodeId: number
@@ -54,6 +55,7 @@ export const useNodeStore = defineStore('nodeStore', {
     linesPerPage: 10,
     tab: 'selected', // selected, backup, nominators
     nodes: new Map<string, any>(),
+    currentExposure: {} as IExposure
   }),
   // getters: {
   //   nodes: (state) => state.nodes,
@@ -95,5 +97,8 @@ export const useNodeStore = defineStore('nodeStore', {
       //const nodex = parseRemovedNodeMessage(node)
       // this.nodes.delete(stash)
     },
+    setCurrentExposure(exposure: IExposure) {
+      this.currentExposure = exposure
+    }
   },
 })

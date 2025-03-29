@@ -1,0 +1,19 @@
+scalar BigInt
+
+type Query {
+  nominationStats(chainId: String!, stash: String!): [NominationStats]
+}
+
+type NominationStats {
+  chainId: String!
+  stash: String!
+  datehour: String!
+  active: Int
+  commission: Int
+  nom_dn: BigInt
+  nom_non: BigInt
+  nom_value_dn: BigInt
+  nom_value_non: BigInt
+  exposure_dn: BigInt
+  exposure_non: BigInt
+}

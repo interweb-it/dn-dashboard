@@ -143,97 +143,9 @@
         :performance="performance"
         @refresh="refetchP"></PerformanceCard>
 
-      <v-card>
-        <v-card-title>
-          Exposure
-          <v-icon color="red" size="small">mdi-fire</v-icon>
-          <v-btn icon flat @click="getExposure" :loading="loadingE">
-            <v-icon>mdi-refresh</v-icon>
-          </v-btn>
-        </v-card-title>
-        <v-card-text>
-          <!-- {{ exposure }} -->
-          <v-container fluid class="ma-0 pa-0">
-            <v-row no-gutters>
-              <v-col>
-                Total: {{ exposure.total.toLocaleString(undefined, {maximumFractionDigits:  decimalPlaces, minimumFractionDigits:  decimalPlaces}) }}
-              </v-col>
-              <v-col>
-                Own: {{ exposure.own.toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
-              </v-col>
-              <v-col>
-                Others: {{ exposure.others.reduce((sum, m) => sum + m.value, 0).toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
-              </v-col>
-            </v-row>
-          </v-container>
+      <ExposureCard :chain-id="chainId" :stash="node?.stash" />
 
-          <v-data-table :items="exposure.others"
-            :headers="[{ key: 'who', title: 'Address'}, {key: 'value', title: 'Amount', align: 'end'}]"
-            :sort-by="[{ key: 'value', order: 'desc' }]">
-            <template v-slot:item.who="{ item }">
-              <a :href="`https://${chainId}.subscan.io/nominator/${item.who}`" target="_blank">{{ shortStash(item.who) }}</a>              
-              <span v-if="dnNominators.includes(item.who)" style="color: blueviolet; font-weight: bold;"> [DN]</span>
-            </template>
-            <template v-slot:item.value="{ item }">
-              {{ item.value.toLocaleString(undefined, {minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces}) }}
-            </template>
-          </v-data-table>
-        </v-card-text>
-      </v-card>
-
-      <v-card>
-        <!-- <v-toolbar fluid color="background" density="compact">
-          <v-toolbar-title>Nominators</v-toolbar-title>
-          <v-btn icon flat @click="refetchN" :loading="loadingN">
-            <v-icon>mdi-refresh</v-icon>
-          </v-btn>
-          <v-spacer></v-spacer>
-        </v-toolbar> -->
-        <v-card-title>
-          Nominators
-          <v-icon color="red" size="small">mdi-sack</v-icon>
-          <v-btn icon flat @click="refetchN" :loading="loadingN">
-            <v-icon>mdi-refresh</v-icon>
-          </v-btn>
-        </v-card-title>
-        <v-card-text>
-          <!-- <p v-show="loadingN" color="red">Scanning chain nominators, building nominator list... {{ page }} of {{ pages }}</p> -->
-          <!-- {{ nominators }} -->
-          <v-container fluid class="ma-0 pa-0">
-            <v-row no-gutters>
-              <v-col>
-                Total: {{ totalNominations.toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
-              </v-col>
-              <v-col>
-                DN: {{ dnNominations.toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
-              </v-col>
-              <v-col>
-                Non-DN: {{ nonDnNominations.toLocaleString(undefined, {maximumFractionDigits: decimalPlaces, minimumFractionDigits: decimalPlaces}) }}
-              </v-col>
-            </v-row>
-          </v-container>
-          <!-- {{ dnNominators }} -->
-          <v-data-table :items="nominators"  :loading="loadingN || loadingAN"
-            :headers="[{key:'address',title:'Address' }, {key: 'balance', title: 'Balance', align:'end'}]"
-            :sort-by="[{ key: 'balance', order: 'desc' }]">
-            <template v-slot:loading>
-              <v-skeleton-loader type="table-row@5"></v-skeleton-loader>
-            </template>
-            <template v-slot:item.address="{ item }">
-              <a :href="`https://${chainId}.subscan.io/nominator/${item.address}`" target="_blank">{{ shortStash(item.address) }}</a>              
-              <v-icon color="red" v-if="exposure.others.map(m => m.who).includes(item.address)">mdi-fire</v-icon>
-              <span v-if="dnNominators.includes(item.address)" style="color: blueviolet; font-weight: bold;"> [DN]</span>
-            </template>
-            <template v-slot:item.balance="{ item }">
-              <span style="color: red;" v-if="exposure.others.map(m => m.who).includes(item.address)">
-                {{ exposure.others.find(m => m.who === item.address)?.value.toLocaleString(undefined, {minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces}) }} /
-              </span>
-              {{ item.balance.toLocaleString(undefined, {minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces}) }}
-              <!-- item exposure -->
-            </template>
-          </v-data-table>
-        </v-card-text>
-      </v-card>
+      <NominationsCard :chain-id="chainId" :stash="node?.stash" />
 
       <v-card>
         <v-card-title>
@@ -322,8 +234,9 @@ import { ApiPromise } from '@polkadot/api'
 import { hexToString } from '@polkadot/util'
 import { gql } from 'graphql-tag'
 import PerformanceCard from '~/components/PerformanceCard.vue';
+import ExposureCard from '~/components/ExposureCard.vue';
+import NominationsCard from '~/components/NominationsCard.vue';
 
-// import { FeedMessage } from '../substrate-telemetry';
 import type { Maybe } from '~/utils/substrate-telemetry/helpers';
 import type {
   BlockNumber,
@@ -366,102 +279,9 @@ export interface NodeDetailsX {
   ChainStats: ChainStats;
 }
 
-import type { IBackupNode } from '~/utils/types';
+import type { INominator, INode } from '~/utils/types';
 
-const QUERY_NODE = gql`
-query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
-  nodeByStash(chainId:$chainId, cohortId:$cohortId, stash: $stash){
-    identity
-    stash
-    commission
-    status
-    telemetry
-    telemetryX {
-      NodeName
-      NodeSysInfo {
-        memory
-        core_count
-        linux_kernel
-        linux_distro
-        is_virtual_machine
-      }
-    }
-  }
-  # dn nominators
-  nominators(chainId: $chainId, cohortId: $cohortId)
-}`
-
-const QUERY_NOMINATORS = gql`
-query stakers($chainId: String!, $stash: String!) {
-  stakersForStash(chainId:$chainId, stash: $stash) {
-    address
-    balance
-    # targets
-  }
-}`
-
-const QUERY_TELEMETRY = gql`
-query telemetry($chainId: String!, $identity: String!) {
-  telemetryByIdentity(chainId: $chainId, identity: $identity) {
-    NodeId
-    NodeDetails {
-      NodeName
-      TelemetryName
-      NodeImplementation
-      NodeVersion
-      NetworkId
-      # OperatingSystem
-      NodeSysInfo {
-        cpu
-        memory
-        core_count
-        linux_kernel
-        linux_distro
-        is_virtual_machine
-      }
-      ChainStats {
-        cpu_hashrate_score
-        memory_memcpy_score
-        disk_sequential_write_score
-        disk_random_write_score
-      }
-    }
-  }
-}`
-const QUERY_PERFORMANCE = gql`
-query performance($chainId: String!, $address: String!, $number_sessions: Int) {
-  performance(chainId: $chainId, address: $address, number_sessions: $number_sessions) {
-    grade
-    authority_inclusion
-    para_authority_inclusion
-    sessions_data {
-      session
-      is_auth
-      is_para
-      auth {
-        aix
-        sp
-        ep
-        ab
-      }
-      para {
-        core
-        group
-        peers
-        pid
-        pix
-      }
-      para_summary {
-        pt
-        ca
-        ab
-        ev
-        iv
-        mv
-      }
-    }
-  }
-}`
+import { QUERY_NOMINATORS, QUERY_TELEMETRY, QUERY_PERFORMANCE, QUERY_NODE } from '~/utils/graphql';
 
 const decimals: Record<string, number> = {
   polkadot: 10,
@@ -487,16 +307,12 @@ const rules: Record<string, Record<string, number|string>> = {
   },
 }
 
-interface INode {
-  identity: string;
-  stash: string;
-  status: string;
-}
-
 export default defineComponent({
   name: 'CohortHome',
   components: {
     PerformanceCard,
+    ExposureCard,
+    NominationsCard,
   },
   async setup() {
     const route = useRoute()
@@ -618,9 +434,10 @@ export default defineComponent({
       console.log('reload');
       await refetchC() // chain
       await getAccount()
-      await getExposure()
+      //await getExposure()
       await refetchP.value() // performance
       await refetchN.value() // all nominators
+      // await refetchNS.value() // nomination stats
     }
 
     // rules: https://github.com/turboflakes/one-t/blob/main/LEGENDS.md#val-performance-report-legend
@@ -779,28 +596,28 @@ export default defineComponent({
           : `No telemetry data found - does your node have '--name "${node.value?.identity}"''`;
       });
 
-      // all nominators/stakers
-      var { error, loading: nLoading, refetch: nRefetch, onResult: nonResult } = useQuery(QUERY_NOMINATORS, {
-        chainId: chainId.value,
-        stash: stash.value || ''
-      });
+      // // all nominators/stakers
+      // var { error, loading: nLoading, refetch: nRefetch, onResult: nonResult } = useQuery(QUERY_NOMINATORS, {
+      //   chainId: chainId.value,
+      //   stash: stash.value || ''
+      // });
 
-      loadingN = nLoading
-      refetchN.value = nRefetch
+      // loadingN = nLoading
+      // refetchN.value = nRefetch
 
-      nonResult((result: any) => {
-        if (result.loading) {
-          console.log('still loading...');
-          return;
-        }
-        console.log('nominators result', result.data);
-        nominators.value = result.data?.stakersForStash?.map((staker: any) => {
-          return {
-            address: staker.address,
-            balance: Number(staker.balance) / Math.pow(10, decimals[chainId.value])
-          }
-        }) || [];
-      });
+      // nonResult((result: any) => {
+      //   if (result.loading) {
+      //     console.log('still loading...');
+      //     return;
+      //   }
+      //   console.log('nominators result', result.data);
+      //   nominators.value = result.data?.stakersForStash?.map((staker: any) => {
+      //     return {
+      //       address: staker.address,
+      //       balance: Number(staker.balance) / Math.pow(10, decimals[chainId.value])
+      //     }
+      //   }) || [];
+      // });
 
       // performance
       var { error, loading: pLoading, refetch: pRefetch, onResult: ponResult } = useQuery(QUERY_PERFORMANCE, {
@@ -814,7 +631,7 @@ export default defineComponent({
       ponResult((result: any) => handlePerformanceResult(result));
 
       await getAccount()
-      await getExposure()
+      //await getExposure()
       // await getNominators()
       init.value = false
     });
@@ -939,67 +756,7 @@ export default defineComponent({
       }
     }
 
-    // get exposures
-    interface IExposureItem {
-      who: string;
-      value: number;
-    }
-    interface IExposure {
-      total: number;
-      own: number;
-      pageCount: number;
-      others: IExposureItem[]
-    }
-    const exposure = ref<IExposure>({
-      total: 0,
-      own: 0,
-      pageCount: 0,
-      others: []
-    })
-    const getExposure = async () => {
-      console.debug('getExposure', stash.value);
-      await getApi();
-      loadingE.value = true
-      var era: any = await api?.query.staking.activeEra()
-      era = era ? era.toJSON() : {};
-      const denom = BigInt(Math.pow(10, decimals[chainId.value]));
 
-      var _exposure: any = await api?.query.staking.erasStakersOverview(era.index, stash.value);
-      _exposure = _exposure.toJSON() as any;
-      if (!_exposure) {
-        loadingE.value = false
-        return
-      }
-      _exposure.total = Number(BigInt(_exposure?.total || 0) / denom);
-      _exposure.own = Number(BigInt(_exposure.own) / denom);
-      console.log('exposure:', _exposure);
-
-      // validator other exposures
-      _exposure.others = [];
-      for (let j = 0; j < _exposure.pageCount; j++) {
-        const exp: IExposure = (await api.query.staking.erasStakersPaged(era.index, stash.value, j)).toJSON() as any;
-        exp.others = exp.others.map((o) => {
-          return {
-            who: o.who,
-            value: Number(BigInt(o.value) / denom),
-          };
-        })
-        _exposure.others.push(...exp.others || []);
-      }
-      exposure.value = _exposure;
-      loadingE.value = false
-    }
-
-    // get nominations
-    interface INominator {
-      address: string;
-      balance: number;
-      identity?: string;
-      identityInfo?: any;
-      locks?: any[];
-      pooled?: any;
-      nominations?: any;
-    }
 
     const totalNominations = computed(() => {
       return nominators.value.reduce((sum, n) => sum + Number(n.balance), 0)
@@ -1014,6 +771,13 @@ export default defineComponent({
     const nominators = ref<INominator[]>([])
     const page = ref(0)
     const pages = ref(0)
+
+    // trigger refetch of nomination stats in the NominatorsChart component
+    const nominationStatsRefetch = ref(0)
+    const refetchNominationStats = () => {
+      console.debug('refetchNominationStats', stash.value);
+      nominationStatsRefetch.value++
+    }
 
     return {
       init,
@@ -1051,7 +815,7 @@ export default defineComponent({
       refetchT,
       nominators,
       validators,
-      exposure,
+      //exposure,
 
       performance,
       refetchP,
@@ -1060,7 +824,11 @@ export default defineComponent({
       dnNominations,
       nonDnNominations,
       getTelemetry: refetchT,
-      getExposure,
+
+      refetchNominationStats,
+      nominationStatsRefetch,
+
+      //getExposure,
       toCoin,
       shortStash,
     }

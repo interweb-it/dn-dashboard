@@ -1,8 +1,7 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, Inject, OnModuleInit, OnModuleDestroy, Logger, forwardRef } from '@nestjs/common';
 import { Interval, Cron } from '@nestjs/schedule';
 
 import { BlockchainService } from 'src/blockchain/blockchain.service';
-// import { NodeDetails } from 'src/substrate-telemetry/types';
 import { NodeDetailsX } from 'src/telemetry/telemetry.service';
 import { TelemetryService } from 'src/telemetry/telemetry.service';
 
@@ -61,7 +60,9 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   };
 
   constructor(
+    @Inject(forwardRef(() => BlockchainService))
     private blockchainService: BlockchainService,
+    @Inject(forwardRef(() => TelemetryService))
     private telemetryService: TelemetryService,
   ) {}
 
@@ -163,7 +164,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   }
 
   getNominators(chainId: string, cohortId: number): string[] {
-    logger.debug(`${chainId.padEnd(10)} getNomintors`);
+    logger.debug(`${chainId.padEnd(10)} getNominators`);
     const ret = Array.from(this.dataStore[chainId][cohortId]?.nominators || []);
     return ret;
   }
@@ -171,6 +172,18 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   getTerm(chainId: string, cohortId): ITerm {
     logger.debug(`${chainId.padEnd(10)} getTerm`);
     return this.dataStore[chainId][cohortId].term;
+  }
+
+  getCohortsForAddress(chainId: string, address: string): number[] {
+    logger.debug(`${chainId.padEnd(10)} getCohortsForAddress ${address}`);
+    const ret = [];
+    for (const cohortId of cohorts) {
+      const _nodes = this.dataStore[chainId][cohortId].selected.filter((node) => node.stash === address);
+      if (_nodes.length > 0) {
+        ret.push(cohortId);
+      }
+    }
+    return ret;
   }
 
   findNodeByName(chainId: string, cohortId: number, name: string): INode | INodeBase {
