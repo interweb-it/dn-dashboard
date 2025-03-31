@@ -16,6 +16,16 @@ services:
     depends_on:
       - dnd-backend
 
+  dnd-mariadb:
+    image: mariadb:latest
+    volumes:
+      - ../data/mariadb:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: thisisasecret123
+      MYSQL_DATABASE: dnd
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
   dnd-backend:
     image: dn-dashboard-backend:latest
     build:
@@ -25,6 +35,11 @@ services:
       - "4000:3002" # Map NestJS app to localhost:4000
     environment:
       NODE_ENV: production
+      DB_HOST: dnd-mariadb
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: thisisasecret123
+      DB_DATABASE: dnd
     restart: unless-stopped
     volumes:
       - ../backend:/app # Optional: Mount the backend code for local development
