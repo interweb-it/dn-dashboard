@@ -10,7 +10,9 @@
     <v-card-text>
       <!-- {{ exposure }} -->
 
-      <Line id="chart2" :data="chartData" :options="chartOptions" />
+      <Bar id="chart2" :data="chartData" :options="chartOptions" />
+
+      <br>
 
       <v-container fluid class="ma-0 pa-0">
         <v-row no-gutters>
@@ -44,6 +46,7 @@
 </template>
 
 <script lang="ts">
+import moment from 'moment';
 import { ApiPromise } from '@polkadot/api';
 import { QUERY_NOMINATORS } from '~/utils/graphql';
 import {
@@ -82,6 +85,7 @@ export default defineComponent({
     Line
   },
   setup(props) {
+    const display = useDisplay()
     const substrateStore = useSubstrateStore()
     const decimals = computed(() => substrateStore.getDecimals)
     const nodeStore = useNodeStore()
@@ -149,6 +153,32 @@ export default defineComponent({
       loadingE.value = false
     }
 
+    const xAxis = computed(() => {
+      console.log('display', display.smAndUp.value)
+      return display.smAndUp.value
+        ? {
+          stacked: true,
+          type: 'time',
+          time: {
+            // parser: timeFormat,
+            // round: 'day'                                                                                                                                                                            
+            tooltipFormat: 'YYYY-MM-DD HH:mm',
+            displayFormats: {
+                millisecond: 'HH:mm:ss.SSS',
+                second: 'HH:mm:ss',
+                minute: 'HH:mm',
+                hour: '(DD) HH:00'
+            }
+          }
+        } : {
+          stacked: true,
+          type: 'time',
+          ticks: {
+            display: false
+          }
+        }
+    })
+
     const chartData = computed(() => ({
       title: 'Exposure',
       labels: nominationStats.value.map((stat) => stat.datehour),
@@ -173,8 +203,19 @@ export default defineComponent({
 
     const chartOptions = ref({
       scales: {
-        y: { stacked: true, min: 0 },
-        x: { stacked: true },
+        y: {
+          stacked: true, min: 0,
+          ticks: {
+            callback: function(value: any) {
+              // console.log('display', display.lgAndUp.value)
+              const ret = display.mdAndUp.value
+                ? value.toLocaleString(undefined, {maximumFractionDigits: 0, minimumFractionDigits: 0})
+                : (value/1000).toFixed(0) + 'K'
+              return ret
+            }
+          }
+},
+        x: xAxis.value
       },
       // plugins: {
       //   title: {
@@ -203,7 +244,12 @@ export default defineComponent({
           return;
         }
         console.log('nomination stats result', result.data);
-        nominationStats.value = result.data.nominationStats
+        nominationStats.value = result.data.nominationStats.map((stat: INominationStats) => {
+          return {
+            ...stat,
+            datehour: moment(stat.datehour.substring(0, 10) + ' ' + stat.datehour.substring(11, 13) + ':00:00').format('YYYY-MM-DD HH:mm')
+          }
+        })
       });
 
       onError((error: any) => {
@@ -240,6 +286,7 @@ export default defineComponent({
 
     return {
       exposure,
+      decimals,
       decimalPlaces,
       loadingE,
       dnNominators,

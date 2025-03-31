@@ -1,7 +1,7 @@
 <template>
   <v-card>
     <v-card-title>
-      Nominators
+      Nominations
       <v-icon color="red" size="small">mdi-sack</v-icon>
       <v-btn icon flat @click="doRefetch" :loading="loading">
         <v-icon>mdi-refresh</v-icon>
@@ -14,6 +14,7 @@
 
       <!-- <p v-show="loadingN" color="red">Scanning chain nominators, building nominator list... {{ page }} of {{ pages }}</p> -->
       <!-- {{ nominators }} -->
+      <br>
       <v-container fluid class="ma-0 pa-0">
         <v-row no-gutters>
           <v-col>
@@ -52,6 +53,7 @@
 </template>
 
 <script lang="ts">
+import moment from 'moment';
 import { ApiPromise } from '@polkadot/api';
 
 import {
@@ -59,7 +61,7 @@ import {
   BarElement,
   LineElement,
   CategoryScale,
-  LinearScale,
+  // LinearScale,
   TimeScale,
   Title,
   Tooltip,
@@ -68,7 +70,7 @@ import {
 } from 'chart.js';
 import { Bar, Line } from 'vue-chartjs';
 import 'chartjs-adapter-moment';
-// ChartJS.register(...registerables);
+ChartJS.register(...registerables);
 
 import type { INominationStats, IExposure, INominator } from '~/utils/types';
 
@@ -119,6 +121,7 @@ export default defineComponent({
     Line
   },
   setup(props) {
+    const display = useDisplay()
     const substrateStore = useSubstrateStore()
     const decimals = computed(() => substrateStore.getDecimals)
     const nodeStore = useNodeStore()
@@ -155,21 +158,12 @@ export default defineComponent({
     var loading = ref(false)
     var refetch = () => { console.log('refetch') }
 
-    const getApi = async () => {
-      if (!api || !apiConnected.value) {
-        console.debug('getApi', props.chainId);
-        api = await $substrate.getApi(props.chainId)
-        //apip = await $substrate.getApip(props.chainId)
-        apiConnected.value = true
-      }
-    }
-
     const chartData = computed(() => ({
       title: 'Nominations',
       // convert datehour (yyyy-MM-dd-HH) to date (yyyy-MM-dd)
       labels: nominationStats.value.map((stat) => {
         const ret = stat.datehour.substring(0, 10) + ' ' + stat.datehour.substring(11, 13) + ':00:00';
-        console.log(ret);
+        // console.log(ret);
         return new Date(ret);
       }),
       datasets: [
@@ -202,12 +196,10 @@ export default defineComponent({
       ]      
     }))
 
-    const chartOptions = ref({
-      //type: 'bar',
-      scales: {
-        y: { stacked: true, min: 0 },
-        y1: { stacked: false, min: 0, position: 'right' },
-        x: {
+    const xAxis = computed(() => {
+      // console.log('display', display.mdAndUp.value)
+      return display.mdAndUp.value
+        ? {
           stacked: true,
           type: 'time',
           time: {
@@ -221,14 +213,32 @@ export default defineComponent({
                 hour: '(DD) HH:00'
             }
           }
+        } : {
+          stacked: true,
+          type: 'time',
+          ticks: {
+            display: false
+          }
+        }
+    })
+
+    const chartOptions = ref({
+      scales: {
+        y: {
+          stacked: true, min: 0,
+          ticks: {
+            callback: function(value: any) {
+              // console.log('display', display.lgAndUp.value)
+              const ret = display.lgAndUp.value
+                ? value.toFixed(0)
+                : (value/1000).toFixed(0) + 'K'
+              return ret
+            }
+          }
         },
+        y1: { stacked: false, min: 0, position: 'right' },
+        x: xAxis.value
       },
-      // plugins: {
-      //   title: {
-      //     display: true,
-      //     text: 'Exposure'
-      //   }
-      // }
     })
 
     onMounted(() => {

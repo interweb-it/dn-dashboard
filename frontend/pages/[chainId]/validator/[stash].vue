@@ -316,12 +316,12 @@ export default defineComponent({
   },
   async setup() {
     const route = useRoute()
-    const chainId = ref(route.params.chainId.toString())
+    const chainId = ref(route.params.chainId.toString())    
     const stash = ref(route.params.stash)
     const substrateStore = useSubstrateStore()
-    const stakingEntries = computed(() => substrateStore.stakingEntries)
+    substrateStore.setChainId(chainId.value)
+
     const substrateStoreLoading = computed(() => substrateStore.loading)
-    const nominatorStore = useNominatorStore()
     const nodeStore = useNodeStore()
     // TODO - need to find a better way of setting this...
     const cohortId = computed(() => nodeStore.cohortId)
@@ -332,7 +332,6 @@ export default defineComponent({
 
     const apiConnected = computed(() => substrateStore.apiConnected)
 
-    const nodes = ref([])
     var error = ref(null)
     const node = ref<INode>({ identity: '', stash: stash.value.toString(), status: '' })
     const dnNominators = ref<string[]>([])
