@@ -9,6 +9,10 @@ import { IExposure } from 'src/blockchain/blockchain.service';
 
 const logger = new Logger('NominationService');
 
+// cron interval, default every 30 minutes
+// set this in the .env file
+const interval = process.env.CRON_NOMINATION_INTERVAL || '*/30 * * * *';
+
 // interface IValidator {
 //   stash: string;
 //   data: Nomination[];
@@ -40,16 +44,7 @@ export class NominationService {
 
   onModuleInit() {
     logger.debug('NominationService onModuleInit');
-    // check if the storage data file exists
-    // if (fs.existsSync(this.storageDataFile)) {
-    //   // load the storage data from the file
-    //   this.storageData = JSON.parse(fs.readFileSync(this.storageDataFile, 'utf8'));
-    // } else {
-    //   this.storageData = {
-    //     kusama: {},
-    //     polkadot: {},
-    //   };
-    // }
+    this.handleInterval();
   }
 
   /**
@@ -98,7 +93,7 @@ export class NominationService {
         };
         // this.storeNomination(chainId, data);
         batchArray.push(data);
-        if (batchArray.length >= 100) {
+        if (batchArray.length >= 10) {
           await this.storeNominationsToDB(chainId, batchArray);
           batchArray = [];
         }
@@ -157,8 +152,9 @@ export class NominationService {
   // every 30 seconds, get the data for the storage
   // @Cron(CronExpression.EVERY_5_MINUTES)
   // // every 30 seconds, get the data for the storage
-  @Cron(CronExpression.EVERY_30_SECONDS)
-  async getDataForStorageEvery30Seconds() {
+  @Cron(interval)
+  async handleInterval() {
+    logger.debug('Getting data for storage');
     await this.getDataForStorage();
     await this.trimStorage();
   }

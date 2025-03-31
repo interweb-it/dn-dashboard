@@ -7,6 +7,10 @@ import { TelemetryService } from 'src/telemetry/telemetry.service';
 
 const logger = new Logger('NodesService'.padEnd(17));
 
+// cron interval, default every 30 minutes
+// set this in the .env file
+const interval = process.env.CRON_NODES_INTERVAL || '*/30 * * * *';
+
 export type NodeStatus = 'Active' | 'Graduated' | 'Pending' | 'Removed';
 export type ChainTerm = 'start' | 'end';
 
@@ -31,7 +35,8 @@ export interface ICohortData {
   backups: INodeBase[];
   nominators: string[];
   selected: INode[];
-  statuses: Record<NodeStatus, string>;
+  // statuses: Record<NodeStatus, string>;
+  statuses: NodeStatus[];
   term: ITerm;
 }
 
@@ -55,8 +60,38 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   };
 
   private dataStore: Record<string, TChainData> = {
-    polkadot: {} as TChainData,
-    kusama: {} as TChainData,
+    polkadot: {
+      1: {
+        selected: [],
+        backups: [],
+        nominators: [],
+        statuses: [],
+        term: { start: '', end: '' },
+      },
+      2: {
+        selected: [],
+        backups: [],
+        nominators: [],
+        statuses: [],
+        term: { start: '', end: '' },
+      },
+    } as TChainData,
+    kusama: {
+      1: {
+        selected: [],
+        backups: [],
+        nominators: [],
+        statuses: [],
+        term: { start: '', end: '' },
+      },
+      2: {
+        selected: [],
+        backups: [],
+        nominators: [],
+        statuses: [],
+        term: { start: '', end: '' },
+      },
+    } as TChainData,
   };
 
   constructor(
@@ -67,18 +102,10 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    for (const cohortId of cohorts) {
-      logger.debug(`Fetching chain data for cohort ${cohortId}`);
-      await this.fetchChainData('polkadot', cohortId);
-      await this.fetchChainData('kusama', cohortId);
-      await this.handleInterval();
-    }
+    await this.handleInterval();
   }
 
-  // Schedule a task to run every 5 minutes
-  // @Cron('*/1 * * * * *')
-  @Interval(5 * 60 * 1000) // Every 5 minutes
-  // @Interval(30 * 1000) // every 30 seconds
+  @Cron(interval)
   async handleInterval() {
     logger.debug('Running scheduled task to fetch chain data');
     for (const cohortId of cohorts) {
@@ -97,7 +124,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
       backups: [],
       nominators: [],
       selected: [],
-      statuses: {} as Record<NodeStatus, string>,
+      statuses: [] as NodeStatus[],
       term: { start: '', end: '' },
     };
     try {
@@ -107,7 +134,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       data = await response.json();
-      logger.debug(`${chainId.padEnd(10)} got data`, data);
+      logger.debug(`${chainId.padEnd(10)} got data selected`, data.selected?.length || 0);
     } catch (error) {
       logger.error(`${chainId.padEnd(10)} Failed to fetch data for nodes`, error);
     }
@@ -175,7 +202,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
   }
 
   getCohortsForAddress(chainId: string, address: string): number[] {
-    logger.debug(`${chainId.padEnd(10)} getCohortsForAddress ${address}`);
+    //logger.debug(`${chainId.padEnd(10)} getCohortsForAddress ${address}`);
     const ret = [];
     for (const cohortId of cohorts) {
       const _nodes = this.dataStore[chainId][cohortId].selected.filter((node) => node.stash === address);

@@ -5,6 +5,11 @@ import { WebSocket } from 'ws';
 
 const logger = new Logger('TelemetryService'.padEnd(17));
 
+// cron interval, default every 30 minutes
+// set this in the .env file
+const interval = process.env.CRON_TELEMETRY_INTERVAL || '*/30 * * * *';
+
+
 let telemetryNameMap: Record<string, Record<string, string>> = {
   kusama: {},
   polkadot: {},
@@ -97,7 +102,7 @@ export interface NodeLocationX {
 // };
 
 const parseNodeLocation = (data: NodeLocation, chainId: string): NodeLocationX => {
-  logger.debug(`${chainId.padEnd(10)} Parsing NodeLocation: ${JSON.stringify(data)}`);
+  //logger.debug(`${chainId.padEnd(10)} Parsing NodeLocation: ${JSON.stringify(data)}`);
   if (!Array.isArray(data)) {
     return data;
   }
@@ -257,12 +262,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     this.connect('polkadot');
     this.connect('kusama');
-    // this.updateTelemetryNameMap();
-    // this.readIPGeoFile();
-    // wait 30 secnds
-    // setTimeout(() => {
-    //   this.updateGeoIP();
-    // }, 30_000);
+    this.handleInterval();
   }
 
   onModuleDestroy() {
@@ -290,12 +290,6 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       }
 
       try {
-        // const messages = JSON.parse(event.data.toString());
-        // messages.forEach((message: any) => {
-        //   if (message.action === 'addNode') {
-        //     this.dataStore[chainId].push(message.payload);
-        //   }
-        // });
         const messages: any[] = FeedMessage.deserialize(rawData);
 
         messages.forEach((message) => {
@@ -329,9 +323,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   async addNode(chainId: string, message: AddedNodeMessageX) {
-    // logger.log('AddedNode', chainId, message.NodeId, message.NodeDetails.NodeName, message.NodeDetails.ChainStats);
-    //logger.log('AddedNode', message[1].NodeId, message[1].NodeDetails);
-    logger.debug(`${chainId.padEnd(10)} addNode |${message.NodeDetails.NodeName}|`);
+    //logger.debug(`${chainId.padEnd(10)} addNode |${message.NodeDetails.NodeName}|`);
     // TODO: attempt to match the node name with the telemetry name
     this.dataStore[chainId].set(message.NodeId, message);
   }
@@ -344,11 +336,6 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   getNodes(chainId: string): AddedNodeMessageX[] {
     logger.log('getNodes', chainId);
     const ret = Array.from(this.dataStore[chainId].values());
-    // ret.forEach((node) => {
-    //   if (node.NodeDetails.Address) {
-    //     node.IPGeo = this.getGeoForIP(node.NodeDetails.Address);
-    //   }
-    // });
     return ret; // this.dataStore[chainId].forEach((node) => node);
   }
 
@@ -405,16 +392,6 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     return ret;
   }
 
-  // getGeoForIP(ip: string): IPGeo | undefined {
-  //   if (!ip) return undefined;
-  //   if (!this.ipGeo.has(ip)) {
-  //     logger.log('IP Geo data not found:', ip);
-  //     return undefined;
-  //   }
-  //   logger.log('IP Geo data found:', ip, this.ipGeo.get(ip));
-  //   return this.ipGeo.get(ip);
-  // }
-
   private async updateTelemetryNameMap() {
     logger.debug('Fetching telemetry name map...');
     const url =
@@ -447,12 +424,10 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Cron job to periodically update the telemetry map
-  @Cron(CronExpression.EVERY_10_MINUTES)
-  // @Cron(CronExpression.EVERY_30_SECONDS)
-  handleCron() {
+  @Cron(interval)
+  handleInterval() {
     logger.log('Fetching telemetry name map...');
     this.updateTelemetryNameMap();
-    // this.updateGeoIP();
   }
 
   handleTelemetryMessage(chainId: string, message: any) {

@@ -1,6 +1,5 @@
 // import * as fs from 'fs';
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-// import { Cron, CronExpression } from '@nestjs/schedule';
 
 export interface IPerformance {
   address: string;
@@ -15,8 +14,6 @@ export interface IPerformance {
 
 @Injectable()
 export class PerformanceService implements OnModuleInit, OnModuleDestroy {
-  // private readonly PERFORMANCE_URL = 'https://${CHAIN_ID}-onet-api.turboflakes.io/api/v1/validators/${ADDRESS}/grade';
-
   onModuleInit() {}
 
   onModuleDestroy() {}
