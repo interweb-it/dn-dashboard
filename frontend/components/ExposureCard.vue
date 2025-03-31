@@ -87,7 +87,7 @@ export default defineComponent({
   setup(props) {
     const display = useDisplay()
     const substrateStore = useSubstrateStore()
-    const decimals = computed(() => substrateStore.getDecimals)
+    const decimals = computed(() => substrateStore.getDecimals || 10)
     const nodeStore = useNodeStore()
     const cohortId = computed(() => nodeStore.cohortId)
     const decimalPlaces = 2
@@ -185,14 +185,14 @@ export default defineComponent({
       datasets: [
         {
           label: 'Non-DN',
-          data: nominationStats.value.map((stat) => stat.exposure_non /  Math.pow(10, decimals.value as number)),
+          data: nominationStats.value.map((stat) =>stat.exposure_non),
           fill: true,
           borderWidth: 1,
           pointRadius: 1,
         },
         {
           label: 'DN',
-          data: nominationStats.value.map((stat) => stat.exposure_dn /  Math.pow(10, decimals.value as number)),
+          data: nominationStats.value.map((stat) => stat.exposure_dn),
           fill: true,
           borderWidth: 1,
           pointStyle: 'triangle',
@@ -210,7 +210,7 @@ export default defineComponent({
               // console.log('display', display.lgAndUp.value)
               const ret = display.mdAndUp.value
                 ? value.toLocaleString(undefined, {maximumFractionDigits: 0, minimumFractionDigits: 0})
-                : (value/1000).toFixed(0) + 'K'
+                : value > 1000000 ? (value/1000000).toFixed(2) + 'M' : (value/1000).toFixed(0) + 'K'
               return ret
             }
           }
@@ -243,13 +243,25 @@ export default defineComponent({
           console.log('still loading...');
           return;
         }
-        console.log('nomination stats result', result.data);
-        nominationStats.value = result.data.nominationStats.map((stat: INominationStats) => {
-          return {
+        // console.log('nomination stats result', result.data);
+        let stats: INominationStats[] = []
+        result.data.nominationStats.forEach((stat: INominationStats) => {
+          var datehour: string = ''
+          try {
+            const datestr = stat.datehour.substring(0, 10).replace(/\./g, '/') + ' ' + stat.datehour.substring(11, 13) + ':00:00'
+            //console.log('datestr', datestr);
+            datehour = moment(datestr).format('YYYY-MM-DD HH:mm')
+          } catch (err) { console.error(err) }
+          console.log('datehour', datehour);
+          stats.push({
             ...stat,
-            datehour: moment(stat.datehour.substring(0, 10) + ' ' + stat.datehour.substring(11, 13) + ':00:00').format('YYYY-MM-DD HH:mm')
-          }
+            datehour: datehour,
+            exposure_non: Number(BigInt(stat.exposure_non)) / Math.pow(10, decimals.value as number),
+            exposure_dn: Number(BigInt(stat.exposure_dn)) / Math.pow(10, decimals.value as number),
+          })
         })
+        nominationStats.value = stats
+        //console.debug('nomination stats', nominationStats.value);
       });
 
       onError((error: any) => {

@@ -231,7 +231,7 @@ export default defineComponent({
               // console.log('display', display.lgAndUp.value)
               const ret = display.lgAndUp.value
                 ? value.toFixed(0)
-                : (value/1000).toFixed(0) + 'K'
+                : value > 1000000 ? (value/1000000).toFixed(2) + 'M' : (value/1000).toFixed(0) + 'K'
               return ret
             }
           }
@@ -265,8 +265,13 @@ export default defineComponent({
           }
         }) || [];
         nominationStats.value = result.data?.nominationStats.map((stat: any) => {
+          let datehour: string = ''
+          try {
+            datehour = moment(stat.datehour.substring(0, 10).replace(/\./g, '/') + ' ' + stat.datehour.substring(11, 13) + ':00:00').format('YYYY-MM-DD HH:mm')
+          } catch (err) { console.error(err) }
           return {
             ...stat,
+            datehour: datehour,
             nom_value_non: Number(stat.nom_value_non) / Math.pow(10, decimals.value as number),
             nom_value_dn: Number(stat.nom_value_dn) / Math.pow(10, decimals.value as number)
           }
