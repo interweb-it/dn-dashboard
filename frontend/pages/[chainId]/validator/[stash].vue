@@ -123,7 +123,7 @@
                 </v-list-item>
                 <v-list-item>
                   <v-list-item-subtitle>Commission</v-list-item-subtitle>
-                  <v-list-item-title>{{ (commission.commission || 0) / 10_000_000 }}%</v-list-item-title>
+                  <v-list-item-title>{{ ((commission.commission || 0) / 10_000_000).toFixed(2) }}%</v-list-item-title>
                 </v-list-item>
                 <v-list-item>
                   <v-list-item-subtitle>Identity</v-list-item-subtitle>
@@ -142,8 +142,6 @@
           </v-card>
         </v-col>
       </v-row>
-
-
 
       <PerformanceCard
         :chain-id="chainId"
