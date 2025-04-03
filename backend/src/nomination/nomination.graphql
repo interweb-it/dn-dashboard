@@ -9,7 +9,7 @@ type NominationStats {
   stash: String!
   datehour: String!
   active: Int
-  commission: Int
+  commission: Float
   nom_dn: BigInt
   nom_non: BigInt
   nom_value_dn: BigInt
