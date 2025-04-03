@@ -229,7 +229,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     node = this.dataStore[chainId][cohortId].selected.find((node) => node.stash === stash);
     if (!node) {
       logger.debug(`${chainId.padEnd(10)} can't find ${stash} in selected... trying backups`);
-      node = this.dataStore[chainId][cohortId]?.backups.find((node) => node.stash === stash);
+      node = this.dataStore[chainId][cohortId]?.backups?.find((node) => node.stash === stash);
       if (!node) {
         logger.warn(`${chainId.padEnd(10)} can't find ${stash} in cohort ${cohortId}`);
         return null;
