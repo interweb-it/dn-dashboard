@@ -144,9 +144,16 @@ export class NominationService {
    */
   async getStats(chainId: string, stash: string) {
     logger.debug(`Getting stats for ${chainId} ${stash}`);
-    return this.nominationRepository.findAll({
+
+    const ret = await this.nominationRepository.findAll({
       where: { chainId, stash },
     });
+
+    return ret.map((nom) => ({
+      ...nom,
+      // force the commission to 2 decimal places and not scientific notation
+      commission: nom.commission.toFixed(2),
+    }));
   }
 
   // every 30 seconds, get the data for the storage
