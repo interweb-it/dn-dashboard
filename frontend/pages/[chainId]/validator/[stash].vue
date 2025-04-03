@@ -23,119 +23,127 @@
     <v-container style="padding-top: 75px;">
 
       <!-- {{ node }} -->
-      <v-card>
-        <v-card-title>DN <v-btn flat icon size="small" :loading="loadingN" v-show="loadingN"></v-btn></v-card-title>
-        <v-card-text>
-          <v-list>
-            <v-list-item>
-              <v-list-item-subtitle>DN Identity</v-list-item-subtitle>
-              <v-list-item-title>{{ node?.identity }}</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-subtitle>Stash</v-list-item-subtitle>
-              <v-list-item-title>
-                {{ node?.stash }}
-                <sup>
-                  <a icon size="small" target="_blank" :href="`https://${chainId}.subscan.io/validator/${node?.stash}`">
-                    <v-icon>mdi-open-in-new</v-icon>
-                  </a>
-                </sup>
-              </v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-subtitle>Status (in the program)</v-list-item-subtitle>
-              <v-list-item-title>{{ node?.status }}</v-list-item-title>
-            </v-list-item>
+      <v-row>
+        <v-col cols="12" sm="6">
+          <v-card>
+            <v-card-title>DN <v-btn flat icon size="small" :loading="loadingN" v-show="loadingN"></v-btn></v-card-title>
+            <v-card-text>
+              <v-list>
+                <v-list-item>
+                  <v-list-item-subtitle>DN Identity</v-list-item-subtitle>
+                  <v-list-item-title>{{ node?.identity }}</v-list-item-title>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-subtitle>Stash</v-list-item-subtitle>
+                  <v-list-item-title>
+                    {{ node?.stash }}
+                    <sup>
+                      <a icon size="small" target="_blank" :href="`https://${chainId}.subscan.io/validator/${node?.stash}`">
+                        <v-icon>mdi-open-in-new</v-icon>
+                      </a>
+                    </sup>
+                  </v-list-item-title>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-subtitle>Status (in the program)</v-list-item-subtitle>
+                  <v-list-item-title>{{ node?.status }}</v-list-item-title>
+                </v-list-item>
 
-            <v-list-item>
-              <v-card>
-                <v-row no-gutters>
-                  <v-col class="ma-1 d-flex align-center">
-                    <v-btn flat border class="text-none">
-                      <v-icon :color="hasTelemetry ? 'green' : 'red'">mdi-chart-box-outline</v-icon>
-                      <span> Telemetry</span>
-                  </v-btn>
-                </v-col>
-                  <v-col class="ma-1 d-flex align-center">
-                    <v-btn flat border class="text-none">
-                      <v-icon :color="rulesBonded ? 'green' : 'red'">mdi-lock-outline</v-icon>
-                      <span> Bonded</span>
-                    </v-btn>
-                  </v-col>
-                  <v-col class="ma-1 d-flex align-center">
-                    <v-btn flat border class="text-none">
-                      <v-icon :color="rulesRewardDestingation ? 'green' : 'red'">mdi-bank-outline</v-icon>
-                      <span> Rewards</span>
-                    </v-btn>
-                  </v-col>
-                  <v-col class="ma-1 d-flex align-center">
-                    <v-btn flat border class="text-none">
-                      <v-icon :color="rulesCommission ? 'green' : 'red'">mdi-percent</v-icon>
-                      <span> Commission</span>
-                    </v-btn>
-                  </v-col>
-                  <v-col class="ma-1 d-flex align-center">
-                    <v-btn flat border class="text-none">
-                      <v-icon :color="rulesIdentity ? 'green' : 'red'">mdi-passport</v-icon>
-                      <span> Identity</span>
-                    </v-btn>
-                  </v-col>
-                  <v-col class="ma-1 d-flex align-center">
-                    <v-btn flat border class="text-none">
-                      <v-icon :color="rulesPerformance ? 'green' : 'red'">mdi-cogs</v-icon>
-                      <span> Performance</span>
-                    </v-btn>
-                  </v-col>
-                </v-row>
-              </v-card>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-      </v-card>
+                <v-list-item>
+                  <v-card>
+                    <v-row no-gutters>
+                      <v-col class="ma-1 d-flex align-center">
+                        <v-btn flat border class="text-none">
+                          <v-icon :color="hasTelemetry ? 'green' : 'red'">mdi-chart-box-outline</v-icon>
+                          <span> Telemetry</span>
+                      </v-btn>
+                    </v-col>
+                      <v-col class="ma-1 d-flex align-center">
+                        <v-btn flat border class="text-none">
+                          <v-icon :color="rulesBonded ? 'green' : 'red'">mdi-lock-outline</v-icon>
+                          <span> Bonded</span>
+                        </v-btn>
+                      </v-col>
+                      <v-col class="ma-1 d-flex align-center">
+                        <v-btn flat border class="text-none">
+                          <v-icon :color="rulesRewardDestingation ? 'green' : 'red'">mdi-bank-outline</v-icon>
+                          <span> Rewards</span>
+                        </v-btn>
+                      </v-col>
+                      <v-col class="ma-1 d-flex align-center">
+                        <v-btn flat border class="text-none">
+                          <v-icon :color="rulesCommission ? 'green' : 'red'">mdi-percent</v-icon>
+                          <span> Commission</span>
+                        </v-btn>
+                      </v-col>
+                      <v-col class="ma-1 d-flex align-center">
+                        <v-btn flat border class="text-none">
+                          <v-icon :color="rulesIdentity ? 'green' : 'red'">mdi-passport</v-icon>
+                          <span> Identity</span>
+                        </v-btn>
+                      </v-col>
+                      <v-col class="ma-1 d-flex align-center">
+                        <v-btn flat border class="text-none">
+                          <v-icon :color="rulesPerformance ? 'green' : 'red'">mdi-cogs</v-icon>
+                          <span> Performance</span>
+                        </v-btn>
+                      </v-col>
+                    </v-row>
+                  </v-card>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
+        </v-col>
 
-      <v-card>
-        <v-card-title>On Chain {{ loadingC }}</v-card-title>
-        <v-card-text>
-          <v-list>
-            <v-list-item>
-              <v-list-item-subtitle>Account</v-list-item-subtitle>
-              <v-list-item-title>
-                {{ toCoin(
-                  (account.data?.free || 0) + (account.data?.reserved || 0) + (account.data?.miscFrozen || 0)
-                ) }}
-              </v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-subtitle>Bonded</v-list-item-subtitle>
-              <v-list-item-title>
-                <p v-for="lock in locks">
-                  {{ lock.id }}: {{ toCoin(lock.amount) }}
-                </p>
-              </v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-subtitle>Reward Destination</v-list-item-subtitle>
-              <v-list-item-title>{{ rewardDestination }}</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-subtitle>Commission</v-list-item-subtitle>
-              <v-list-item-title>{{ (commission.commission || 0) / 10_000_000 }}%</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-subtitle>Identity</v-list-item-subtitle>
-              <v-list-item-title>
-                <p>Display: {{ identity?.info?.display }}{{ identity?.subId ? `/${identity?.subId}` : '' }}</p>
-                <p>Email: {{ identity?.info?.email }}</p>
-                <p v-show="identity?.info?.discord">Discord: {{ identity?.info?.discord }}</p>
-                <p v-show="identity?.info?.github">Github: {{ identity?.info?.github }}</p>
-                <p v-show="identity?.info?.matrix">Matrix: {{ identity?.info?.matrix }}</p>
-                <p v-show="identity?.info?.twitter">Twitter: {{ identity?.info?.twitter }}</p>
-                <p v-show="identity?.info?.web">Web: {{ identity?.info?.web }}</p>
-              </v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-      </v-card>
+        <v-col cols="12" sm="6">
+          <v-card>
+            <v-card-title>On Chain {{ loadingC }}</v-card-title>
+            <v-card-text>
+              <v-list>
+                <v-list-item>
+                  <v-list-item-subtitle>Account</v-list-item-subtitle>
+                  <v-list-item-title>
+                    {{ toCoin(
+                      (account.data?.free || 0) + (account.data?.reserved || 0) + (account.data?.miscFrozen || 0)
+                    ) }}
+                  </v-list-item-title>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-subtitle>Bonded</v-list-item-subtitle>
+                  <v-list-item-title>
+                    <p v-for="lock in locks">
+                      {{ lock.id }}: {{ toCoin(lock.amount) }}
+                    </p>
+                  </v-list-item-title>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-subtitle>Reward Destination</v-list-item-subtitle>
+                  <v-list-item-title>{{ rewardDestination }}</v-list-item-title>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-subtitle>Commission</v-list-item-subtitle>
+                  <v-list-item-title>{{ (commission.commission || 0) / 10_000_000 }}%</v-list-item-title>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-subtitle>Identity</v-list-item-subtitle>
+                  <v-list-item-title>
+                    <p>Display: {{ identity?.info?.display }}{{ identity?.subId ? `/${identity?.subId}` : '' }}</p>
+                    <p>Email: {{ identity?.info?.email }}</p>
+                    <p v-show="identity?.info?.discord">Discord: {{ identity?.info?.discord }}</p>
+                    <p v-show="identity?.info?.github">Github: {{ identity?.info?.github }}</p>
+                    <p v-show="identity?.info?.matrix">Matrix: {{ identity?.info?.matrix }}</p>
+                    <p v-show="identity?.info?.twitter">Twitter: {{ identity?.info?.twitter }}</p>
+                    <p v-show="identity?.info?.web">Web: {{ identity?.info?.web }}</p>
+                  </v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+
+
 
       <PerformanceCard
         :chain-id="chainId"
@@ -143,9 +151,14 @@
         :performance="performance"
         @refresh="refetchP"></PerformanceCard>
 
-      <ExposureCard :chain-id="chainId" :stash="node?.stash" />
-
-      <NominationsCard :chain-id="chainId" :stash="node?.stash" />
+      <v-row>
+        <v-col cols="12" sm="6">
+          <ExposureCard :chain-id="chainId" :stash="node?.stash" />
+        </v-col>
+        <v-col cols="12" sm="6">
+          <NominationsCard :chain-id="chainId" :stash="node?.stash" />
+        </v-col>
+      </v-row>
 
       <v-card>
         <v-card-title>
