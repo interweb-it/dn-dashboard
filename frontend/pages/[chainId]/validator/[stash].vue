@@ -235,7 +235,7 @@
       </v-card>
 
     </v-container>
-    <Footer :chain-id="chainId" :cohort-id="1"></Footer>
+    <Footer :chain-id="chainId"></Footer>
   </client-only>
 
 </template>

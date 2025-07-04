@@ -81,7 +81,7 @@ import type { INominationStats, IExposure, INominator } from '~/utils/types';
  *  - get the nominators
  */
 const QUERY_NOMINATION_CARD = gql`
-  query nominationCard($chainId: String!, $cohortId: Int!, $stash: String!) {
+  query nominationCard($chainId: String!, $cohortId: String!, $stash: String!) {
     stakersForStash(chainId: $chainId, stash: $stash) {
       address
       balance
@@ -245,7 +245,7 @@ export default defineComponent({
 
       var { error, loading: _loading, refetch: _refetch, onResult, onError } = useQuery(QUERY_NOMINATION_CARD, {
         chainId: props.chainId,
-        cohortId: Number(cohortId.value),
+        cohortId: cohortId.value,
         stash: props.stash
       });
 

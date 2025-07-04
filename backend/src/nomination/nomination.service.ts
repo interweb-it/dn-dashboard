@@ -150,9 +150,9 @@ export class NominationService {
     });
 
     return ret.map((nom) => ({
-      ...nom,
+      ...nom.dataValues,
       // force the commission to 2 decimal places and not scientific notation
-      commission: Number(nom.commission.toFixed(2)),
+      commission: Number(nom.dataValues.commission.toFixed(2)),
     }));
   }
 

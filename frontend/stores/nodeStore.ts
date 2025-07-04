@@ -44,7 +44,7 @@ export const useNodeStore = defineStore('nodeStore', {
   state: () => ({
     chainId: '',
     cohortIds: ['2-1', '2', '1'],
-    cohortId: '2-1', // was never used
+    cohortId: '2-1',
     selected: [],
     backups: [],
     nominators: [],
@@ -74,7 +74,7 @@ export const useNodeStore = defineStore('nodeStore', {
     setSearch(search: string) {
       this.search = search
     },
-    setCohortId(cohortId: number) {
+    setCohortId(cohortId: string) {
       // if cohort is different from current, reset the store
       if (cohortId !== this.cohortId) {
         this.cohortId = cohortId

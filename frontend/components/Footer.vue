@@ -48,14 +48,12 @@ export default defineComponent ({
     chainId: {
       type: String,
       required: true
-    },
-    cohortId: {
-      type: String,
-      required: true
     }
   },
   setup(props) {
     const showRulesDialog = ref(false)
+    const nodeStore = useNodeStore()
+    const cohortId = computed(() => nodeStore.cohortId)
 
     const onCloseRulesDialog = () => {
       // console.debug('on close dialog')
@@ -64,7 +62,7 @@ export default defineComponent ({
 
     return {
       chainId: props.chainId,
-      cohortId: props.cohortId,
+      cohortId,
       showRulesDialog,
       onCloseRulesDialog
     }
