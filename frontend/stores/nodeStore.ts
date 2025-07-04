@@ -43,8 +43,8 @@ export interface NodeDetailsX {
 export const useNodeStore = defineStore('nodeStore', {
   state: () => ({
     chainId: '',
-    cohortIds: [1, 2],
-    cohortId: 2, // was never used
+    cohortIds: ['2-1', '2', '1'],
+    cohortId: '2-1', // was never used
     selected: [],
     backups: [],
     nominators: [],

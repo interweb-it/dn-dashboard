@@ -1,7 +1,7 @@
 import { gql } from 'graphql-tag';
 
 export const QUERY_NODE = gql`
-query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
+query nodeByName($chainId: String!, $cohortId: String!, $stash: String!) {
   nodeByStash(chainId:$chainId, cohortId:$cohortId, stash: $stash){
     identity
     stash
@@ -30,7 +30,7 @@ query nodeByName($chainId: String!, $cohortId: Int!, $stash: String!) {
  * @returns The DM nominators for the given chain and cohort
  */
 export const QUERY_DM_NOMINATORS = gql`
-query dmNominators($chainId: String!, $cohortId: Int!) {
+query dmNominators($chainId: String!, $cohortId: String!) {
   nominators(chainId: $chainId, cohortId: $cohortId)
 }`
 
@@ -42,7 +42,7 @@ query dmNominators($chainId: String!, $cohortId: Int!) {
  * @returns The nominators for the given stash, and the DN nominators
  */
 export const QUERY_NOMINATORS = gql`
-query stakers($chainId: String!, $stash: String!, $cohortId: Int!) {
+query stakers($chainId: String!, $stash: String!, $cohortId: String!) {
   stakersForStash(chainId:$chainId, stash: $stash) {
     address
     balance

@@ -24,7 +24,7 @@ const interval = process.env.CRON_NOMINATION_INTERVAL || '*/30 * * * *';
 // }
 const chainIds = ['kusama', 'polkadot'];
 // const cohortIds = [1, 2];
-const currentCohortId = 2;
+const currentCohortId = '2-1';
 
 @Injectable()
 export class NominationService {

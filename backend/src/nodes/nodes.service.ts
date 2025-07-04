@@ -47,7 +47,7 @@ export type TChainData = Record<number, ICohortData>;
 
 const BASE_URL = 'https://nodes.web3.foundation/api/cohort/COHORT_ID/CHAIN_ID';
 
-const cohorts = [1, 2];
+const cohorts = ['1', '2', '2-1'];
 
 @Injectable()
 export class NodesService implements OnModuleInit, OnModuleDestroy {
@@ -118,7 +118,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     // this.disconnect();
   }
 
-  private async fetchChainData(chainId: string, cohortId: number = 1) {
+  private async fetchChainData(chainId: string, cohortId: string = '1') {
     logger.debug(`${chainId.padEnd(10)} fetchChainData`);
     let data: ICohortData = {
       backups: [],
@@ -140,20 +140,20 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     }
 
     // for each data.node, update the node commission
-    const ex = [
-      {
-        identity: 'UTSA',
-        stash: '15wnPRex2QwgWNCMRVSqgqp2syDn8Gf6LPGGabRhA8zoohpt',
-        status: 'Active',
-        telemetry: 'UTSA',
-      },
-      {
-        identity: 'VISIONSTAKE 👁‍🗨',
-        stash: '13Hp4FEF7z7famvakw8cgioHqDxcnhnyQkvd1jF4dxn7cayG',
-        status: 'Active',
-        telemetry: null,
-      },
-    ];
+    // const ex = [
+    //   {
+    //     identity: 'UTSA',
+    //     stash: '15wnPRex2QwgWNCMRVSqgqp2syDn8Gf6LPGGabRhA8zoohpt',
+    //     status: 'Active',
+    //     telemetry: 'UTSA',
+    //   },
+    //   {
+    //     identity: 'VISIONSTAKE 👁‍🗨',
+    //     stash: '13Hp4FEF7z7famvakw8cgioHqDxcnhnyQkvd1jF4dxn7cayG',
+    //     status: 'Active',
+    //     telemetry: null,
+    //   },
+    // ];
     for (const node of data.selected) {
       const _val = await this.blockchainService.getValidator(chainId, node.stash);
       node.commission = _val?.commission || 0;
@@ -170,9 +170,9 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     logger.debug(`${chainId.padEnd(10)} Nodes data updated`);
   }
 
-  getSelected(chainId: string, cohortId: number): INode[] {
+  getSelected(chainId: string, cohortId: string): INode[] {
     logger.debug(`${chainId.padEnd(10)} getSelectecd`);
-    const ret = Array.from(this.dataStore[chainId][cohortId]?.selected || []);
+    const ret = Array.from(this.dataStore[chainId][cohortId]?.selected || []) as INode[];
     // get telemetry data for each node
     for (const node of ret) {
       const _tel = this.telemetryService.findOneByDNIdentity(chainId, node.identity);
@@ -184,19 +184,19 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     return ret;
   }
 
-  getBackups(chainId: string, cohortId: number): INodeBase[] {
+  getBackups(chainId: string, cohortId: string): INodeBase[] {
     logger.debug(`${chainId.padEnd(10)} getBackups`);
     const ret = Array.from(this.dataStore[chainId][cohortId]?.backups || []);
-    return ret;
+    return ret as INodeBase[];
   }
 
-  getNominators(chainId: string, cohortId: number): string[] {
+  getNominators(chainId: string, cohortId: string): string[] {
     logger.debug(`${chainId.padEnd(10)} getNominators`);
     const ret = Array.from(this.dataStore[chainId][cohortId]?.nominators || []);
-    return ret;
+    return ret as string[];
   }
 
-  getTerm(chainId: string, cohortId): ITerm {
+  getTerm(chainId: string, cohortId: string): ITerm {
     logger.debug(`${chainId.padEnd(10)} getTerm`);
     return this.dataStore[chainId][cohortId].term;
   }
@@ -213,7 +213,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     return ret;
   }
 
-  findNodeByName(chainId: string, cohortId: number, name: string): INode | INodeBase {
+  findNodeByName(chainId: string, cohortId: string, name: string): INode | INodeBase {
     logger.debug(`${chainId.padEnd(10)} findNodeByName ${name}`);
     let node: INode | INodeBase;
     node = this.dataStore[chainId][cohortId].selected.find((node) => node.identity === name);
@@ -223,7 +223,7 @@ export class NodesService implements OnModuleInit, OnModuleDestroy {
     return node;
   }
 
-  findNodeByStash(chainId: string, cohortId: number, stash: string): INode | INodeBase {
+  findNodeByStash(chainId: string, cohortId: string, stash: string): INode | INodeBase {
     logger.debug(`${chainId.padEnd(10)} findNodeByStash ${stash}`);
     let node: INode | INodeBase;
     node = this.dataStore[chainId][cohortId].selected.find((node) => node.stash === stash);

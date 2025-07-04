@@ -15,7 +15,7 @@
         {{ chainId }}
         <span v-for="cId in cohortIds" :key="cId">
           <span v-if="cId === cohortId">
-            &nbsp;cohort {{ cId }}
+            &nbsp;[cohort {{ cId }}]
           </span>
           <span v-if="cId !== cohortId">
             &nbsp;[<nuxt-link :to="`/${chainId}/cohort/${cId}`">cohort {{ cId }}</nuxt-link>]
@@ -162,7 +162,7 @@ import Footer from '~/components/Footer.vue';
 import type { ISelectedNode, IBackupNode } from '~/utils/types';
 
 const QUERY_NODES = gql`
-query queryNodes($chainId: String!, $cohortId:Int!) {
+query queryNodes($chainId: String!, $cohortId:String!) {
   selected(chainId: $chainId, cohortId: $cohortId) {
     identity
     stash
@@ -202,12 +202,15 @@ export default defineComponent({
     const route = useRoute()
     const router = useRouter()
     const chainId = ref(route.params.chainId.toString())
-    const cohortId = ref(Number(route.params.cohortId.toString()))
+    const cohortId = ref(route.params.cohortId.toString())
     const nodeStore = useNodeStore()
     if (chainId.value !== nodeStore.chainId) {
       nodeStore.setChainId(chainId.value);
     }
     const cohortIds = ref(nodeStore.cohortIds);
+    if (cohortId.value !== nodeStore.cohortId) {
+      nodeStore.cohortId = cohortId.value;
+    }
     const substrateStore = useSubstrateStore();
     const stakingEntries = computed(() => substrateStore.stakingEntries);
     const substrateStoreLoading = computed(() => substrateStore.loading);
@@ -246,6 +249,12 @@ export default defineComponent({
       scrollHandler = handleScroll((scrollY) => {
         elevation.value = scrollY > 0 ? 4 : 0;
       })
+      // handle localStorage, if exists.
+      const saved = localStorage.getItem(`dnd-search`);
+      if (saved !== null) {
+        search.value = saved;
+        nodeStore.setSearch(saved);
+      }
     });
 
     onMounted(async () => {
@@ -286,6 +295,12 @@ export default defineComponent({
 
         // refetchT.value()
         console.log('...done');
+      });
+
+      // save search to localStorage
+      watch(() => search.value, async (value) => {
+        console.log('search', value);
+        localStorage.setItem(`dnd-search`, value);
       });
     });
 

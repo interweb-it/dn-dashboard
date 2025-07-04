@@ -18,7 +18,7 @@ export class NodesResolver {
     @Args('chainId')
     chainId: string,
     @Args('cohortId')
-    cohortId: number,
+    cohortId: string,
   ): Promise<INode[]> {
     console.debug('resolver.ts: getSelected', chainId, cohortId);
     return this.nodesService.getSelected(chainId, cohortId);
@@ -30,7 +30,7 @@ export class NodesResolver {
     @Args('chainId')
     chainId: string,
     @Args('cohortId')
-    cohortId: number,
+    cohortId: string,
   ): Promise<INodeBase[]> {
     console.debug('resolver.ts: getBackups', chainId, cohortId);
     return this.nodesService.getBackups(chainId, cohortId);
@@ -41,7 +41,7 @@ export class NodesResolver {
     @Args('chainId')
     chainId: string,
     @Args('cohortId')
-    cohortId: number,
+    cohortId: string,
   ): Promise<string[]> {
     console.debug('resolver.ts: getNominators', chainId, cohortId);
     return this.nodesService.getNominators(chainId, cohortId);
@@ -52,7 +52,7 @@ export class NodesResolver {
     @Args('chainId')
     chainId: string,
     @Args('cohortId')
-    cohortId: number,
+    cohortId: string,
   ): Promise<ITerm> {
     console.debug('resolver.ts: getTerm', chainId, cohortId);
     return this.nodesService.getTerm(chainId, cohortId);
@@ -63,7 +63,7 @@ export class NodesResolver {
     @Args('chainId')
     chainId: string,
     @Args('cohortId')
-    cohortId: number,
+    cohortId: string,
     @Args('name')
     name: string,
   ): Promise<INode | INodeBase> {
@@ -76,7 +76,7 @@ export class NodesResolver {
     @Args('chainId')
     chainId: string,
     @Args('cohortId')
-    cohortId: number,
+    cohortId: string,
     @Args('stash')
     stash: string,
   ): Promise<INode | INodeBase> {

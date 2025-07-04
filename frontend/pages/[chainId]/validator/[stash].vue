@@ -4,7 +4,7 @@
     <v-toolbar color="background" fixed :elevation="elevation" class="dynamic-toolbar"
       style="position: fixed; padding-top: 25px">
       
-      <v-btn icon flat :to="`/${chainId}/cohort/2`">
+      <v-btn icon flat :to="`/${chainId}/cohort/${cohortId}`">
         <v-icon size="small">mdi-arrow-left</v-icon>
       </v-btn>
 
@@ -794,6 +794,7 @@ export default defineComponent({
       isLoading,
       apiConnected,
       decimalPlaces,
+      cohortId,
       loadingC,
       loadingT,
       loadingE,

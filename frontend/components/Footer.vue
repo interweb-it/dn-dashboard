@@ -50,7 +50,7 @@ export default defineComponent ({
       required: true
     },
     cohortId: {
-      type: Number,
+      type: String,
       required: true
     }
   },
