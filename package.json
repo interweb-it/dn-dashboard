@@ -1,0 +1,12 @@
+{
+  "name": "dnd",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "common",
+    "frontend",
+    "workers"
+  ],
+  "packageManager": "yarn@4.5.2"
+}
