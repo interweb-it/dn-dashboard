@@ -1,9 +1,6 @@
 <template>
   <v-footer border class="bg-grey-lighten-1">
     <v-container fluid class="ma-0 pa-0">
-        <!-- <v-toolbar color="background">
-      Footer
-    </v-toolbar> -->
       <v-row>
         <v-col>
           <v-btn flat variant="text" @click="showRulesDialog = true">[DN Rules]</v-btn>
@@ -11,7 +8,7 @@
 
         <v-col>
           Data from: <a href="https://telemetry.w3f.community" target="_blank">[telemetry]</a>, 
-          [DN <a :href="`https://nodes.web3.foundation/api/cohort/${cohortId}/${chainId}`" target="_blank">API]</a>
+          [DN <a :href="`https://nodes.web3.foundation/`" target="_blank">API]</a>
         </v-col>
 
         <v-col>
@@ -52,8 +49,6 @@ export default defineComponent ({
   },
   setup(props) {
     const showRulesDialog = ref(false)
-    const nodeStore = useNodeStore()
-    const cohortId = computed(() => nodeStore.cohortId)
 
     const onCloseRulesDialog = () => {
       // console.debug('on close dialog')
@@ -61,8 +56,6 @@ export default defineComponent ({
     }
 
     return {
-      chainId: props.chainId,
-      cohortId,
       showRulesDialog,
       onCloseRulesDialog
     }

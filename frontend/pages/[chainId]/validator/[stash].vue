@@ -22,7 +22,6 @@
 
     <v-container style="padding-top: 75px;">
 
-      <!-- {{ node }} -->
       <v-row>
         <v-col cols="12" sm="6">
           <v-card>
@@ -112,8 +111,8 @@
                 <v-list-item>
                   <v-list-item-subtitle>Bonded</v-list-item-subtitle>
                   <v-list-item-title>
-                    <p v-for="lock in locks">
-                      {{ lock.id }}: {{ toCoin(lock.amount) }}
+                    <p v-for="hold in holds">
+                      {{ hold.id }}: {{ toCoin(hold.amount) }}
                     </p>
                   </v-list-item-title>
                 </v-list-item>
@@ -127,6 +126,8 @@
                 </v-list-item>
                 <v-list-item>
                   <v-list-item-subtitle>Identity</v-list-item-subtitle>
+                  <!-- {{ identity }} -->
+
                   <v-list-item-title>
                     <p>Display: {{ identity?.info?.display }}{{ identity?.subId ? `/${identity?.subId}` : '' }}</p>
                     <p>Email: {{ identity?.info?.email }}</p>
@@ -312,7 +313,7 @@ const rules: Record<string, Record<string, number|string>> = {
     rewardDestination: 'Staked',
   },
   kusama: {
-    commission: 15,
+    commission: 20,
     selfBond: 100,
     rewardDestination: 'Staked',
   },
@@ -351,7 +352,7 @@ export default defineComponent({
     const telemetryError = ref<null|string>(null)
 
     const account = ref({})
-    const locks = ref([])
+    const holds = ref([])
     const rewardDestination = ref({})
     const commission = ref<Record<string, any>>({ commission: 0, blocked: false })
     const identity = ref<Record<string, any>>({})
@@ -395,16 +396,16 @@ export default defineComponent({
 
     const rulesBonded = computed(() => {
       let _bonded: Number = 0;
-      locks.value.forEach((l: Record<string, any>) => {
-        // console.debug('lock', l.id, l.amount);
-        if (l.id === 'staking') {
-          // console.debug('staking lock', l.amount);
-          _bonded = Number(l.amount) / Math.pow(10, decimals[chainId.value])
+      holds.value.forEach((h: Record<string, any>) => {
+        console.debug('hold', h.id, h.amount);
+        if (h.id === 'staking') {
+          // console.debug('staking hold', h.amount);
+          _bonded = Number(h.amount) / Math.pow(10, decimals[chainId.value])
         } else {
-          console.debug('not staking lock', `|${l.id}|`);
+          console.debug('not staking hold', `|${h.id}|`);
         }
       })
-      console.debug('_bonded', _bonded, locks.value);
+      console.debug('_bonded', _bonded, holds.value);
       return _bonded >= rules[chainId.value].selfBond
     })
 
@@ -671,15 +672,38 @@ export default defineComponent({
       console.log('account', stash.value, _account?.toJSON())
       account.value = _account ? _account.toJSON() as any : {}
 
+      const _holds = await api?.query.balances.holds(stash.value);
+      const _holdsStr: any = _holds?.toJSON() as any[] || []
+      console.debug('holds', _holdsStr)
+      for (const hold of _holdsStr) {
+        console.debug('hold', hold.id, hold.amount)
+        // hold.id = hexToString(hold.id).trim()
+        // { id: {staking: 'Staking'}, amount: 1000000000000000000 }
+        if (hold.id.staking) {
+          hold.id = 'staking'
+        } else if (hold.id.delegatedStaking) {
+          hold.id = 'delegatedStaking'
+        } else {
+          hold.id = 'Unknown'
+        }
+        hold.amount = BigInt(hold.amount)
+      }
+      holds.value = _holdsStr
+      console.debug('holds', holds.value)
+      
       const _locks = await api?.query.balances.locks(stash.value);
       const _locksStr: any = _locks?.toJSON() as any[] || []
+      console.debug('locks', _locksStr)
       for (const lock of _locksStr) {
-        console.debug('lock amount', lock.amount)
-        lock.id = hexToString(lock.id).trim()
+        console.debug('lock', lock.id, lock.amount)
+        // hold.id = hexToString(hold.id).trim()
+        //[ { id: staking, amount: 146,202,358,170,046, reasons: All } ]
+        lock.id = lock.id = hexToString(lock.id).trim()
         lock.amount = BigInt(lock.amount)
       }
-      locks.value = _locksStr
-      console.debug('locks', locks.value)
+      holds.value = [...holds.value, ..._locksStr]
+      console.debug('holds', holds.value)
+      
 
       const _rewardDestination = await api?.query.staking.payee(stash.value)
       rewardDestination.value = _rewardDestination?.toHuman() || 'Unknown'
@@ -739,9 +763,12 @@ export default defineComponent({
       if(!id) return null
       try {
         let idj = (id.toJSON())
-        console.debug('idj', idj)
-        if (idj && idj[0]) {
-          idj = idj[0]
+        // console.debug('idj', idj)
+        if (idj) {
+          if (idj[0]) {
+            console.debug('idj is array', idj)
+            idj = idj[0]
+          }
           const res = {} as any
           res.deposit = idj.deposit
           if(idj?.info) res.info = {
@@ -808,7 +835,7 @@ export default defineComponent({
       stash,
 
       account,
-      locks,
+      holds,
       rewardDestination,
       commission,
       identity,

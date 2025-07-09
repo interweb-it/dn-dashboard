@@ -1,32 +1,52 @@
 # version: "3.9"
 services:
-  dnd-frontend:
-    image: dn-dashboard-frontend:latest
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+  mongodb:
+    image: mongo:7.0.1
     ports:
-      - "3002:3000" # Map Nuxt.js app to localhost:3000
+      - "${MONGO_PORT:-27017}:27017"
     environment:
-      NODE_ENV: production
-      GRAPHQL_BACKEND_URL: http://192.168.1.209:4000
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-thisisasecret123}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-dnd}
     restart: unless-stopped
-    volumes:
-      - ../frontend:/app # Optional: Mount the frontend code for local development
-    depends_on:
-      - dnd-backend
 
-  dnd-mariadb:
-    image: mariadb:latest
-    volumes:
-      - ../data/mariadb:/var/lib/mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: thisisasecret123
-      MYSQL_DATABASE: dnd
+  # mariadb:
+  #   image: mariadb:10.11.5
+  #   # image: mariadb:latest
+  #   volumes:
+  #     - ../data/mariadb:/var/lib/mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: thisisasecret123
+  #     MYSQL_DATABASE: dnd
+  #   ports:
+  #     - "3306:3306"
+  #   restart: unless-stopped
+
+  redis:
+    image: redis:latest
     ports:
-      - "3306:3306"
+      - "${REDIS_PORT:-6379}:6379"
     restart: unless-stopped
-  dnd-backend:
+
+  workers:
+    image: dn-dashboard-workers:latest
+    build:
+      context: ../
+      dockerfile: workers/Dockerfile
+    environment:
+      MONGO_HOST: ${MONGO_HOST:-mongodb}
+      MONGO_PORT: ${MONGO_PORT:-27017}
+      MONGO_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_DATABASE: ${MONGO_INITDB_DATABASE:-dnd}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - redis
+
+  backend:
     image: dn-dashboard-backend:latest
     build:
       context: ../backend
@@ -35,11 +55,30 @@ services:
       - "4000:3002" # Map NestJS app to localhost:4000
     environment:
       NODE_ENV: production
-      DB_HOST: dnd-mariadb
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: thisisasecret123
-      DB_DATABASE: dnd
+      MONGO_HOST: ${MONGO_HOST:-mongodb}
+      MONGO_PORT: ${MONGO_PORT:-27017}
+      MONGO_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_DATABASE: ${MONGO_INITDB_DATABASE:-dnd}
     restart: unless-stopped
     volumes:
       - ../backend:/app # Optional: Mount the backend code for local development
+    depends_on:
+      - mongodb
+
+  frontend:
+    image: dn-dashboard-frontend:latest
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000" # Map Nuxt.js app to localhost:3000
+    environment:
+      NODE_ENV: production
+      # GRAPHQL_BACKEND_URL: http://192.168.1.209:4000
+      GRAPHQL_BACKEND_URL: ${GRAPHQL_BACKEND_URL}
+    restart: unless-stopped
+    # volumes:
+    #   - ../frontend:/app # Optional: Mount the frontend code for local development
+    depends_on:
+      - backend

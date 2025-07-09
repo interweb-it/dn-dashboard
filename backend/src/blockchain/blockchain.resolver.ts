@@ -1,6 +1,6 @@
 import { ParseIntPipe, Logger } from '@nestjs/common';
 import { Args, Query, Resolver, Subscription } from '@nestjs/graphql';
-import { BlockchainService, INominator, IValidator } from './blockchain.service';
+import { BlockchainService, INominator, IValidator, IValidatorStats } from './blockchain.service';
 
 const logger = new Logger('BlockchainResolver'.padEnd(17));
 // const pubSub = new PubSub();
@@ -49,7 +49,7 @@ export class BlockchainResolver {
       return null;
     }
     // check if val is in sessionValidators
-    const active = this.blockchainService.getSessionValidators(chainId).find((v) => v.address === address);
+    const active = (await this.blockchainService.getSessionValidators(chainId)).find((v) => v.address === address);
     val.active = active ? true : false;
     return val;
   }
@@ -84,7 +84,27 @@ export class BlockchainResolver {
     stash: string,
   ): Promise<INominator[]> {
     logger.debug(`${chainId.padEnd(10)} getStakersForStash ${stash}`);
-    const noms = await this.blockchainService.getNominatorsForStashX(chainId, stash);
+    const noms = await this.blockchainService.getNominationsForStash(chainId, stash);
     return noms;
+  }
+
+  @Query('exposureStats')
+  async getExposureStats(
+    @Args('chainId')
+    chainId: string,
+    @Args('stash')
+    stash: string,
+  ): Promise<IValidatorStats[]> {
+    return this.blockchainService.getExposureStats(chainId, stash);
+  }
+
+  @Query('nominationStats')
+  async getNominationStats(
+    @Args('chainId')
+    chainId: string,
+    @Args('stash')
+    stash: string,
+  ): Promise<IValidatorStats[]> {
+    return this.blockchainService.getNominationStats(chainId, stash);
   }
 }

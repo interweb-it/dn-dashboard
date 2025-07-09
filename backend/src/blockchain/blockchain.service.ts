@@ -1,8 +1,12 @@
 import { Logger, Injectable, Inject, OnModuleInit, OnModuleDestroy, forwardRef } from '@nestjs/common';
-import { ApiPromise, WsProvider } from '@polkadot/api';
+// import { ApiPromise, WsProvider } from '@polkadot/api';
 import { ApolloClient, InMemoryCache, gql } from '@apollo/client/core';
+import { Collection, MongoClient } from 'mongodb';
+// import moment from 'moment';
 
 import { NodesService } from 'src/nodes/nodes.service';
+import { DatabaseService } from 'src/database/database.service';
+import * as moment from 'moment';
 
 export interface INominator {
   address: string;
@@ -12,8 +16,11 @@ export interface INominator {
 export interface IExposureOther {
   who: string;
   value: bigint;
+  isDn?: boolean;
 }
 export interface IExposure {
+  stash: string;
+  dateHour: string;
   own: bigint;
   total: bigint;
   others: IExposureOther[];
@@ -38,10 +45,31 @@ interface IChainState {
   nominators: INominator[]; // staker, account and targets
 }
 
+export interface IValidatorStats {
+  chainId: string;
+  address: string;
+  dateHour: string;
+  active: boolean;
+  blocked: boolean;
+  nomValueDn: bigint;
+  nomValueNon: bigint;
+  exposureDn: bigint;
+  exposureNon: bigint;
+}
+
 @Injectable()
-export class BlockchainService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(BlockchainService.name.padEnd(17));
+export class BlockchainService {
+  private readonly logger = new Logger(BlockchainService.name.padEnd(18));
   private readonly apolloClient: ApolloClient<any>;
+  private readonly mongoClient: MongoClient;
+
+  private readonly nodesCollection: Collection;
+  private readonly validatorsCollection: Collection;
+  private readonly nominatorsCollection: Collection;
+  private readonly nominationsCollection: Collection;
+  private readonly exposuresCollection: Collection<IExposure>;
+  private readonly exposureHistoriesCollection: Collection;
+  private readonly validatorStatsCollection: Collection;
 
   private chains: Record<string, IChainState> = {
     kusama: {
@@ -72,6 +100,8 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(forwardRef(() => NodesService))
     private readonly nodesService: NodesService,
+    @Inject(forwardRef(() => DatabaseService))
+    private readonly databaseService: DatabaseService,
   ) {
     this.apolloClient = new ApolloClient({
       uri: 'https://gql.metaspan.io/graphql',
@@ -80,332 +110,14 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
       },
       cache: new InMemoryCache(),
     });
-  }
-
-  onModuleInit() {
-    this.connect('polkadot');
-    this.connect('kusama');
-  }
-
-  onModuleDestroy() {
-    this.disconnect();
-  }
-
-  private async connect(chainId: string) {
-    // const ws = new WebSocket(this.TELEMETRY_WS_URL);
-    if (this.chains[chainId].api) {
-      this.logger.warn(`API already connected for ${chainId}`);
-      return;
-    }
-    // const provider = new WsProvider(this.WSS_BASE_URL + chainId);
-    const provider = new WsProvider(this.chains[chainId].wss_url);
-    const api = new ApiPromise({ provider, noInitWarn: true });
-    await api.isReady;
-
-    this.chains[chainId].subscription = await api.rpc.chain.subscribeFinalizedHeads((header) => {
-      this.handleBlock(chainId, header);
-    });
-    // this.subscriptions[chainId] = await api.query.system.events((events) => {
-    //   this.handleEvents(chainId, events);
-    // });
-
-    this.chains[chainId].api = api;
-  }
-
-  private disconnect() {
-    if (this.chains['polkadot'].subscription) {
-      this.chains['polkadot'].subscription();
-    }
-    if (this.chains['kusama'].subscription) {
-      this.chains['kusama'].subscription();
-    }
-    this.chains['polkadot'].api?.disconnect();
-    this.chains['kusama'].api?.disconnect();
-    this.chains['polkadot'].api = null;
-    this.chains['kusama'].api = null;
-  }
-
-  async handleBlock(chainId: string, header: any) {
-    this.logger.debug(`${chainId.padEnd(10)} is at block: #${header.number}`); // , header.hash.toString()
-    const { api, session } = this.chains[chainId];
-    const newSession = await api.query.session.currentIndex();
-    if (Number(newSession.toString()) > session) {
-      await this.handleNewSession(chainId, Number(newSession.toString()));
-      // this.chains[chainId].session = Number(newSession.toString());
-      // // get session validators
-      // const validators = await api.query.session.validators();
-      // this.logger.debug(chainId.padEnd(10), 'validators:', validators.length);
-      // this.chains[chainId].validators = validators;
-      // // const stash = '16ce9zrmiuAtdi9qv1tuiQ1RC1xR6y6NgnBcRtMoQeAobqpZ';
-      // // const keys = await api.query.session.nextKeys(stash);
-      // // this.logger.debug(chainId, stash, 'keys:', keys.toJSON());
-    }
-  }
-
-  async handleNewSession(chainId: string, session: number) {
-    this.logger.debug(`${chainId.padEnd(10)} new session: ${session.toString()}`);
-    this.chains[chainId].session = session;
-    await this._getAllValidators(chainId); // get all validators
-    await this._getSessionValidators(chainId); // get active validators
-    //await this._getAllNominators(chainId);
-  }
-
-  async handleEvents(chainId: string, events: any[]) {
-    this.logger.debug(`${chainId.padEnd(10)} events: ${events.length}`);
-    events.forEach((record) => {
-      // Extract the phase, event and the event types
-      const { event, phase } = record;
-      const types = event.typeDef;
-
-      // Show what we are busy with
-      this.logger.debug(`\t${event.section}:${event.method}:: (phase=${phase.toString()})`);
-      this.logger.debug(`\t\t${event.meta.documentation?.toString()}`);
-
-      // Loop through each of the parameters, displaying the type and data
-      event.data.forEach((data, index) => {
-        this.logger.debug(`\t\t\t${types[index].type}: ${data.toString()}`);
-      });
-    });
-  }
-
-  /**
-   * Get Session (Active) validators
-   * @param chainId
-   */
-  async _getSessionValidators(chainId: string) {
-    this.logger.debug(`${chainId.padEnd(10)} _getSessionValidators`);
-    this.chains[chainId].sessionValidators = [];
-    // https://polkadot.js.org/docs/substrate/storage#validators-vecaccountid32
-    const validators = await this.chains[chainId].api.query.session.validators();
-    // this.logger.debug(`${chainId.padEnd(10)} validators: ${validators.length}`);
-    // validators.forEach((val) => {
-    //   const v: IValidator = val.toJSON();
-    //   console.log('v', v);
-    //   this.chains[chainId].sessionValidators.push(v);
-    // });
-    this.chains[chainId].sessionValidators = validators.toJSON();
-    this.logger.log(`${chainId.padEnd(10)} session validators ${this.chains[chainId].sessionValidators.length}`);
-  }
-
-  /**
-   * Get all validators for this session (incl waiting)
-   * @param chainId
-   * @returns
-   */
-  async _getAllValidators(chainId: string) {
-    this.logger.debug(`${chainId.padEnd(10)} _getAllValidators`);
-    if (!this.chains[chainId].api) {
-      this.logger.warn('api not ready, backing off...');
-      return;
-    }
-    this.chains[chainId].allValidators = [];
-
-    let era: any = await this.chains[chainId].api?.query.staking.activeEra();
-    era = era ? era.toJSON() : {};
-
-    interface IExposureOverview {
-      total: bigint;
-      own: bigint;
-      pageCount: number;
-      nominatorCount: number;
-      // others: IExposureOther[];
-    }
-
-    // https://polkadot.js.org/docs/substrate/storage#validatorsaccountid32-palletstakingvalidatorprefs
-    // The map from (wannabe) validator stash key to the preferences of that validator.
-    const stakingEntries: any[] = await this.chains[chainId].api.query.staking.validators.entries();
-    this.logger.debug(`${chainId.padEnd(10)} stakingEntries: ${stakingEntries.length}`);
-    for (const [key, validatorPrefs] of stakingEntries) {
-      try {
-        const validatorAddress = key.args[0].toString();
-        const exposure: IExposure = {
-          own: BigInt(0),
-          total: BigInt(0),
-          others: [],
-        };
-
-        // check if validator is in DN any cohort
-        const cohorts = this.nodesService.getCohortsForAddress(chainId, validatorAddress);
-        // if this is DN, then we need to get the exposure for the DN cohort
-        if (cohorts.length > 0) {
-          // https://polkadot.js.org/docs/polkadot/storage#erasstakersu32-accountid32-spstakingexposure
-          const exposureOverview = (
-            await this.chains[chainId].api.query.staking.erasStakersOverview(era.index, validatorAddress)
-          ).toJSON() as IExposureOverview;
-          exposure.total = BigInt(exposureOverview?.total || 0);
-          exposure.own = BigInt(exposureOverview?.own || 0);
-
-          for (let i = 0; i < exposureOverview?.pageCount; i++) {
-            const _exposure = (
-              await this.chains[chainId].api.query.staking.erasStakersPaged(era.index, validatorAddress, i)
-            ).toJSON() as any;
-            exposure.others.push(
-              ..._exposure.others.map((o) => ({
-                who: o.who,
-                value: BigInt(o.value),
-              })),
-            );
-          }
-        }
-
-        const accountData = (await this.chains[chainId].api.query.system.account(validatorAddress)).toJSON() as any;
-        const balance = Number(BigInt(accountData.data.free)); // Available balance
-        this.chains[chainId].allValidators.push({
-          address: validatorAddress,
-          // name: validatorPrefs.toJSON().validatorPrefs?.name,
-          commission: Number(BigInt(validatorPrefs.toJSON()?.commission)) / 10_000_000,
-          balance: balance,
-          exposure: exposure, // .others,
-        });
-      } catch (err) {
-        this.logger.error('stakingEntries error', err);
-        continue;
-      }
-    }
-    this.logger.log(`${chainId.padEnd(10)} validators ${this.chains[chainId].allValidators.length}`);
-  }
-
-  getNomsActive = {
-    kusama: false,
-    polkadot: false,
-  };
-
-  /**
-   * Get all nominators ~~for DN validators~~
-   */
-  async _getAllNominators(chainId: string) {
-    this.logger.debug(`${chainId.padEnd(10)}, getAllNominators`);
-    // Define your GraphQL query
-    const QUERY = gql`
-      query allNominators($chainId: String!, $offset: Int, $limit: Int) {
-        Nominators(chain: $chainId, offset: $offset, limit: $limit) {
-          accountId
-          account {
-            data {
-              feeFrozen
-              free
-              miscFrozen
-            }
-          }
-          targetIds
-        }
-      }
-    `;
-
-    let hasMore = true;
-    let offset = 0;
-    const limit = 200;
-
-    while (hasMore) {
-      this.logger.debug(`${chainId.padEnd(10)}, fetching batch ${offset}`);
-      try {
-        // Send the query to the external Apollo server
-        const response = await this.apolloClient.query({
-          query: QUERY,
-          variables: {
-            chainId,
-            offset,
-            limit,
-          },
-        });
-        const batch: any[] = response.data.Nominators;
-        hasMore = batch.length === limit;
-        // Return the data from the response
-        // return response.data;
-        for (const nominator of batch) {
-          this.chains[chainId].nominators.push(nominator);
-        }
-      } catch (error) {
-        // Handle errors as needed
-        console.error('Error fetching blockchain data:', error);
-        hasMore = false;
-        // throw error;
-      } finally {
-        // Increment the offset for the next iteration
-        offset += limit;
-      }
-    }
-
-    // if (this.getNomsActive[chainId]) {
-    //   this.logger.warn('getAllNominators already running, backing off...');
-    //   return;
-    // }
-    // if (!this.chains[chainId].api) {
-    //   this.logger.warn('api not ready, backing off...');
-    //   return;
-    // }
-    // this.getNomsActive[chainId] = true;
-
-    // let nominatorEntries: any[] = [];
-    // try {
-    //   nominatorEntries = await this.chains[chainId].api.query.staking.nominators.entries();
-    // } catch (err) {
-    //   this.logger.error('nominatorEntries error', err);
-    //   this.getNomsActive[chainId] = false;
-    //   return;
-    // }
-    // this.logger.debug(`${chainId.padEnd(10)}, nominatorEntries, ${nominatorEntries?.length || 0}`);
-
-    // this.chains[chainId].nominators = nominatorEntries.map(([key, value]) => {
-    //   const address = key.args[0].toString();
-    //   const targets = value.toJSON().targets;
-    //   return { address, balance: 0, targets };
-    // });
-
-    // // Extract all nominator addresses
-    // const nominatorAddresses = nominatorEntries.map(([key]) => key.args[0].toString());
-
-    // // Helper function to process chunks
-    // const chunkArray = <T>(array: T[], chunkSize: number): T[][] => {
-    //   const chunks: T[][] = [];
-    //   for (let i = 0; i < array.length; i += chunkSize) {
-    //     chunks.push(array.slice(i, i + chunkSize));
-    //   }
-    //   return chunks;
-    // };
-
-    // const chunks = chunkArray(nominatorAddresses, 100); // Chunk size of 200
-    // this.logger.debug(`${chainId.padEnd(10)} Processing ${chunks.length} chunks of nominators`);
-
-    // let chunkIndex = 0;
-    // const _nominators = [];
-    // try {
-    //   for (const chunk of chunks) {
-    //     this.logger.debug(`${chainId.padEnd(10)} processing chunk ${++chunkIndex} of ${chunks.length}`);
-    //     // Batch query for the current chunk
-    //     const accountDataArray = await this.chains[chainId].api.queryMulti(
-    //       chunk.map((address) => [this.chains[chainId].api.query.system.account, address]),
-    //     );
-
-    //     // Process each account in the chunk
-    //     for (let i = 0; i < chunk.length; i++) {
-    //       const nominatorAddress = chunk[i];
-    //       const accountData = accountDataArray[i].toJSON() as any;
-
-    //       const balance = Number(
-    //         BigInt(accountData.data.free || 0) +
-    //           BigInt(accountData.data.reserved || 0) +
-    //           BigInt(accountData.data.miscFrozen || 0)
-    //       );
-
-    //       const stakingEntry = nominatorEntries.find(([key]) => key.args[0].toString() === nominatorAddress);
-    //       const targets = stakingEntry ? stakingEntry[1].toJSON() : { targets: [] };
-
-    //       _nominators.push({
-    //         address: nominatorAddress,
-    //         balance: balance,
-    //         targets: targets.targets,
-    //       });
-    //     }
-    //   }
-
-    //   this.logger.log(`${chainId.padEnd(10)} nominators ${_nominators.length}`);
-    //   this.chains[chainId].nominators = _nominators;
-    // } catch (err) {
-    //   this.logger.error('Error processing chunks', err);
-    // } finally {
-    //   this.getNomsActive[chainId] = false;
-    // }
+    this.mongoClient = this.databaseService.getMongoClient();
+    this.nodesCollection = this.mongoClient.db('dnd').collection('nodes');
+    this.validatorsCollection = this.mongoClient.db('dnd').collection('validators');
+    this.nominatorsCollection = this.mongoClient.db('dnd').collection('nominators');
+    this.nominationsCollection = this.mongoClient.db('dnd').collection('nominations');
+    this.exposuresCollection = this.mongoClient.db('dnd').collection('exposures');
+    this.exposureHistoriesCollection = this.mongoClient.db('dnd').collection('exposure_histories');
+    this.validatorStatsCollection = this.mongoClient.db('dnd').collection('nom_stats');
   }
 
   /**
@@ -413,12 +125,19 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
    * @param chainId
    * @returns array of IValidator
    */
-  getSessionValidators(chainId: string): IValidator[] {
+  async getSessionValidators(chainId: string): Promise<IValidator[]> {
     this.logger.debug(`${chainId.padEnd(10)} getSessionValidators`);
     // console.log('this.chains[chainId].sessionValidators', this.chains[chainId].sessionValidators);
-    return this.chains[chainId].allValidators.filter((val) =>
-      this.chains[chainId].sessionValidators.includes(val.address),
-    );
+    const sessionValidators = await this.validatorsCollection.find({ chainId, active: true }).toArray();
+    return sessionValidators.map((val) => {
+      return {
+        address: val.address,
+        identity: val.identity,
+        commission: val.commission,
+        balance: val.balance,
+        exposure: val.exposure,
+      };
+    });
   }
 
   /**
@@ -426,12 +145,17 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
    * @param chainId
    * @returns array of IValidator
    */
-  getAllValidators(chainId: string): IValidator[] {
+  async getAllValidators(chainId: string): Promise<IValidator[]> {
     this.logger.debug(`${chainId.padEnd(10)} getAllValidators`);
-    return this.chains[chainId].allValidators.map((val) => {
-      // check if val is in sessionValidators
-      const active = this.chains[chainId].sessionValidators.find((v) => v.toString() === val.address);
-      return { ...val, active: active ? true : false };
+    const validators = await this.validatorsCollection.find({ chainId }).toArray();
+    return validators.map((val) => {
+      return {
+        address: val.address,
+        identity: val.identity,
+        commission: val.commission,
+        balance: val.balance,
+        exposure: val.exposure,
+      };
     });
   }
 
@@ -441,17 +165,16 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
    * @param address
    * @returns
    */
-  getValidator(chainId: string, address: string): IValidator {
+  async getValidator(chainId: string, address: string): Promise<IValidator> {
     this.logger.debug(`${chainId.padEnd(10)} getValidator, ${address}`);
-    const val = this.chains[chainId].allValidators.find((val) => val.address === address);
-    if (!val) {
-      this.logger.warn(`${chainId.padEnd(10)} getValidator, ${address} not found`);
-      return null;
-    }
-    // check if val is in sessionValidators
-    const active = this.chains[chainId].sessionValidators.find((v) => v.toString() === address);
-    val.active = active ? true : false;
-    return val;
+    const val = await this.validatorsCollection.findOne({ chainId, address });
+    return {
+      address: val.address,
+      identity: val.identity,
+      commission: val.commission,
+      balance: val.balance,
+      exposure: val.exposure,
+    };
   }
 
   /**
@@ -459,9 +182,16 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
    * @param chainId
    * @returns array of INominator
    */
-  getNominators(chainId: string): INominator[] {
+  async getNominators(chainId: string): Promise<INominator[]> {
     this.logger.debug(`${chainId.padEnd(10)} getNominators`);
-    return this.chains[chainId].nominators;
+    const nominators = await this.nominatorsCollection.find({ chainId }).toArray();
+    return nominators.map((nom) => {
+      return {
+        address: nom.address,
+        balance: nom.balance,
+        targets: nom.targets,
+      };
+    });
   }
 
   /**
@@ -470,83 +200,175 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
    * @param address
    * @returns
    */
-  getNominator(chainId: string, address: string) {
+  async getNominator(chainId: string, address: string): Promise<INominator> {
     this.logger.debug(`${chainId.padEnd(10)} getNominator, ${address}`);
-    return this.chains[chainId].nominators.find((nom) => nom.address === address);
+    const nom = await this.nominatorsCollection.findOne({ chainId, address });
+    return {
+      address: nom.address,
+      balance: nom.balance,
+      targets: nom.targets,
+    };
   }
 
   /**
-   *
    * @param chainId
    * @param address
    * @returns
    */
-  getExposure(chainId: string, address: string): IExposure {
+  async getExposure(chainId: string, address: string): Promise<IExposure> {
     this.logger.debug(`${chainId.padEnd(10)} getExposure, ${address}`);
-    const exposure =
-      this.chains[chainId].allValidators.find((val) => val.address === address)?.exposure || ({} as IExposure);
+    const exposure = await this.exposuresCollection.findOne({ chainId, address });
     return exposure;
   }
 
-  /**
-   * @param chainId
-   * @param stash
-   * @returns
-   */
-  async getNominatorsForStashX(chainId: string, stash: string): Promise<INominator[]> {
-    this.logger.debug(`${chainId.padEnd(10)} getNominatorsForStashX, ${stash}`);
-    // return this.chains[chainId].nominators.filter((nom) => nom.targets.includes(stash));
-    const QUERY = gql`
-      query allNominators($chainId: String!, $stash: String!) {
-        Validator(chain: $chainId, stash: $stash) {
-          nominators {
-            accountId
-            account {
-              data {
-                free
-                reserved
-                miscFrozen
-                feeFrozen
-                bonded
-              }
+  async getExposureStats(chainId: string, stash: string): Promise<IValidatorStats[]> {
+    this.logger.debug(`${chainId.padEnd(10)} getExposureStats, ${stash}`);
+    const stats = await this.exposuresCollection.aggregate([
+      {
+        $match: {
+          chainId: chainId,
+          stash: stash
+        }
+      },
+      // sort and limit to 24*7*4.333
+      { $sort: { dateHour: -1 } },
+      { $limit: Math.floor(24*7*4.333) },
+      {
+        $project: {
+          chainId: 1,
+          stash: 1,
+          dateHour: 1,
+          exposureDn: {
+            $reduce: {
+              input: {
+                $filter: {
+                  input: "$others",
+                  as: "o",
+                  cond: { $eq: ["$$o.isDn", true] }
+                }
+              },
+              initialValue: Number(0),
+              in: { $add: ["$$value", "$$this.value"] }
+            }
+          },
+          exposureNon: {
+            $reduce: {
+              input: {
+                $filter: {
+                  input: "$others",
+                  as: "o",
+                  cond: {
+                    $or: [
+                      { $eq: ["$$o.isDn", false] },
+                      { $not: ["$$o.isDn"] }
+                    ]
+                  }
+                }
+              },
+              initialValue: Number(0),
+              in: { $add: ["$$value", "$$this.value"] }
             }
           }
         }
       }
-    `;
+    ]).toArray();
+    return stats as unknown as IValidatorStats[];
+  }
 
-    try {
-      // Send the query to the external Apollo server
-      const response = await this.apolloClient.query({
-        query: QUERY,
-        variables: {
-          chainId,
-          stash,
-        },
-      });
-      //console.debug('response', JSON.stringify(response));
-      // this.logger.debug(`${chainId.padEnd(10)} getNominatorsForStash, ${stash}, ${response.data.length}`);
-      return response.data?.Validator?.nominators?.map((nom) => {
-        // //console.debug('nom.accountId', nom.accountId);
-        // if (nom.accountId === '13UVJyLnbVp8c4FQeiGDrYotodEcyAzE8tipNEMc61UBJAH4') {
-        //   console.debug('nom.account.data', nom.account.data);
-        // }
-        return {
-          address: nom.accountId,
-          balance: Number(
-            BigInt(nom.account.data.free || 0) +
-              BigInt(nom.account.data.reserved || 0) +
-              BigInt(nom.account.data.miscFrozen || 0) +
-              BigInt(nom.account.data.feeFrozen || 0) +
-              BigInt(nom.account.data.bonded || 0),
-          ),
-          targets: [],
-        };
-      });
-    } catch (error) {
-      console.error('Error fetching blockchain data:', error);
-      // throw error;
-      return [];
-    }
+  /**
+   * get the nominations for a stash
+   * @param chainId
+   * @param stash
+   * @returns
+   */
+  async getNominationsForStash(chainId: string, stash: string): Promise<INominator[]> {
+    this.logger.debug(`${chainId.padEnd(10)} getNominationsForStash, ${stash}`);
+
+    const dateHour = moment().subtract(1, 'hour').format('YYYY-MM-DD-HH');
+
+    // // query by chainId, accountId (validator address), sort by datehour, decending, take the latest
+    // const datehours = await this.nominationsCollection
+    //   .find({ chainId, targetId: stash, dateHour })
+    //   .sort({ datehour: -1 })
+    //   .limit(1)
+    //   .toArray();
+    // if (datehours.length === 0) {
+    //   this.logger.warn(`${chainId.padEnd(10)} getNominationsForStash, datehours for ${stash} not found`);
+    //   return [];
+    // }
+    // const datehour = datehours[0].datehour;
+    const nominations = await this.nominationsCollection.find({ chainId, targetId: stash, dateHour }).toArray();
+    return nominations.map((nom) => {
+      return {
+        address: nom.nominatorId,
+        balance: Number(
+          BigInt(nom.account.data.free || 0) +
+            BigInt(nom.account.data.reserved || 0) +
+            BigInt(nom.account.data.miscFrozen || 0) +
+            BigInt(nom.account.data.feeFrozen || 0) +
+            BigInt(nom.account.data.bonded || 0),
+        ),
+        targets: nom.targets,
+      };
+    });
+  }
+
+  async getNominationStats(chainId: string, stash: string): Promise<IValidatorStats[]> {
+    this.logger.debug(`${chainId.padEnd(10)} getNominationStats, ${stash}`);
+
+    const stats = await this.nominationsCollection.aggregate([
+      {
+        $match: {
+          account: { $ne: null },
+          "account.data.free": { $ne: null },
+          "targetId": stash
+        }
+      },
+      // sort and limit to 24*7*4.333
+      { $sort: { dateHour: -1 } },
+      { $limit: Math.floor(24*7*4.333) },
+      {
+        $group: {
+          _id: {
+            chainId: "$chainId",
+            stash: "$targetId",
+            dateHour: "$dateHour"
+          },
+          nomDn: {
+            $sum: {
+              $cond: ["$isDn", 1, 0]
+            }
+          },
+          nomNon: {
+            $sum: {
+              $cond: ["$isDn", 0, 1]
+            }
+          },
+          nomValueDn: {
+            $sum: {
+              $cond: ["$isDn", "$account.data.free", 0]
+            }
+          },
+          nomValueNon: {
+            $sum: {
+              $cond: ["$isDn", 0, "$account.data.free"]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          chainId: "$_id.chainId",
+          stash: "$_id.stash",
+          dateHour: "$_id.dateHour",
+          nomDn: 1,
+          nomNon: 1,
+          nomValueDn: { $toLong: "$nomValueDn" },   // If needed
+          nomValueNon: { $toLong: "$nomValueNon" }  // If needed
+        }
+      }
+    ]).toArray();
+    return stats as unknown as IValidatorStats[];
   }
 }

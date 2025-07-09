@@ -5,9 +5,10 @@ import { BlockchainService } from './blockchain.service';
 import { NodesModule } from 'src/nodes/nodes.module';
 import { NodesService } from 'src/nodes/nodes.service';
 import { TelemetryService } from 'src/telemetry/telemetry.service';
+import { DatabaseModule } from 'src/database/database.module';
 
 @Module({
-  imports: [forwardRef(() => NodesModule)],
+  imports: [forwardRef(() => NodesModule), forwardRef(() => DatabaseModule)],
   providers: [BlockchainService, BlockchainResolver, NodesService, TelemetryService],
   exports: [BlockchainService, BlockchainResolver],
 })

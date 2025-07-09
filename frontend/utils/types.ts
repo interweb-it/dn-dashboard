@@ -18,18 +18,20 @@ export interface IBackupNode {
   stash: string;
 }
 
-export interface INominationStats {
+export interface IValidatorStats {
   chainId: string;
   stash: string;
-  datehour: string;
+  dateHour: string;
   active: boolean;
+  updatedAt: string;
   commission: number;
-  nom_dn: number;
-  nom_non: number;
-  nom_value_dn: number;
-  nom_value_non: number;
-  exposure_dn: number;
-  exposure_non: number;
+  blocked: boolean;
+  nomDn: number;
+  nomNon: number;
+  nomValueDn: bigint;
+  nomValueNon: bigint;
+  exposureDn: bigint;
+  exposureNon: bigint;
 }
 
 // TODO move this to utils

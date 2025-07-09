@@ -2,6 +2,7 @@
   "name": "nuxt-app",
   "private": true,
   "type": "module",
+  "version": "1.0.0",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
@@ -12,7 +13,7 @@
   "dependencies": {
     "@nuxt/kit": "^3.16.0",
     "@pinia/nuxt": "0.10.1",
-    "@polkadot/api": "^15.8.1",
+    "@polkadot/api": "^16.4.1",
     "@vue-leaflet/vue-leaflet": "^0.10.1",
     "chart.js": "^4.4.8",
     "chartjs-adapter-moment": "^1.0.1",

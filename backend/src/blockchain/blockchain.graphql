@@ -1,4 +1,5 @@
 scalar BigInt
+scalar DateTime
 
 type Query {
   validators(chainId: String!, active: Boolean): [Validator]
@@ -6,6 +7,8 @@ type Query {
   stakers(chainId: String!): [Nominator]
   staker(chainId: String!, address: String!): Nominator
   stakersForStash(chainId: String!, stash: String!): [Nominator]
+  exposureStats(chainId: String!, stash: String!): [ValidatorStats]
+  nominationStats(chainId: String!, stash: String!): [ValidatorStats]
   # nodeById(chainId: String!, id: Int!): NodeDetailsX
   # nodeByName(chainId: String!, name: String!): NodeDetailsX
   # nodeByNetworkId(chainId: String!, networkId: String!): NodeDetailsX
@@ -25,4 +28,19 @@ type Validator {
   balance: BigInt
   commission: Float
   active: Boolean
+}
+
+type ValidatorStats {
+  chainId: String!
+  stash: String
+  dateHour: String
+  active: Boolean
+  blocked: Boolean
+  updatedAt: DateTime
+  nomDn: Int
+  nomNon: Int
+  nomValueDn: BigInt
+  nomValueNon: BigInt
+  exposureDn: BigInt
+  exposureNon: BigInt
 }

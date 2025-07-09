@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "esModuleInterop": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "dist",
+    "rootDir": ".",
+    "strict": true,
+    "target": "ES2019",
+    "baseUrl": "."
+  },
+  "include": ["dn/**/*", "types.ts", "substrate-telemetry/**/*"],
+  "exclude": ["node_modules", "dist"]
+} 

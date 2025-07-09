@@ -10,7 +10,7 @@
     <v-card-text>
 
       <!-- Nominations -->
-      <Line id="chart1" :data="chartData" :options="{...chartOptions, plugins: { title: { display: true, text: 'Nominations' } }}" />
+      <!-- <Line id="chart1" :data="chartData" :options="{...chartOptions, plugins: { title: { display: true, text: 'Nominations' } }}" /> -->
 
       <!-- <p v-show="loadingN" color="red">Scanning chain nominators, building nominator list... {{ page }} of {{ pages }}</p> -->
       <!-- {{ nominators }} -->
@@ -72,7 +72,7 @@ import { Bar, Line } from 'vue-chartjs';
 import 'chartjs-adapter-moment';
 ChartJS.register(...registerables);
 
-import type { INominationStats, IExposure, INominator } from '~/utils/types';
+import type { IValidatorStats, IExposure, INominator } from '~/utils/types';
 
 /**
  *  query for the nominations card:
@@ -89,15 +89,15 @@ const QUERY_NOMINATION_CARD = gql`
     nominationStats(chainId: $chainId, stash: $stash) { 
       chainId
       stash
-      datehour
-      active
-      commission
-      nom_dn
-      nom_non
-      nom_value_dn
-      nom_value_non
-      exposure_dn
-      exposure_non
+      dateHour
+      # active
+      # commission
+      nomDn
+      nomNon
+      nomValueDn
+      nomValueNon
+      # exposure_dn
+      # exposure_non
     }
     # dn nominators
     nominators(chainId: $chainId, cohortId: $cohortId)
@@ -128,7 +128,7 @@ export default defineComponent({
     const cohortId = computed(() => nodeStore.cohortId)
     const exposure = computed(() => nodeStore.currentExposure)
 
-    const decimalPlaces = 2
+    const decimalPlaces = 0
 
     const dnNominators = ref<string[]>([])
 
@@ -138,7 +138,7 @@ export default defineComponent({
     //   pageCount: 0,
     //   others: []
     // })
-    const nominationStats = ref<INominationStats[]>([])
+    const nominationStats = ref<IValidatorStats[]>([])
     const nominators = ref<INominator[]>([])
 
     const totalNominations = computed(() => {
@@ -160,9 +160,9 @@ export default defineComponent({
 
     const chartData = computed(() => ({
       title: 'Nominations',
-      // convert datehour (yyyy-MM-dd-HH) to date (yyyy-MM-dd)
+      // convert dateHour (yyyy-MM-dd-HH) to date (yyyy-MM-dd)
       labels: nominationStats.value.map((stat) => {
-        const ret = stat.datehour.substring(0, 10) + ' ' + stat.datehour.substring(11, 13) + ':00:00';
+        const ret = stat.dateHour.substring(0, 10) + ' ' + stat.dateHour.substring(11, 13) + ':00:00';
         // console.log(ret);
         return new Date(ret);
       }),
@@ -170,7 +170,7 @@ export default defineComponent({
         {
           type: 'bar',
           label: 'Non-DN',
-          data: nominationStats.value.map((stat) => stat.nom_value_non),
+          data: nominationStats.value.map((stat) => stat.nomValueNon),
           fill: true,
           borderWidth: 1,
           pointRadius: 1,
@@ -178,7 +178,7 @@ export default defineComponent({
         {
           type: 'bar',
           label: 'DN',
-          data: nominationStats.value.map((stat) => stat.nom_value_dn),
+          data: nominationStats.value.map((stat) => stat.nomValueDn),
           fill: true,
           borderWidth: 1,
           pointStyle: 'triangle',
@@ -187,7 +187,7 @@ export default defineComponent({
         {
           type: 'line',
           label: 'Nominators',
-          data: nominationStats.value.map((stat) => stat.nom_non + stat.nom_dn),
+          data: nominationStats.value.map((stat) => stat.nomNon + stat.nomDn),
           fill: false,
           borderWidth: 1,
           pointRadius: 1,
@@ -265,15 +265,16 @@ export default defineComponent({
           }
         }) || [];
         nominationStats.value = result.data?.nominationStats.map((stat: any) => {
-          let datehour: string = ''
+          let dateHour: string = ''
           try {
-            datehour = moment(stat.datehour.substring(0, 10).replace(/\./g, '/') + ' ' + stat.datehour.substring(11, 13) + ':00:00').format('YYYY-MM-DD HH:mm')
+            dateHour = moment(stat.dateHour.substring(0, 10).replace(/\./g, '/') + ' ' + stat.dateHour.substring(11, 13) + ':00:00')
+              .format('YYYY-MM-DD HH:mm')
           } catch (err) { console.error(err) }
           return {
             ...stat,
-            datehour: datehour,
-            nom_value_non: Number(stat.nom_value_non) / Math.pow(10, decimals.value as number),
-            nom_value_dn: Number(stat.nom_value_dn) / Math.pow(10, decimals.value as number)
+            dateHour: dateHour,
+            nomValueNon: Number(stat.nomValueNon) / Math.pow(10, decimals.value as number),
+            nomValueDn: Number(stat.nomValueDn) / Math.pow(10, decimals.value as number)
           }
         }) || [];
         dnNominators.value = result.data?.nominators || [];

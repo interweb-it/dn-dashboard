@@ -1,246 +1,142 @@
-import { Injectable, Inject, OnModuleInit, OnModuleDestroy, Logger, forwardRef } from '@nestjs/common';
-import { Interval, Cron } from '@nestjs/schedule';
-
-import { BlockchainService } from 'src/blockchain/blockchain.service';
-import { NodeDetailsX } from 'src/telemetry/telemetry.service';
+import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common';
 import { TelemetryService } from 'src/telemetry/telemetry.service';
 
-const logger = new Logger('NodesService'.padEnd(17));
+import { DatabaseService } from 'src/database/database.service';
+import { Collection } from 'mongodb';
+import { INode } from '@dn/common/dn';
 
-// cron interval, default every 30 minutes
-// set this in the .env file
-const interval = process.env.CRON_NODES_INTERVAL || '*/30 * * * *';
-
-export type NodeStatus = 'Active' | 'Graduated' | 'Pending' | 'Removed';
-export type ChainTerm = 'start' | 'end';
-
-export interface INodeBase {
-  identity: string;
-  stash: string;
-  commission: number;
-  telemetryX: NodeDetailsX;
-  telemetry: string;
-}
-
-export interface INode extends INodeBase {
-  status: NodeStatus;
-}
-
-export interface ITerm {
-  start: string;
-  end: string;
-}
-
-export interface ICohortData {
-  backups: INodeBase[];
-  nominators: string[];
-  selected: INode[];
-  // statuses: Record<NodeStatus, string>;
-  statuses: NodeStatus[];
-  term: ITerm;
-}
-
-// export interface IChainData {
-//   [cohortId: number]: ICohortData;
-// }
-export type TChainData = Record<number, ICohortData>;
-
-const BASE_URL = 'https://nodes.web3.foundation/api/cohort/COHORT_ID/CHAIN_ID';
-
-const cohorts = ['1', '2', '2-1'];
+const logger = new Logger('NodesService'.padEnd(18));
 
 @Injectable()
-export class NodesService implements OnModuleInit, OnModuleDestroy {
-  private polkadotWS: WebSocket | null = null;
-  private kusamaWS: WebSocket | null = null;
-
-  private chains: Record<string, string> = {
-    kusama: '0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe',
-    polkadot: '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
-  };
-
-  private dataStore: Record<string, TChainData> = {
-    polkadot: {
-      1: {
-        selected: [],
-        backups: [],
-        nominators: [],
-        statuses: [],
-        term: { start: '', end: '' },
-      },
-      2: {
-        selected: [],
-        backups: [],
-        nominators: [],
-        statuses: [],
-        term: { start: '', end: '' },
-      },
-    } as TChainData,
-    kusama: {
-      1: {
-        selected: [],
-        backups: [],
-        nominators: [],
-        statuses: [],
-        term: { start: '', end: '' },
-      },
-      2: {
-        selected: [],
-        backups: [],
-        nominators: [],
-        statuses: [],
-        term: { start: '', end: '' },
-      },
-    } as TChainData,
-  };
+export class NodesService {
+  private readonly nodesCollection: Collection;
+  private readonly telemetryCollection: Collection;
+  private readonly nominationsCollection: Collection;
 
   constructor(
-    @Inject(forwardRef(() => BlockchainService))
-    private blockchainService: BlockchainService,
+    // @Inject('NODE_REPOSITORY')
+    // private nodeRepository: typeof NodeModel,
     @Inject(forwardRef(() => TelemetryService))
     private telemetryService: TelemetryService,
-  ) {}
-
-  async onModuleInit() {
-    await this.handleInterval();
+    // @Inject(forwardRef(() => BlockchainService))
+    // private blockchainService: BlockchainService,
+    @Inject(forwardRef(() => DatabaseService))
+    private databaseService: DatabaseService,
+  ) {
+    this.nodesCollection = this.databaseService.getMongoClient().db('dnd').collection('nodes');
+    this.telemetryCollection = this.databaseService.getMongoClient().db('dnd').collection('telemetry');
+    this.nominationsCollection = this.databaseService.getMongoClient().db('dnd').collection('nominations');
   }
 
-  @Cron(interval)
-  async handleInterval() {
-    logger.debug('Running scheduled task to fetch chain data');
-    for (const cohortId of cohorts) {
-      await this.fetchChainData('polkadot', cohortId);
-      await this.fetchChainData('kusama', cohortId);
+  async getSelected(chainId: string, cohortId: string) {
+    logger.debug(`${chainId.padEnd(10)} getSelected ${chainId} ${cohortId}`);
+    const cohort = await this.nodesCollection.findOne({ chainId, cohortId });
+    if (!cohort) {
+      logger.warn(`${chainId.padEnd(10)} getSelected ${chainId} ${cohortId} not found`);
+      return [];
     }
-  }
-
-  onModuleDestroy() {
-    // this.disconnect();
-  }
-
-  private async fetchChainData(chainId: string, cohortId: string = '1') {
-    logger.debug(`${chainId.padEnd(10)} fetchChainData`);
-    let data: ICohortData = {
-      backups: [],
-      nominators: [],
-      selected: [],
-      statuses: [] as NodeStatus[],
-      term: { start: '', end: '' },
-    };
-    try {
-      const url = BASE_URL.replace('COHORT_ID', cohortId.toString()).replace('CHAIN_ID', chainId);
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      data = await response.json();
-      logger.debug(`${chainId.padEnd(10)} got data selected`, data.selected?.length || 0);
-    } catch (error) {
-      logger.error(`${chainId.padEnd(10)} Failed to fetch data for nodes`, error);
-    }
-
-    // for each data.node, update the node commission
-    // const ex = [
-    //   {
-    //     identity: 'UTSA',
-    //     stash: '15wnPRex2QwgWNCMRVSqgqp2syDn8Gf6LPGGabRhA8zoohpt',
-    //     status: 'Active',
-    //     telemetry: 'UTSA',
-    //   },
-    //   {
-    //     identity: 'VISIONSTAKE 👁‍🗨',
-    //     stash: '13Hp4FEF7z7famvakw8cgioHqDxcnhnyQkvd1jF4dxn7cayG',
-    //     status: 'Active',
-    //     telemetry: null,
-    //   },
-    // ];
-    for (const node of data.selected) {
-      const _val = await this.blockchainService.getValidator(chainId, node.stash);
-      node.commission = _val?.commission || 0;
-      if (node.telemetry && node.telemetry !== '') {
-        // amend the telemetry name map
-        this.telemetryService.updateTelemetryNameForNode(chainId, node.identity, node.telemetry);
-      }
-    }
-    for (const node of data?.backups || []) {
-      const _val = await this.blockchainService.getValidator(chainId, node.stash);
-      node.commission = _val?.commission || 0;
-    }
-    this.dataStore[chainId][cohortId] = data;
-    logger.debug(`${chainId.padEnd(10)} Nodes data updated`);
-  }
-
-  getSelected(chainId: string, cohortId: string): INode[] {
-    logger.debug(`${chainId.padEnd(10)} getSelectecd`);
-    const ret = Array.from(this.dataStore[chainId][cohortId]?.selected || []) as INode[];
-    // get telemetry data for each node
-    for (const node of ret) {
-      const _tel = this.telemetryService.findOneByDNIdentity(chainId, node.identity);
+    const telemetry = await this.telemetryCollection.find({ chainId }).toArray();
+    const nodes: INode[] = [];
+    for (const node of cohort.selected) {
+      const _tel = telemetry.find((t) => t.identity === node.identity);
       if (_tel) {
-        node.telemetryX = _tel.NodeDetails;
+        node.telemetryX = _tel;
       }
+      nodes.push(node);
     }
-    logger.debug('getNodes', chainId, ret);
-    return ret;
+    return nodes;
   }
 
-  getBackups(chainId: string, cohortId: string): INodeBase[] {
+  async getBackups(chainId: string, cohortId: string) {
     logger.debug(`${chainId.padEnd(10)} getBackups`);
-    const ret = Array.from(this.dataStore[chainId][cohortId]?.backups || []);
-    return ret as INodeBase[];
+    const nodes = await this.nodesCollection.find({ chainId, cohortId, status: 'backup' }).toArray();
+    const telemetry = await this.telemetryCollection.find({ chainId }).toArray();
+    for (const node of nodes) {
+      const _tel = telemetry.find((t) => t.identity === node.identity);
+      if (_tel) {
+        node.telemetryX = _tel;
+      }
+    }
+    return nodes;
   }
 
-  getNominators(chainId: string, cohortId: string): string[] {
+  /**
+   * get the nominators for a cohort
+   * @param chainId
+   * @param cohortId
+   * @returns string[] list of DN nominators
+   */
+  async getNominators(chainId: string, cohortId: string): Promise<string[]> {
     logger.debug(`${chainId.padEnd(10)} getNominators`);
-    const ret = Array.from(this.dataStore[chainId][cohortId]?.nominators || []);
-    return ret as string[];
+    const cohort = await this.nodesCollection.findOne({ chainId, cohortId });
+    return cohort.nominators || [];
   }
 
-  getTerm(chainId: string, cohortId: string): ITerm {
+  async getNominations(chainId: string, stash: string): Promise<string[]> {
+    logger.debug(`${chainId.padEnd(10)} getNominations ${stash}`);
+    const nominations = await this.nominationsCollection.find({ chainId, targetId: stash }).toArray();
+    console.log('nominations', nominations);
+    return nominations.map((n) => n.accountId);
+  }
+
+  async getTerm(chainId: string, cohortId: string) {
     logger.debug(`${chainId.padEnd(10)} getTerm`);
-    return this.dataStore[chainId][cohortId].term;
+    const node = await this.nodesCollection.findOne({ chainId, cohortId });
+    return node ? { start: node.termStart, end: node.termEnd } : { start: '', end: '' };
   }
 
-  getCohortsForAddress(chainId: string, address: string): number[] {
-    //logger.debug(`${chainId.padEnd(10)} getCohortsForAddress ${address}`);
-    const ret = [];
-    for (const cohortId of cohorts) {
-      const _nodes = this.dataStore[chainId][cohortId].selected.filter((node) => node.stash === address);
-      if (_nodes.length > 0) {
-        ret.push(cohortId);
+  async getCohortsForAddress(chainId: string, address: string) {
+    const ret: Record<string, string> = {};
+    const cohorts = await this.nodesCollection.find({ chainId }).toArray();
+    for (const cohort of cohorts) {
+      if (cohort.selected.includes(address)) {
+        ret[cohort.cohortId] = 'selected';
+      }
+      if (cohort.backup.includes(address)) {
+        ret[cohort.cohortId] = 'backup';
       }
     }
     return ret;
   }
 
-  findNodeByName(chainId: string, cohortId: string, name: string): INode | INodeBase {
+  /**
+   * Name, to node
+   * @param chainId string
+   * @param cohortId string
+   * @param name string, DN registration name
+   * @returns
+   */
+  async findNodeByName(chainId: string, cohortId: string, name: string) {
     logger.debug(`${chainId.padEnd(10)} findNodeByName ${name}`);
-    let node: INode | INodeBase;
-    node = this.dataStore[chainId][cohortId].selected.find((node) => node.identity === name);
+    const cohort = await this.nodesCollection.findOne({ chainId, cohortId });
+    let node = cohort.selected.find((n) => n.identity === name);
     if (!node) {
-      node = this.dataStore[chainId][cohortId].backups.find((node) => node.identity === name);
+      node = cohort.backup.find((n) => n.identity === name);
+    }
+    if (node.telemetry) {
+      const _tel = await this.telemetryService.findOneByTelemetryName(chainId, node.telemetry);
+      if (_tel) {
+        node.telemetryX = _tel;
+      }
     }
     return node;
   }
 
-  findNodeByStash(chainId: string, cohortId: string, stash: string): INode | INodeBase {
+  async findNodeByStash(chainId: string, cohortId: string, stash: string) {
     logger.debug(`${chainId.padEnd(10)} findNodeByStash ${stash}`);
-    let node: INode | INodeBase;
-    node = this.dataStore[chainId][cohortId].selected.find((node) => node.stash === stash);
+    const cohort = await this.nodesCollection.findOne({ chainId, cohortId });
+    let node = cohort.selected.find((n) => n.stash === stash);
     if (!node) {
-      logger.debug(`${chainId.padEnd(10)} can't find ${stash} in selected... trying backups`);
-      node = this.dataStore[chainId][cohortId]?.backups?.find((node) => node.stash === stash);
+      node = cohort.backup.find((n) => n.stash === stash);
       if (!node) {
         logger.warn(`${chainId.padEnd(10)} can't find ${stash} in cohort ${cohortId}`);
         return null;
       }
     }
-    // get telemetry data for the node
     if (node.telemetry) {
-      // this is the telemetry name
-      const _tel = this.telemetryService.findOneByTelemetryName(chainId, node.telemetry);
+      const _tel = await this.telemetryService.findOneByTelemetryName(chainId, node.telemetry);
       if (_tel) {
-        node.telemetryX = _tel.NodeDetails;
+        node.telemetryX = _tel;
       }
     }
     return node;

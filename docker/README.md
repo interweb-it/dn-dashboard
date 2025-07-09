@@ -8,7 +8,7 @@
 ## build containers
 ```bash
 
-docker compose build #--no-cache
+docker compose -p dnd build #--no-cache
 ```
 
 # run

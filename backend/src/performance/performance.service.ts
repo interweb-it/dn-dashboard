@@ -26,7 +26,7 @@ export class PerformanceService implements OnModuleInit, OnModuleDestroy {
     )
       .then((res) => res.json())
       .then((data) => {
-        console.log('turboflakes', data);
+        // console.log('turboflakes', data);
         performance = data;
       });
     return performance;

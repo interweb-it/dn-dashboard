@@ -34,6 +34,18 @@ query dmNominators($chainId: String!, $cohortId: String!) {
   nominators(chainId: $chainId, cohortId: $cohortId)
 }`
 
+export const QUERY_EXPOSURE_STATS = gql`
+query exposureStats($chainId: String!, $stash: String!) {
+  exposureStats(chainId: $chainId, stash: $stash) {
+    chainId
+    stash
+    dateHour
+    active
+    blocked
+    exposureDn
+    exposureNon
+  }
+}`
 
 /**
  * Get the nominators for a given stash
@@ -121,14 +133,14 @@ query nominationStats($chainId: String!, $stash: String!) {
   nominationStats(chainId: $chainId, stash: $stash) { 
     chainId
     stash
-    datehour
-    active
-    commission
-    nom_dn
-    nom_non
-    nom_value_dn
-    nom_value_non
-    exposure_dn
-    exposure_non
+    dateHour
+    # active
+    # commission
+    nomDn
+    nomNon
+    nomValueDn
+    nomValueNon
+    # exposure_dn
+    # exposure_non
   }
 }`

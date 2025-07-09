@@ -21,8 +21,19 @@ export * from './SortedCollection';
 
 import * as Types from './types';
 import * as FeedMessage from './feed';
+import { AddedNodeMessage, RemovedNodeMessage } from './feed';
+import { NodeLocation, Timestamp } from './types';
+import { Maybe } from './helpers';
 
-export { Types, FeedMessage };
+export {
+  Types,
+  FeedMessage,
+  AddedNodeMessage,
+  RemovedNodeMessage,
+  Maybe,
+  NodeLocation,
+  Timestamp,
+};
 
 // Increment this if breaking changes were made to types in `feed.ts`
 export const VERSION: Types.FeedVersion = 32 as Types.FeedVersion;

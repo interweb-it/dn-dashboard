@@ -10,7 +10,7 @@
     <v-card-text>
       <!-- {{ exposure }} -->
 
-      <Bar id="chart2" :data="chartData" :options="chartOptions" />
+      <!-- <Bar id="chart2" :data="chartData as any" :options="chartOptions as any" /> -->
 
       <br>
 
@@ -48,7 +48,6 @@
 <script lang="ts">
 import moment from 'moment';
 import { ApiPromise } from '@polkadot/api';
-import { QUERY_NOMINATORS } from '~/utils/graphql';
 import {
   Chart as ChartJS,
   BarElement,
@@ -65,8 +64,8 @@ import { Bar, Line } from 'vue-chartjs';
 import 'chartjs-adapter-moment';
 // ChartJS.register(...registerables);
 
-import { QUERY_NOMINATION_STATS, QUERY_DM_NOMINATORS } from '~/utils/graphql';
-import type { INominationStats, IExposure } from '~/utils/types';
+import { QUERY_NOMINATION_STATS, QUERY_DM_NOMINATORS, QUERY_EXPOSURE_STATS } from '~/utils/graphql';
+import type { IValidatorStats, IExposure } from '~/utils/types';
 
 export default defineComponent({
   name: 'ExposureCard',
@@ -90,7 +89,7 @@ export default defineComponent({
     const decimals = computed(() => substrateStore.getDecimals || 10)
     const nodeStore = useNodeStore()
     const cohortId = computed(() => nodeStore.cohortId)
-    const decimalPlaces = 2
+    const decimalPlaces = 0
     const loadingE = ref(false)
     const dnNominators = ref<string[]>([])
     const exposure = ref<IExposure>({
@@ -99,7 +98,7 @@ export default defineComponent({
       pageCount: 0,
       others: []
     })
-    const nominationStats = ref<INominationStats[]>([])
+    const validatorStats = ref<IValidatorStats[]>([])
 
     const { $substrate } = useNuxtApp();
     var api: ApiPromise | null;
@@ -181,18 +180,18 @@ export default defineComponent({
 
     const chartData = computed(() => ({
       title: 'Exposure',
-      labels: nominationStats.value.map((stat) => stat.datehour),
+      labels: validatorStats.value.map((stat) => stat.dateHour),
       datasets: [
         {
           label: 'Non-DN',
-          data: nominationStats.value.map((stat) =>stat.exposure_non),
+          data: validatorStats.value.map((stat) =>stat.exposureNon),
           fill: true,
           borderWidth: 1,
           pointRadius: 1,
         },
         {
           label: 'DN',
-          data: nominationStats.value.map((stat) => stat.exposure_dn),
+          data: validatorStats.value.map((stat) => stat.exposureDn),
           fill: true,
           borderWidth: 1,
           pointStyle: 'triangle',
@@ -226,7 +225,7 @@ export default defineComponent({
     })
 
     onMounted(() => {
-      const { error: _error, loading: _loading, refetch: _refetch, onResult, onError } = useQuery(QUERY_NOMINATION_STATS, {
+      const { error: _error, loading: _loading, refetch: _refetch, onResult, onError } = useQuery(QUERY_EXPOSURE_STATS, {
         chainId: props.chainId,
         stash: props.stash
       });
@@ -244,23 +243,23 @@ export default defineComponent({
           return;
         }
         // console.log('nomination stats result', result.data);
-        let stats: INominationStats[] = []
-        result.data.nominationStats.forEach((stat: INominationStats) => {
-          var datehour: string = ''
+        let stats: IValidatorStats[] = []
+        result.data.exposureStats.forEach((stat: IValidatorStats) => {
+          var dateHour: string = ''
           try {
-            const datestr = stat.datehour.substring(0, 10).replace(/\./g, '/') + ' ' + stat.datehour.substring(11, 13) + ':00:00'
+            const datestr = stat.dateHour.substring(0, 10).replace(/\./g, '/') + ' ' + stat.dateHour.substring(11, 13) + ':00:00'
             //console.log('datestr', datestr);
-            datehour = moment(datestr).format('YYYY-MM-DD HH:mm')
+            dateHour = moment(datestr).format('YYYY-MM-DD HH:mm')
           } catch (err) { console.error(err) }
-          console.log('datehour', datehour);
+          console.log('dateHour', dateHour);
           stats.push({
             ...stat,
-            datehour: datehour,
-            exposure_non: Number(BigInt(stat.exposure_non)) / Math.pow(10, decimals.value as number),
-            exposure_dn: Number(BigInt(stat.exposure_dn)) / Math.pow(10, decimals.value as number),
+            dateHour: dateHour,
+            exposureNon: Number(BigInt(stat.exposureNon)) / Math.pow(10, decimals.value as number),
+            exposureDn: Number(BigInt(stat.exposureDn)) / Math.pow(10, decimals.value as number),
           })
         })
-        nominationStats.value = stats
+        validatorStats.value = stats
         //console.debug('nomination stats', nominationStats.value);
       });
 
@@ -304,7 +303,7 @@ export default defineComponent({
       dnNominators,
       chartData,
       chartOptions,
-      nominationStats,
+      validatorStats,
       doRefetch
     }
   }

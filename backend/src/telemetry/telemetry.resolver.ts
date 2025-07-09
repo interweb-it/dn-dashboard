@@ -1,20 +1,13 @@
 import { ParseIntPipe } from '@nestjs/common';
 import { Args, Query, Resolver, Subscription } from '@nestjs/graphql';
-// import { PubSub } from 'graphql-subscriptions';
-// import { Node } from '../graphql.schema';
-// import { NodeDetailsX } from './telemetry.service';
-// import { TelemetryGuard } from './cats.guard';
-import { AddedNodeMessageX, NodeDetailsX, TelemetryService } from './telemetry.service';
-// import { CreateCatDto } from './dto/create-cat.dto';
-
-// const pubSub = new PubSub();
+import { AddedNodeMessageX } from '@dn/common/dn';
+import { TelemetryService } from './telemetry.service';
 
 @Resolver('Telemetry')
 export class TelemetryResolver {
   constructor(private readonly telemetryService: TelemetryService) {}
 
   @Query('telemetry')
-  // @UseGuards(TelemetryGuard)
   async getTelemetry(
     @Args('chainId')
     chainId: string,
@@ -24,7 +17,6 @@ export class TelemetryResolver {
   }
 
   @Query('telemetryForIds')
-  // @UseGuards(TelemetryGuard)
   async getTelemetryForIds(
     @Args('chainId')
     chainId: string,

@@ -146,7 +146,7 @@
         </v-tabs-window>
 
       </v-container>
-      <Footer :chain-id="chainId" :cohort-id="cohortId"></Footer>
+      <Footer :chain-id="chainId"></Footer>
     </client-only>
 
   </v-container>

@@ -1,19 +1,13 @@
 // import { ParseIntPipe } from '@nestjs/common';
 import { Args, Query, Resolver, Subscription } from '@nestjs/graphql';
-// import { PubSub } from 'graphql-subscriptions';
-import { NodesService, INode, INodeBase } from './nodes.service';
-export interface ITerm {
-  start: string;
-  end: string;
-}
-// const pubSub = new PubSub();
+import { NodesService } from './nodes.service';
+import { INode, INodeBase, ITerm } from '@dn/common/dn';
 
 @Resolver('Nodes')
 export class NodesResolver {
   constructor(private readonly nodesService: NodesService) {}
 
   @Query('selected')
-  // @UseGuards(NodesGuard)
   async getNodes(
     @Args('chainId')
     chainId: string,
@@ -21,7 +15,8 @@ export class NodesResolver {
     cohortId: string,
   ): Promise<INode[]> {
     console.debug('resolver.ts: getSelected', chainId, cohortId);
-    return this.nodesService.getSelected(chainId, cohortId);
+    const nodes = await this.nodesService.getSelected(chainId, cohortId);
+    return nodes; // .map((node) => node.toJSON() as INode);
   }
 
   @Query('backups')
@@ -33,7 +28,7 @@ export class NodesResolver {
     cohortId: string,
   ): Promise<INodeBase[]> {
     console.debug('resolver.ts: getBackups', chainId, cohortId);
-    return this.nodesService.getBackups(chainId, cohortId);
+    return this.nodesService.getBackups(chainId, cohortId) as unknown as INodeBase[];
   }
 
   @Query('nominators')

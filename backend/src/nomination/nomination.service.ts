@@ -6,163 +6,233 @@ import { format, subDays } from 'date-fns';
 import { Nomination, INomination } from './nomination.entity';
 import { Op } from 'sequelize';
 import { IExposure } from 'src/blockchain/blockchain.service';
-
-const logger = new Logger('NominationService');
+import { DatabaseService } from 'src/database/database.service';
+import { Collection } from 'mongodb';
+import * as moment from 'moment';
 
 // cron interval, default every 30 minutes
 // set this in the .env file
 const interval = process.env.CRON_NOMINATION_INTERVAL || '*/30 * * * *';
 
-// interface IValidator {
-//   stash: string;
-//   data: Nomination[];
-// }
-
-// interface StorageData {
-//   kusama: Record<string, IValidator>;
-//   polkadot: Record<string, IValidator>;
-// }
-const chainIds = ['kusama', 'polkadot'];
-// const cohortIds = [1, 2];
-const currentCohortId = '2-1';
-
+const decimals = {
+  polkadot: 10,
+  kusama: 12,
+}
 @Injectable()
 export class NominationService {
   // private storageData: StorageData;
   // private storageDataFile: string = './data/storage.json'; // relative to the root of the project
+  private readonly nominationsCollection: Collection;
+  private readonly validatorsCollection: Collection;
+  private readonly logger = new Logger(this.constructor.name.padEnd(18));
 
   constructor(
     @Inject(forwardRef(() => NodesService))
     private readonly nodesService: NodesService,
     @Inject(forwardRef(() => BlockchainService))
     private readonly blockchainService: BlockchainService,
-    @Inject('NOMINATION_REPOSITORY')
-    private nominationRepository: typeof Nomination,
+    @Inject(forwardRef(() => DatabaseService))
+    private readonly databaseService: DatabaseService,
   ) {
-    logger.debug('NominationService constructor');
-  }
-
-  onModuleInit() {
-    logger.debug('NominationService onModuleInit');
-    this.handleInterval();
+    this.logger.debug('NominationService constructor');
+    this.nominationsCollection = this.databaseService.getMongoClient().db('dnd').collection('nominations');
+    this.validatorsCollection = this.databaseService.getMongoClient().db('dnd').collection('validators');
   }
 
   /**
-   * get nominators from nodesService, and get balances from blockchainService
-   * calculate the DN/non-DN nominations
-   */
-  async getDataForStorage() {
-    logger.debug(`${'chainId'.padEnd(10)} Updating storage data`);
-    for (const chainId of chainIds) {
-      logger.debug(`${chainId.padEnd(10)} Getting data for ${chainId}`);
-      const vals = await this.blockchainService.getSessionValidators(chainId);
-      logger.debug(`${chainId.padEnd(10)} ${chainId} has ${vals.length} validators`);
-      let batchArray: INomination[] = [];
-      for (const val of vals) {
-        const _validator: IValidator = this.blockchainService.getValidator(chainId, val.address);
-        const dn_noms = await this.nodesService.getNominators(chainId, currentCohortId);
-
-        // const exposure: IExposure = this.blockchainService.getExposure(chainId, val.address);
-        const exposure: IExposure = _validator.exposure;
-        //console.debug('exposure', exposure);
-
-        const noms = await this.blockchainService.getNominatorsForStashX(chainId, val.address);
-        const data: INomination = {
-          chainId: chainId,
-          stash: val.address,
-          datehour: format(new Date(), 'yyyy.MM.dd.HH'), // YYYY.MM.DD.HH
-          active: val.active ? 1 : 0,
-          commission: val.commission,
-
-          nom_dn: noms.filter((nom) => dn_noms.includes(nom.address)).length,
-          nom_non: noms.filter((nom) => !dn_noms.includes(nom.address)).length,
-
-          nom_value_dn: noms.filter((nom) => dn_noms.includes(nom.address)).reduce((acc, nom) => acc + nom.balance, 0),
-          nom_value_non: noms
-            .filter((nom) => !dn_noms.includes(nom.address))
-            .reduce((acc, nom) => acc + nom.balance, 0),
-
-          exposure_dn:
-            exposure.others
-              ?.filter((other) => dn_noms.includes(other.who))
-              .reduce((acc, other) => acc + Number(other.value), 0) || 0,
-          exposure_non:
-            exposure.others
-              ?.filter((other) => !dn_noms.includes(other.who))
-              .reduce((acc, other) => acc + Number(other.value), 0) || 0,
-        };
-        // this.storeNomination(chainId, data);
-        batchArray.push(data);
-        if (batchArray.length >= 10) {
-          await this.storeNominationsToDB(chainId, batchArray);
-          batchArray = [];
-        }
-      }
-      if (batchArray.length > 0) {
-        await this.storeNominationsToDB(chainId, batchArray);
-      }
-    }
-  }
-
-  /**
-   * store the nomination Stats for chainId : data.stash
-   * key: chainId, stash, datehour
-   */
-  async storeNominationsToDB(chainId: string, data: INomination[]) {
-    logger.debug('Storing nomination to DB');
-    // upsert the data
-    await this.nominationRepository.bulkCreate(
-      data.map((d) => ({ ...d, chainId })),
-      {
-        // upsertKeys: ['chainId', ''],
-        updateOnDuplicate: ['active', 'commission', 'nom_dn', 'nom_non', 'exposure_dn', 'exposure_non'],
-      },
-    );
-  }
-
-  // storage calcuation: 2000 validators, 30 days, 24 hours per day
-  // 2000 * 30 * 24 = 144_000 rows
-  // 144_000 rows * 100 bytes = 14.4 MB
-  // trim the storage
-  async trimStorage(period = 30) {
-    // delete all data older than period days
-    const startDate = subDays(new Date(), period);
-    const dateHour = format(startDate, 'yyyy.MM.dd.HH');
-    logger.debug(`Trimming storage for ${dateHour}`);
-    await this.nominationRepository.destroy({
-      where: {
-        datehour: { [Op.lt]: dateHour },
-      },
-    });
-  }
-
-  /**
-   * get the nomination stats for a given chainId and stash
+   * get the nomination stats for a given chainId and stash (validator)
    * @param chainId
    * @param stash
-   * @returns
+   * @returns array of INomination
    */
-  async getStats(chainId: string, stash: string) {
-    logger.debug(`Getting stats for ${chainId} ${stash}`);
+  async getNominationStats(chainId: string, stash: string) {
+    this.logger.debug(`${chainId.padEnd(10)} getNominationStats ${stash}`);
 
-    const ret = await this.nominationRepository.findAll({
-      where: { chainId, stash },
-    });
+    // Calculate the cutoff datehour string for 30 days ago
+    const cutoffDate = moment().subtract(30, 'days'); // .toDate();
+    const cutoffDatehour = cutoffDate.format('YYYY-MM-DD-HH');
 
-    return ret.map((nom) => ({
-      ...nom.dataValues,
-      // force the commission to 2 decimal places and not scientific notation
-      commission: Number(nom.dataValues.commission.toFixed(2)),
-    }));
-  }
+    // // search by chainId, stash, datehour (order by datehour desc), limit 1 month
+    // const rets = await this.nominationsCollection
+    //   .find({ chainId, targetId: stash }, { limit: 30 * 24 })
+    //   .sort({ datehour: -1 })
+    //   .toArray();
+    // if (!rets || rets.length === 0) {
+    //   return null;
+    // }
+    // // const validator = rets[0];
 
-  // every 30 seconds, get the data for the storage
-  // @Cron(CronExpression.EVERY_5_MINUTES)
-  // // every 30 seconds, get the data for the storage
-  @Cron(interval)
-  async handleInterval() {
-    logger.debug('Getting data for storage');
-    await this.getDataForStorage();
-    await this.trimStorage();
+    const nom_stats = await this.nominationsCollection.aggregate([
+      // Exclude documents where targetId is empty
+      {
+        $match: {
+          chainId: chainId,
+          targetId: stash,
+          datehour: { $gte: cutoffDatehour }
+        }
+      },
+      // Convert nominations to INomination structure
+      // {
+      //   $addFields: {
+      //     // decimals: {
+      //     //   $switch: {
+      //         // branches: [
+      //         //   { case: { $eq: ["$chainId", "polkadot"] }, then: 10 },
+      //         //   { case: { $eq: ["$chainId", "kusama"] }, then: 12 }
+      //         // ],
+      //       //   default: 0
+      //       // }
+      //     // }
+      //   }
+      // },
+      {
+        $group: {
+          _id: {
+            chainId: "$chainId",
+            stash: "$targetId",
+            datehour: "$datehour"
+          },
+          decimals: { $first: "$decimals" },
+          nom_dn: {
+            $sum: { $cond: [{ $eq: ["$isDn", true] }, 1, 0] }
+          },
+          nom_non: {
+            $sum: { $cond: [{ $eq: ["$isDn", false] }, 1, 0] }
+          },
+          nom_value_dn: {
+            $sum: {
+              $cond: [
+                { $eq: ["$isDn", true] },
+                "$account.data.free",
+                0
+              ]
+            }
+          },
+          nom_value_non: {
+            $sum: {
+              $cond: [
+                { $eq: ["$isDn", false] },
+                "$account.data.free",
+                0
+              ]
+            }
+          },
+          exposure_dn: { $sum: "$exposure_dn" },
+          exposure_non: { $sum: "$exposure_non" },
+          active: { $first: "$active" },
+          commission: { $first: "$commission" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          chainId: "$_id.chainId",
+          stash: "$_id.stash",
+          datehour: "$_id.datehour",
+          // {
+          //   $replaceAll: {
+          //     input: "$_id.datehour",
+          //     find: "-",
+          //     replacement: "."
+          //   }
+          // },
+          nom_dn: 1,
+          nom_non: 1,
+          nom_value_dn: 1, 
+          // {
+            // $divide: ["$nom_value_dn", { $pow: [10, "$decimals"] }]
+          // },
+          nom_value_non: 1, 
+          // {
+          //   $divide: ["$nom_value_non", { $pow: [10, "$decimals"] }]
+          // },
+          exposure_dn: 1,
+          exposure_non: 1,
+          active: 1,
+          commission: 1
+        }
+      },
+      // Merge with exposure data
+      {
+        $unionWith: {
+          coll: "exposures",
+          pipeline: [
+            {
+              $match: {
+                chainId: { $eq: "$chainId" },
+                stash: stash,
+                datehour: { $gte: cutoffDatehour }
+              }
+            },
+            {
+              $addFields: {
+                totalOthers: { $sum: "$others.value" }
+              }
+            },
+            {
+              $group: {
+                _id: {
+                  chainId: "$chainId",
+                  stash: "$stash",
+                  datehour: "$datehour"
+                },
+                exposure_dn: { $sum: "$exposure_dn" },
+                exposure_non: { $sum: "$exposure_non" },
+                active: { $first: "$active" },
+                commission: { $first: "$commission" },
+                nom_dn: { $sum: "$nom_dn" },
+                nom_non: { $sum: "$nom_non" },
+                nom_value_dn: { $sum: "$nom_value_dn" },
+                nom_value_non: { $sum: "$nom_value_non" }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                chainId: "$_id.chainId",
+                stash: "$_id.stash",
+                datehour: "$_id.datehour",
+                nom_dn: 1,
+                nom_non: 1,
+                nom_value_dn: 1,
+                nom_value_non: 1,
+                exposure_dn: 1,
+                exposure_non: 1,
+                active: 1,
+                commission: 1
+              }
+            }
+          ]
+        }
+      },
+      // Exclude any results where stash is null or empty
+      {
+        $match: {
+          $and: [
+            { stash: { $ne: null } },
+            { stash: { $ne: "" } }
+          ]
+        }
+      },
+      // sort by datehour desc
+      {
+        $sort: {
+          datehour: -1
+        }
+      }
+    ]).toArray();
+
+    console.log(nom_stats.length, 'nom_stats', nom_stats);
+
+    // return ret.map((nom) => ({
+    //   ...nom.dataValues,
+    //   // force the commission to 2 decimal places and not scientific notation
+    //   commission: Number(nom.dataValues.commission.toFixed(2)),
+    // }));
+    // return {
+    //   ...validator,
+    //   nom_stats,
+    // };
+    return nom_stats;
   }
 }

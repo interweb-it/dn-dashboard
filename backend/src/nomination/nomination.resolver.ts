@@ -17,7 +17,7 @@ export class NominationResolver {
     @Args('stash')
     stash: string,
   ): Promise<INomination[]> {
-    logger.debug('resolver.ts: getNominationStats', 'chainId', chainId, 'stash', stash);
-    return this.nominationService.getStats(chainId, stash);
+    logger.debug(`${chainId.padEnd(10)} getNominationStats ${stash}`);
+    return this.nominationService.getNominationStats(chainId, stash) as unknown as INomination[];
   }
 }

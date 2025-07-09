@@ -3,20 +3,19 @@ import { Logger, Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebSocket } from 'ws';
 
-const logger = new Logger('TelemetryService'.padEnd(17));
+const logger = new Logger('TelemetryService'.padEnd(18));
 
 // cron interval, default every 30 minutes
 // set this in the .env file
 const interval = process.env.CRON_TELEMETRY_INTERVAL || '*/30 * * * *';
-
 
 let telemetryNameMap: Record<string, Record<string, string>> = {
   kusama: {},
   polkadot: {},
 };
 
-import { FeedMessage } from '../substrate-telemetry';
-import type { Maybe } from '../substrate-telemetry/helpers';
+import { FeedMessage } from '@dn/common/substrate-telemetry';
+import type { Maybe } from '@dn/common/substrate-telemetry/helpers';
 import type {
   NodeDetails,
   NodeStats,
@@ -27,8 +26,8 @@ import type {
   Timestamp,
   NodeSysInfo,
   ChainStats,
-} from '../substrate-telemetry/types';
-import { AddedNodeMessage, RemovedNodeMessage } from 'src/substrate-telemetry/feed';
+} from '@dn/common/substrate-telemetry/types';
+import { AddedNodeMessage, RemovedNodeMessage } from '@dn/common/substrate-telemetry/feed';
 
 type IPGeo = {
   query: string;
@@ -101,7 +100,7 @@ export interface NodeLocationX {
 //   version: string;
 // };
 
-const parseNodeLocation = (data: NodeLocation, chainId: string): NodeLocationX => {
+const parseNodeLocation = (data: NodeLocation): NodeLocationX => {
   //logger.debug(`${chainId.padEnd(10)} Parsing NodeLocation: ${JSON.stringify(data)}`);
   if (!Array.isArray(data)) {
     return data;
@@ -226,7 +225,7 @@ const parseAddedNodeMessage = (chainId: string, data: AddedNodeMessage): AddedNo
     NodeIO,
     NodeHardware,
     BlockDetails: parseBlockDetails(BlockDetails),
-    NodeLocation: parseNodeLocation(NodeLocation, chainId),
+    NodeLocation: parseNodeLocation(NodeLocation),
     Timestamp,
   };
 };
