@@ -985,8 +985,8 @@ __metadata:
 
 "@dn/common@file:../common::locator=%40dn%2Fworkers%40workspace%3Aworkers":
   version: 1.0.2
-  resolution: "@dn/common@file:../common#../common::hash=3fcaad&locator=%40dn%2Fworkers%40workspace%3Aworkers"
-  checksum: 10c0/7cd762903369f3691fde90eab2f913d7b8a58b80fefce80908788a7e80d36e35a54a8dec5bacb31b71240cd05c6a6275c562c37a43dcdb3bb1e9803d40efe827
+  resolution: "@dn/common@file:../common#../common::hash=59016b&locator=%40dn%2Fworkers%40workspace%3Aworkers"
+  checksum: 10c0/68c26240a3e394b35f06e80fa2af2e50e47ddb41be373d9d5862d24a27269800fe0c198ad84e1307c01dd4fab540dd627b9d71ce0c6dc83083ebb249763924ab
   languageName: node
   linkType: hard
 
