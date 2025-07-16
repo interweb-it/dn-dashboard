@@ -1,0 +1,41 @@
+{
+  "name": "@dn/workers",
+  "packageManager": "yarn@4.5.2",
+  "scripts": {
+    "build": "tsc",
+    "start": "node './dist/index.js'",
+    "dev": "tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/index.js\" | pino-pretty"
+  },
+  "workspaces": [
+    "@dn/workers",
+    "@dn/shared"
+  ],
+  "dependencies": {
+    "@apollo/client": "^3.13.8",
+    "@bull-board/express": "^6.9.2",
+    "@dn/common": "file:../common",
+    "@polkadot/api": "^16.4.1",
+    "@polkadot/api-augment": "^16.4.1",
+    "@polkadot/api-derive": "^16.4.1",
+    "@polkadot/types": "^16.4.1",
+    "@polkadot/util": "^13.5.3",
+    "@polkadot/util-crypto": "^13.5.3",
+    "axios": "^1.10.0",
+    "bullmq": "^5.52.0",
+    "dotenv": "^16.5.0",
+    "graphql": "^16.11.0",
+    "mariadb": "^3.4.2",
+    "moment": "^2.30.1",
+    "mongodb": "^6.17.0",
+    "redis-info": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/dotenv": "^8.2.3",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.3",
+    "@types/redis-info": "^3",
+    "pino-pretty": "^11.2.1",
+    "tsc-watch": "6.2.1",
+    "typescript": "^5.8.3"
+  }
+}
