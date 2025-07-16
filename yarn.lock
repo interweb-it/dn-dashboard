@@ -1067,9 +1067,6 @@ __metadata:
 "@dn/dashboard@workspace:.":
   version: 0.0.0-use.local
   resolution: "@dn/dashboard@workspace:."
-  dependencies:
-    sequelize: "npm:^6.37.7"
-    sequelize-typescript: "npm:^2.1.6"
   languageName: unknown
   linkType: soft
 
@@ -15522,7 +15519,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sequelize@npm:^6.37.6, sequelize@npm:^6.37.7":
+"sequelize@npm:^6.37.6":
   version: 6.37.7
   resolution: "sequelize@npm:6.37.7"
   dependencies:
