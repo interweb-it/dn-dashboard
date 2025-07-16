@@ -35,8 +35,8 @@
 // import { FeedMessage } from '@/pages/substrate-telemetry'
 // import { FeedVersion, NodeDetails } from '../substrate-telemetry/types'
 import { useNodeStore } from '@/stores/nodeStore'
-import { Message } from '@/utils/substrate-telemetry/types'
-import NodeDetailsCard from '../../components/NodeDetailsCard.vue'
+// import { Message } from '@/utils/substrate-telemetry/types'
+import NodeDetailsCard from '@/components/NodeDetailsCard.vue'
 
 const QUERY_TELEMETRY_NODES = gql`
 query telemetryNodes($chainId: String!) {
@@ -107,10 +107,10 @@ export default defineComponent({
     const telemetryData = ref<any>(null);
     // const { $telemetry } = useNuxtApp();
     // read chainId from route.query.chainId
-    console.log('route', route.query);
+    console.debug('route', route.query);
     const chainId = ref(route.params.chainId);
-    console.log('chainId', chainId.value);
-    // console.log('FeedMessage', FeedMessage);
+    console.debug('chainId', chainId.value);
+    // console.debug('FeedMessage', FeedMessage);
     const _nodes = new Map<string, any>();
     const nodes = computed(() => _nodes);
     const node = ref<any>(null);
@@ -139,7 +139,7 @@ export default defineComponent({
     }
 
     const doRefetch = async () => {
-      console.log('doRefetch');
+      console.debug('doRefetch');
       await sleepAsync(100);
       refetch();
     }
@@ -153,14 +153,14 @@ export default defineComponent({
 
       onResult((result: any) => {
         if (result.loading) {
-          console.log('still loading...');
+          console.debug('still loading...');
           return;
         }
-        console.log('result', result.data);
+        console.debug('result', result.data);
         const nodes = result.data?.nodes || [];
-        // console.log('nodes', nodes);
+        // console.debug('nodes', nodes);
         nodes?.forEach((node: any) => {
-          console.log('node', node);
+          console.debug('node', node);
           nodeStore.addNode(node);
         });
       });
@@ -169,24 +169,24 @@ export default defineComponent({
 
     // watch chainid
     watch(chainId, (newVal, oldVal) => {
-      console.log('chainId changed', newVal, oldVal);
+      console.debug('chainId changed', newVal, oldVal);
       if (newVal !== oldVal) {
         refetch((data) => {
-          console.log('refetching');
-          console.log('data', data);
+          console.debug('refetching');
+          console.debug('data', data);
         });
       }
     });
 
     watch(search, (newVal, oldVal) => {
-      console.log('search changed', newVal, oldVal);
+      console.debug('search changed', newVal, oldVal);
       if (newVal !== oldVal) {
         nodeStore.search = newVal;
       }
     });
 
     const setNode = (inode: any) => {
-      console.log('setNode', inode.NodeDetails.NetworkId);
+      console.debug('setNode', inode.NodeDetails.NetworkId);
       const netId = inode.NodeDetails.NetworkId;
       if (nodeList.value.has(netId)) {
         const n = nodeList.value.get(netId);
@@ -197,7 +197,7 @@ export default defineComponent({
     }
 
     const onModalValue = (value: any) => {
-      console.log('onModalValue', value);
+      console.debug('onModalValue', value);
       showDialog.value = false;
     }
 

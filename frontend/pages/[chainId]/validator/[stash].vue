@@ -152,10 +152,10 @@
 
       <v-row>
         <v-col cols="12" sm="6">
-          <ExposureCard :chain-id="chainId" :stash="node?.stash" />
+          <ExposureCard :chain-id="chainId" :stash="node?.stash" :reload="reloadCount" />
         </v-col>
         <v-col cols="12" sm="6">
-          <NominationsCard :chain-id="chainId" :stash="node?.stash" />
+          <NominationsCard :chain-id="chainId" :stash="node?.stash" :reload="reloadCount" />
         </v-col>
       </v-row>
 
@@ -293,7 +293,7 @@ export interface NodeDetailsX {
 
 import type { INominator, INode } from '~/utils/types';
 
-import { QUERY_NOMINATORS, QUERY_TELEMETRY, QUERY_PERFORMANCE, QUERY_NODE } from '~/utils/graphql';
+import { QUERY_TELEMETRY, QUERY_PERFORMANCE, QUERY_NODE } from '~/utils/graphql';
 
 const decimals: Record<string, number> = {
   polkadot: 10,
@@ -441,14 +441,17 @@ export default defineComponent({
       return ret;
     })
 
+    const reloadCount = ref(0)
+
     const reload = async () => {
-      console.log('reload');
+      console.debug('reload');
       await refetchC() // chain
       await getAccount()
       //await getExposure()
       await refetchP.value() // performance
       await refetchN.value() // all nominators
       // await refetchNS.value() // nomination stats
+      reloadCount.value++
     }
 
     // rules: https://github.com/turboflakes/one-t/blob/main/LEGENDS.md#val-performance-report-legend
@@ -573,10 +576,10 @@ export default defineComponent({
 
       onResult(async (result: any) => {
         if (result.loading) {
-          console.log('still loading...');
+          console.debug('still loading...');
           return;
         }
-        console.log('main result', result.data);
+        console.debug('main result', result.data);
         node.value = { ...result.data.nodeByStash, stash: stash.value };
         dnNominators.value = result.data.nominators || [];
         validators.value = result.data.validators || [];
@@ -597,10 +600,10 @@ export default defineComponent({
 
       tonResult((result: any) => {
         if (result.loading) {
-          console.log('still loading...');
+          console.debug('still loading...');
           return;
         }
-        console.log('telemetry result', result.data.telemetryByIdentity);
+        console.debug('telemetry result', result.data.telemetryByIdentity);
         telemetry.value = result.data?.telemetryByIdentity?.NodeDetails || {};
         telemetryError.value = result.data?.telemetryByIdentity?.NodeDetails 
           ? null 
@@ -618,10 +621,10 @@ export default defineComponent({
 
       // nonResult((result: any) => {
       //   if (result.loading) {
-      //     console.log('still loading...');
+      //     console.debug('still loading...');
       //     return;
       //   }
-      //   console.log('nominators result', result.data);
+      //   console.debug('nominators result', result.data);
       //   nominators.value = result.data?.stakersForStash?.map((staker: any) => {
       //     return {
       //       address: staker.address,
@@ -649,10 +652,10 @@ export default defineComponent({
 
     const handlePerformanceResult = (result: any) => {
       if (result.loading) {
-        console.log('still loading...');
+        console.debug('still loading...');
         return;
       }
-      console.log('performance result', result.data);
+      console.debug('performance result', result.data);
       var res = result.data?.performance || {};
 
       const _sessions_data = res.sessions_data.map((s: ISession) => {
@@ -669,7 +672,7 @@ export default defineComponent({
       await getApi();
 
       const _account = await api?.query.system.account(stash.value)
-      console.log('account', stash.value, _account?.toJSON())
+      console.debug('account', stash.value, _account?.toJSON())
       account.value = _account ? _account.toJSON() as any : {}
 
       const _holds = await api?.query.balances.holds(stash.value);
@@ -865,6 +868,7 @@ export default defineComponent({
 
       refetchNominationStats,
       nominationStatsRefetch,
+      reloadCount,
 
       //getExposure,
       toCoin,

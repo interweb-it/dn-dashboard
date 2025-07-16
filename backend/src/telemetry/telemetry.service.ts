@@ -1,7 +1,9 @@
 // import * as fs from 'fs';
-import { Logger, Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Logger, Injectable, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebSocket } from 'ws';
+import { DatabaseService } from 'src/database/database.service';
+import { ICohortData } from '@dn/common/dn';
 
 const logger = new Logger('TelemetryService'.padEnd(18));
 
@@ -28,6 +30,8 @@ import type {
   ChainStats,
 } from '@dn/common/substrate-telemetry/types';
 import { AddedNodeMessage, RemovedNodeMessage } from '@dn/common/substrate-telemetry/feed';
+import { Collection } from 'mongodb';
+import * as moment from 'moment';
 
 type IPGeo = {
   query: string;
@@ -256,7 +260,21 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     polkadot: new Map<number, AddedNodeMessageX>(), // [],
     kusama: new Map<number, AddedNodeMessageX>(), // [],
   };
-  private ipGeo = new Map<string, any>();
+  private nodesCollection: Collection<ICohortData>;
+
+  constructor(
+    @Inject(forwardRef(() => DatabaseService))
+    private databaseService: DatabaseService,
+  ) {
+    // test ping the database
+    try {
+      logger.log('TelemetryService: Pinging database...');
+      this.databaseService.getMongoClient().db('dnd').command({ ping: 1 });
+    } catch (error) {
+      logger.error('TelemetryService: Error pinging database:', error);
+    }
+    this.nodesCollection = this.databaseService.getMongoClient().db('dnd').collection('nodes');
+  }
 
   onModuleInit() {
     this.connect('polkadot');
@@ -268,6 +286,10 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     this.disconnect();
   }
 
+  /**
+   * connect to the telemetry websocket
+   * @param chainId
+   */
   private connect(chainId: string) {
     const ws = new WebSocket(this.TELEMETRY_WS_URL);
     ws.onopen = () => {
@@ -316,38 +338,73 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * disconnect from the telemetry websocket
+   */
   private disconnect() {
     this.polkadotWS?.close();
     this.kusamaWS?.close();
   }
 
+  /**
+   * add a node to the data store
+   * @param chainId
+   * @param message
+   */
   async addNode(chainId: string, message: AddedNodeMessageX) {
     //logger.debug(`${chainId.padEnd(10)} addNode |${message.NodeDetails.NodeName}|`);
     // TODO: attempt to match the node name with the telemetry name
     this.dataStore[chainId].set(message.NodeId, message);
   }
 
+  /**
+   * remove a node from the data store
+   * @param chainId
+   * @param message
+   */
   removeNode(chainId: string, message: RemovedNodeMessage) {
     // logger.log('RemovedNode', message);
     this.dataStore[chainId].delete(message.payload);
   }
 
+  /**
+   * get all nodes for a chain
+   * @param chainId
+   * @returns
+   */
   getNodes(chainId: string): AddedNodeMessageX[] {
     logger.log('getNodes', chainId);
     const ret = Array.from(this.dataStore[chainId].values());
     return ret; // this.dataStore[chainId].forEach((node) => node);
   }
 
+  /**
+   * get a node by id
+   * @param chainId
+   * @param nodeId
+   * @returns
+   */
   getNode(chainId: string, nodeId: number): AddedNodeMessageX | undefined {
     logger.log('getNode', chainId, nodeId);
     logger.log('size', this.dataStore[chainId].size);
     return this.dataStore[chainId].get(nodeId);
   }
 
+  /**
+   * get all node names for a chain
+   * @param chainId
+   * @returns
+   */
   getNames(chainId: string): string[] {
     return Array.from(this.dataStore[chainId].values()).map((node) => node.NodeDetails.NodeName);
   }
 
+  /**
+   * get a node by id
+   * @param chainId
+   * @param nodeId
+   * @returns
+   */
   findOneById(chainId: string, nodeId: number): AddedNodeMessageX {
     logger.log('findOneById', chainId, nodeId);
     // logger.log('size', this.dataStore[chainId]);
@@ -391,8 +448,12 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     return ret;
   }
 
+  /**
+   * update the telemetry name map
+   * @deprecated - use the cohort.telemetry instead
+   */
   private async updateTelemetryNameMap() {
-    logger.debug('Fetching telemetry name map...');
+    logger.debug('updateTelemetryNameMap: Fetching telemetry name map...');
     const url =
       'https://raw.githubusercontent.com/metaspan/dn-dashboard/refs/heads/main/backend/config/telemetryNameMap.json';
     try {
@@ -403,14 +464,35 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       const data = await response.json();
       if (data) {
         telemetryNameMap = data;
-        logger.log('Telemetry Name Map updated successfully:', telemetryNameMap);
-        logger.log('Telemetry Name Map updated successfully:', telemetryNameMap);
+        logger.log('updateTelemetryNameMap: Telemetry Name Map updated successfully:', telemetryNameMap);
       } else {
-        logger.error('Failed to update telemetry name map:', data);
+        logger.error('updateTelemetryNameMap: Failed to update telemetry name map:', data);
       }
     } catch (error) {
-      logger.error('Error fetching telemetry name map:', error.message);
+      logger.error('updateTelemetryNameMap: Error fetching telemetry name map:', error.message);
     }
+  }
+
+  async updateTelemetryNameMapFromCohort(chainId: string) {
+    const refDate = moment().format('YYYY-MM-DD');
+    const cohort = await this.nodesCollection.findOne({
+      chainId,
+      'term.start': { $lte: refDate },
+      'term.end': { $gt: refDate },
+    });
+    if (!cohort) {
+      logger.warn(`No cohort found for ${chainId} on ${refDate}`);
+      return;
+    }
+    for (const node of [...cohort.selected, ...(cohort.backups ?? [])]) {
+      if (node.telemetry) {
+        telemetryNameMap[chainId][node.identity] = node.telemetry;
+      }
+    }
+    logger.log(
+      `updateTelemetryNameMapFromCohort: Telemetry Name Map updated successfully for ${chainId}:`,
+      telemetryNameMap,
+    );
   }
 
   getTelemetryNameMap(chainId: string): Record<string, string> {
@@ -425,10 +507,17 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   // Cron job to periodically update the telemetry map
   @Cron(interval)
   handleInterval() {
-    logger.log('Fetching telemetry name map...');
-    this.updateTelemetryNameMap();
+    logger.log('handleInterval: Fetching telemetry name map...');
+    // this.updateTelemetryNameMap();
+    this.updateTelemetryNameMapFromCohort('polkadot');
+    this.updateTelemetryNameMapFromCohort('kusama');
   }
 
+  /**
+   * handle a telemetry message
+   * @param chainId
+   * @param message
+   */
   handleTelemetryMessage(chainId: string, message: any) {
     // logger.log('Received telemetry message:', message);
     //let ex: any | null = null;

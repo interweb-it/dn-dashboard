@@ -1,13 +1,10 @@
-import { Logger, Injectable, Inject, OnModuleInit, OnModuleDestroy, forwardRef } from '@nestjs/common';
-// import { ApiPromise, WsProvider } from '@polkadot/api';
-import { ApolloClient, InMemoryCache, gql } from '@apollo/client/core';
+import { Logger, Injectable, Inject, forwardRef } from '@nestjs/common';
+import { ApolloClient, InMemoryCache } from '@apollo/client/core';
 import { Collection, MongoClient } from 'mongodb';
-// import moment from 'moment';
 
 import { NodesService } from 'src/nodes/nodes.service';
 import { DatabaseService } from 'src/database/database.service';
 import * as moment from 'moment';
-
 export interface INominator {
   address: string;
   balance: number;
@@ -37,7 +34,7 @@ export interface IValidator {
 interface IChainState {
   chainHash: string;
   api: any;
-  wss_url: string;
+  // wss_url: string;
   subscription: any;
   session: number;
   sessionValidators: string[]; // session validators and exposures?
@@ -75,7 +72,7 @@ export class BlockchainService {
     kusama: {
       chainHash: '0xb0a8d493285c2df73290dfb7e61f870f17b41801197a149ca93654499ea3dafe',
       api: null,
-      wss_url: 'ws://192.168.1.92:40425', // DEV
+      // wss_url: 'ws://192.168.1.92:40425', // DEV
       // wss_url: 'ws://192.168.10.92:40425', // boot
       subscription: null,
       session: 0,
@@ -86,7 +83,7 @@ export class BlockchainService {
     polkadot: {
       chainHash: '0x91b171bb158e2d3848fa23a9f1c25182fb8e20313b2c1eb49219da7a70ce90c3',
       api: null,
-      wss_url: 'ws://192.168.1.92:30325', // DEV
+      // wss_url: 'ws://192.168.1.92:30325', // DEV
       subscription: null,
       session: 0,
       sessionValidators: [],
@@ -223,55 +220,55 @@ export class BlockchainService {
 
   async getExposureStats(chainId: string, stash: string): Promise<IValidatorStats[]> {
     this.logger.debug(`${chainId.padEnd(10)} getExposureStats, ${stash}`);
-    const stats = await this.exposuresCollection.aggregate([
-      {
-        $match: {
-          chainId: chainId,
-          stash: stash
-        }
-      },
-      // sort and limit to 24*7*4.333
-      { $sort: { dateHour: -1 } },
-      { $limit: Math.floor(24*7*4.333) },
-      {
-        $project: {
-          chainId: 1,
-          stash: 1,
-          dateHour: 1,
-          exposureDn: {
-            $reduce: {
-              input: {
-                $filter: {
-                  input: "$others",
-                  as: "o",
-                  cond: { $eq: ["$$o.isDn", true] }
-                }
-              },
-              initialValue: Number(0),
-              in: { $add: ["$$value", "$$this.value"] }
-            }
+    const stats = await this.exposuresCollection
+      .aggregate([
+        {
+          $match: {
+            chainId: chainId,
+            stash: stash,
           },
-          exposureNon: {
-            $reduce: {
-              input: {
-                $filter: {
-                  input: "$others",
-                  as: "o",
-                  cond: {
-                    $or: [
-                      { $eq: ["$$o.isDn", false] },
-                      { $not: ["$$o.isDn"] }
-                    ]
-                  }
-                }
+        },
+        // sort and limit to 24*7*4.333
+        { $sort: { dateHour: -1 } },
+        { $limit: Math.floor(24 * 7 * 4.333) },
+        {
+          $project: {
+            chainId: 1,
+            stash: 1,
+            dateHour: 1,
+            exposureDn: {
+              $reduce: {
+                input: {
+                  $filter: {
+                    input: '$others',
+                    as: 'o',
+                    cond: { $eq: ['$$o.isDn', true] },
+                  },
+                },
+                initialValue: Number(0),
+                in: { $add: ['$$value', '$$this.value'] },
               },
-              initialValue: Number(0),
-              in: { $add: ["$$value", "$$this.value"] }
-            }
-          }
-        }
-      }
-    ]).toArray();
+            },
+            exposureNon: {
+              $reduce: {
+                input: {
+                  $filter: {
+                    input: '$others',
+                    as: 'o',
+                    cond: {
+                      $or: [{ $eq: ['$$o.isDn', false] }, { $not: ['$$o.isDn'] }],
+                    },
+                  },
+                },
+                initialValue: Number(0),
+                in: { $add: ['$$value', '$$this.value'] },
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
+    stats.sort((a, b) => (a.dateHour > b.dateHour ? 1 : a.dateHour < b.dateHour ? -1 : 0));
     return stats as unknown as IValidatorStats[];
   }
 
@@ -285,6 +282,7 @@ export class BlockchainService {
     this.logger.debug(`${chainId.padEnd(10)} getNominationsForStash, ${stash}`);
 
     const dateHour = moment().subtract(1, 'hour').format('YYYY-MM-DD-HH');
+    this.logger.debug(`dateHour: ${dateHour}`);
 
     // // query by chainId, accountId (validator address), sort by datehour, decending, take the latest
     // const datehours = await this.nominationsCollection
@@ -316,59 +314,88 @@ export class BlockchainService {
   async getNominationStats(chainId: string, stash: string): Promise<IValidatorStats[]> {
     this.logger.debug(`${chainId.padEnd(10)} getNominationStats, ${stash}`);
 
-    const stats = await this.nominationsCollection.aggregate([
-      {
-        $match: {
-          account: { $ne: null },
-          "account.data.free": { $ne: null },
-          "targetId": stash
-        }
-      },
-      // sort and limit to 24*7*4.333
-      { $sort: { dateHour: -1 } },
-      { $limit: Math.floor(24*7*4.333) },
-      {
-        $group: {
-          _id: {
-            chainId: "$chainId",
-            stash: "$targetId",
-            dateHour: "$dateHour"
+    const stats = await this.nominationsCollection
+      .aggregate([
+        {
+          $match: {
+            chainId: chainId,
+            account: { $ne: null },
+            targetId: stash,
+            // 'account.data.free': { $ne: null },
+            // not string, this is legacy, can be removed after 1 month
+            'account.data.free': { $not: { $type: 'string' } },
+            'account.data.reserved': { $not: { $type: 'string' } },
+            'account.data.bonded': { $not: { $type: 'string' } },
           },
-          nomDn: {
-            $sum: {
-              $cond: ["$isDn", 1, 0]
-            }
+        },
+        // sort and limit to 24*7*4.333
+        { $sort: { dateHour: -1 } },
+        { $limit: Math.floor(24 * 7 * 4.333) },
+        {
+          $group: {
+            _id: {
+              chainId: '$chainId',
+              stash: '$targetId',
+              dateHour: '$dateHour',
+            },
+            nomDn: {
+              $sum: {
+                $cond: ['$isDn', 1, 0],
+              },
+            },
+            nomNon: {
+              $sum: {
+                $cond: ['$isDn', 0, 1],
+              },
+            },
+            nomValueDn: {
+              $sum: {
+                $cond: [
+                  '$isDn',
+                  {
+                    $add: [
+                      { $ifNull: ['$account.data.free', 0] },
+                      { $ifNull: ['$account.data.reserved', 0] },
+                      { $ifNull: ['$account.data.bonded', 0] },
+                    ],
+                  },
+                  0,
+                ],
+              },
+            },
+            nomValueNon: {
+              $sum: {
+                $cond: [
+                  '$isDn',
+                  0,
+                  {
+                    $add: [
+                      { $ifNull: ['$account.data.free', 0] },
+                      { $ifNull: ['$account.data.reserved', 0] },
+                      { $ifNull: ['$account.data.bonded', 0] },
+                    ],
+                  },
+                ],
+              },
+            },
           },
-          nomNon: {
-            $sum: {
-              $cond: ["$isDn", 0, 1]
-            }
+        },
+        {
+          $project: {
+            _id: 0,
+            chainId: '$_id.chainId',
+            stash: '$_id.stash',
+            dateHour: '$_id.dateHour',
+            nomDn: 1,
+            nomNon: 1,
+            nomValueDn: { $toLong: '$nomValueDn' }, // If needed
+            nomValueNon: { $toLong: '$nomValueNon' }, // If needed
           },
-          nomValueDn: {
-            $sum: {
-              $cond: ["$isDn", "$account.data.free", 0]
-            }
-          },
-          nomValueNon: {
-            $sum: {
-              $cond: ["$isDn", 0, "$account.data.free"]
-            }
-          }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          chainId: "$_id.chainId",
-          stash: "$_id.stash",
-          dateHour: "$_id.dateHour",
-          nomDn: 1,
-          nomNon: 1,
-          nomValueDn: { $toLong: "$nomValueDn" },   // If needed
-          nomValueNon: { $toLong: "$nomValueNon" }  // If needed
-        }
-      }
-    ]).toArray();
+        },
+      ])
+      .toArray();
+    // Sort by dateHour ascending before returning
+    stats.sort((a, b) => (a.dateHour > b.dateHour ? 1 : a.dateHour < b.dateHour ? -1 : 0));
     return stats as unknown as IValidatorStats[];
   }
 }

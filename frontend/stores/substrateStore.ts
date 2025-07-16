@@ -22,8 +22,17 @@ export const useSubstrateStore = defineStore('substrateStore', {
   actions: {
     setChainId(chainId: string) {
       if (chainId !== this.chainId) {
+        console.debug('substrateStore.ts: setChainId():', chainId);
         this.chainId = chainId
       }
+    },
+    setApiConnected(connected: boolean) {
+      console.debug('substrateStore.ts: setApiConnected():', connected);
+      this.apiConnected = connected
+    },
+    setApipConnected(connected: boolean) {
+      console.debug('substrateStore.ts: setApipConnected():', connected);
+      this.apipConnected = connected
     },
   },
 })

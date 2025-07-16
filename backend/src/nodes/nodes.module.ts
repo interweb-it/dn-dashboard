@@ -4,12 +4,12 @@ import { BlockchainModule } from '../blockchain/blockchain.module';
 import { NodesResolver } from './nodes.resolver';
 import { NodesService } from './nodes.service';
 
-import { TelemetryService } from 'src/telemetry/telemetry.service';
+import { TelemetryModule } from 'src/telemetry/telemetry.module';
 import { DatabaseModule } from 'src/database/database.module';
 
 @Module({
-  imports: [forwardRef(() => BlockchainModule), forwardRef(() => DatabaseModule)],
-  providers: [NodesService, NodesResolver, TelemetryService, DatabaseModule],
+  imports: [forwardRef(() => BlockchainModule), forwardRef(() => DatabaseModule), forwardRef(() => TelemetryModule)],
+  providers: [NodesService, NodesResolver],
   exports: [NodesResolver, NodesService],
 })
 export class NodesModule {}

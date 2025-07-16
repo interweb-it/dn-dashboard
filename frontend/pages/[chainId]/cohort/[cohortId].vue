@@ -224,7 +224,7 @@ export default defineComponent({
     var loading = ref<any>(false)
     // var loadingG = ref<any>(false)
     var refetch = ref<any>(null)
-    var refetchT = ref<any>(() => { console.log('refetchT not ready') })
+    var refetchT = ref<any>(() => { console.debug('refetchT not ready') })
     // var grefetch = ref(() => {})
 
     const selected = ref(nodeStore.selected)
@@ -245,16 +245,16 @@ export default defineComponent({
 
     onBeforeMount(async () => {
       //console.debug('onBeforeMount');
-      api = await $substrate.getApi(chainId.value)
-      scrollHandler = handleScroll((scrollY) => {
-        elevation.value = scrollY > 0 ? 4 : 0;
-      })
       // handle localStorage, if exists.
       const saved = localStorage.getItem(`dnd-search`);
       if (saved !== null) {
         search.value = saved;
         nodeStore.setSearch(saved);
       }
+      api = await $substrate.getApi(chainId.value)
+      scrollHandler = handleScroll((scrollY) => {
+        elevation.value = scrollY > 0 ? 4 : 0;
+      })
     });
 
     onMounted(async () => {
@@ -270,16 +270,16 @@ export default defineComponent({
       refetch.value = cRefetch
       // loading.value = cLoading.value;
       watch(() => cLoading.value, (value) => {
-        console.log('loading', value);
+        console.debug('loading', value);
         loading.value = value;
       });
 
       onResult(async (result: any) => {
         if (result.loading) {
-          console.log('still loading...');
+          // console.debug('[cohort/[cohortId].vue]: still loading...');
           return;
         }
-        console.log('result 1', result.data);
+        // console.debug('[cohort/[cohortId].vue]: result 1', result.data);
         validators.value = result.data?.validators || [];
         nodeStore.validators = validators.value;
 
@@ -294,12 +294,12 @@ export default defineComponent({
         nodeStore.backups = backups.value;
 
         // refetchT.value()
-        console.log('...done');
+        // console.debug('...done');
       });
 
       // save search to localStorage
       watch(() => search.value, async (value) => {
-        console.log('search', value);
+        console.debug('search', value);
         localStorage.setItem(`dnd-search`, value);
       });
     });
@@ -308,12 +308,12 @@ export default defineComponent({
     const nominatedBy = ref<Record<string, string[]>>({});
 
     const updateNominatorTargets = async () => {
-      console.log('updateNominatorTargets');
+      console.debug('updateNominatorTargets');
       if (!api) api = await $substrate.getApi(chainId.value)
-      // console.log('api', api);
+      // console.debug('api', api);
       for(let i = 0; i < nominators.value.length; i++) {
         const nominator = nominators.value[i]; // DN nominator
-        // console.log('nominator', nominator);
+        // console.debug('nominator', nominator);
         const res = await api?.query.staking.nominators(nominator.stash) || [];
         //console.debug('nominator', nominator.stash, 'res', res);
         let _targets = [];
@@ -322,10 +322,10 @@ export default defineComponent({
           _targets = targets;
         } catch(e) {
         }
-        //console.log('targets', targets);
+        //console.debug('targets', targets);
         for(let j = 0; j < _targets.length; j++) {
           const target = _targets[j];
-          // console.log('nominator', nominator.stash, 'target', target);
+          // console.debug('nominator', nominator.stash, 'target', target);
           if (nominations.value[nominator.stash]) {
             nominations.value[nominator.stash].push(target);
           } else {
@@ -343,28 +343,28 @@ export default defineComponent({
     }
 
     const gotoValidator = (event, row) => {
-      console.log('item', row.item);
+      console.debug('item', row.item);
       if (row.item?.stash)
         router.push(`/${chainId.value}/validator/${row.item.stash}`);
     }
 
     watch(() => search.value, async (value) => {
-      console.log('search', value);
+      console.debug('search', value);
       nodeStore.setSearch(value);
     });
 
     watch(() => tab.value, async (value) => {
-      console.log('tab', value);
+      console.debug('tab', value);
       nodeStore.tab = value;
     });
 
     watch(() => page.value, async (value) => {
-      //console.log('page', value);
+      //console.debug('page', value);
       nodeStore.page = value;
     });
 
     watch(() => linesPerPage.value, async (value) => {
-      console.log('linesPerPage', value);
+      console.debug('linesPerPage', value);
       nodeStore.linesPerPage = value;
     });
 
@@ -397,7 +397,7 @@ export default defineComponent({
     const nominatorList = computed(() => {
       var ret: any[] = [];
       Object.entries(nominations.value).forEach(([nominator, targets]) => {
-        //console.log('nominator', nominator, 'targets', targets);
+        //console.debug('nominator', nominator, 'targets', targets);
         ret.push(
           {type: 'subheader', title: nominator, stash: nominator},
           ...targets.map((t: string) => {
@@ -405,7 +405,7 @@ export default defineComponent({
           })
        );
       });
-      console.log('nominatorList', ret);
+      console.debug('nominatorList', ret);
       return ret;
     })
 

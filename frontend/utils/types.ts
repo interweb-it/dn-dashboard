@@ -28,10 +28,10 @@ export interface IValidatorStats {
   blocked: boolean;
   nomDn: number;
   nomNon: number;
-  nomValueDn: bigint;
-  nomValueNon: bigint;
-  exposureDn: bigint;
-  exposureNon: bigint;
+  nomValueDn: number;
+  nomValueNon: number;
+  exposureDn: number;
+  exposureNon: number;
 }
 
 // TODO move this to utils

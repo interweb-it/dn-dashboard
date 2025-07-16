@@ -1,28 +1,24 @@
 // services/substrateService.ts
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { useSubstrateStore } from '~/stores/substrateStore';
-import { createPinia } from 'pinia';
-const pinia = createPinia();
-// const app = useNuxtApp();
-// app.use(pinia);
-
 
 export default class SubstrateService {
   private api: ApiPromise | null = null;
   private apip: ApiPromise | null = null; // people
   private chainId: string = 'kusama';
   private readonly WS_URL = 'wss://rpc.metaspan.io/'; // 'wss://rpc.ibp.network/';
-  // protected apiConnected: boolean = false;
-  // protected apipConnected: boolean = false;
-  // private isBrowserOnline: boolean = true; //navigator.onLine;
   private substrateStore: any;
+  private connecting: boolean = false;
+  private connectPromise: Promise<void> | null = null;
 
   constructor() {
-    console.log('SubstrateService constructor');
-    // const isSSR = import.meta.client;
-    // if (!isSSR) {
-      this.substrateStore = useSubstrateStore(pinia);
-    // }
+    console.debug('SubstrateService constructor');
+    if (!import.meta.client) {
+      console.debug('SubstrateService constructor client: SSR');
+    } else {
+      console.debug('SubstrateService constructor client: Client');
+    }
+    this.substrateStore = useSubstrateStore();
   }
 
   // Connect to the rpc server
@@ -31,56 +27,61 @@ export default class SubstrateService {
       console.warn('SubstrateService is only available in the browser');
       return;
     }
-    if (chainId !== this.chainId) {
-      await this.disconnect();
-      this.substrateStore.stakingEntries = [];
+    if (this.connectPromise) {
+      // Wait for the ongoing connection to finish
+      return this.connectPromise;
     }
+    if (this.connecting) {
+      // Defensive: should not be needed if connectPromise is used everywhere
+      return;
+    }
+    this.connectPromise = (async () => {
+      if (chainId !== this.chainId) {
+        console.debug('substrateService.ts: connect(): disconnecting from', this.chainId);
+        await this.disconnect();
+        this.substrateStore.stakingEntries = [];
+      }
+      this.connecting = true;
+      this.chainId = chainId;
+      console.debug('substrateService.ts: connect(): connecting to', chainId);
+      let provider = new WsProvider(this.WS_URL + chainId);
+      this.api = await ApiPromise.create({ provider, noInitWarn: true });
+      await this.api.isReady;
+      this.substrateStore.setApiConnected(true);
+      this.api.on('connected', (event) => {
+        console.debug('substrateService.ts: on("connected"): Connected to api', chainId);
+        this.substrateStore.setApiConnected(true);
+      });
+      // Handle api error event
+      this.api.on('error', (event) => {
+        console.debug('substrateService.ts: on("error"): api error', chainId, event);
+      });
+      // Handle api disconnect event
+      this.api.on('disconnected', (event) => {
+        console.debug('substrateService.ts: on("disconnected"): api disconnected', chainId, event);
+        this.substrateStore.setApiConnected(false);
+      });
+      this.substrateStore.setApiConnected(true);
 
-    let provider = new WsProvider(this.WS_URL + chainId);
-    this.api = await ApiPromise.create({ provider, noInitWarn: true });
-    await this.api.isReady;
-    // this.apiConnected = true;
-    this.substrateStore.apiConnected = true;
-
-    provider = new WsProvider(this.WS_URL + 'people-' + chainId);
-    this.apip = await ApiPromise.create({ provider, noInitWarn: true });
-    await this.apip.isReady;
-    // this.apipConnected = true;
-    this.substrateStore.apipConnected = true;
-
-    // Handle api open event
-    this.api.on('connected', (event) => {
-      console.log('Connected to api', chainId);
-      // this.apiConnected = true;
-      this.substrateStore.apiConnected = true;
-      // this.emitEvent('connection:online', { type: 'api', chainId });
-    });
-    this.apip.on('connected', (event) => {
-      console.log('Connected to apip', chainId);
-      // this.apipConnected = true;
-      this.substrateStore.apipConnected = true;
-      // this.emitEvent('connection:online', { type: 'apip', chainId });
-    });
-    // Handle api error event
-    this.api.on('error', (event) => {
-      console.log('api error', chainId, event);
-    });
-    // Handle api disconnect event
-    this.api.on('disconnected', (event) => {
-      console.log('api disconnected', chainId, event);
-      // this.apiConnected = false;
-      this.substrateStore.apiConnected = false;
-      // this.emitEvent('connection:offline', { type: 'api', chainId });
-    });
-    this.apip.on('disconnected', (event) => {
-      console.log('apip disconnected', chainId, event);
-      // this.apipConnected = false;
-      this.substrateStore.apipConnected = false;
-      // this.emitEvent('connection:offline', { type: 'apip', chainId });
-    });
-    console.debug('Connected to api', chainId);
-    // reset this if the api is reconnected
-    this.loadingNominators = false;
+      provider = new WsProvider(this.WS_URL + 'people-' + chainId);
+      this.apip = await ApiPromise.create({ provider, noInitWarn: true });
+      await this.apip.isReady;
+      this.substrateStore.setApipConnected(true);
+      // Handle api open event
+      this.apip.on('connected', (event) => {
+        console.debug('substrateService.ts: on("connected"): Connected to apip', chainId);
+        this.substrateStore.apipConnected = true;
+      });
+      this.apip.on('disconnected', (event) => {
+        console.debug('substrateService.ts: on("disconnected"): apip disconnected', chainId, event);
+        this.substrateStore.setApipConnected(false);
+      });
+      this.connecting = false;
+      // reset this if the api is reconnected
+      this.loadingNominators = false;
+      this.connectPromise = null; // Clear the promise after connection is done
+    })();
+    return this.connectPromise;
   }
 
   // Disconnect the API
@@ -88,19 +89,22 @@ export default class SubstrateService {
     if (this.api) {
       await this.api.disconnect();
       this.api = null;
+      this.substrateStore.setApiConnected(false);
     }
     if (this.apip) {
       await this.apip.disconnect();
       this.apip = null;
+      this.substrateStore.setApipConnected(false);
     }
   }
 
   async getApi(chainId: string): Promise<ApiPromise | null> {
+    console.debug('substrateService.ts: getApi(): getting api for', chainId);
     if (this.api && this.chainId === chainId) {
       return this.api;
     } else {
       await this.connect(chainId);
-      this.chainId = chainId;
+      // this.chainId = chainId;
       return this.api;
     }
   }
@@ -109,7 +113,7 @@ export default class SubstrateService {
       return this.apip;
     } else {
       await this.connect(chainId);
-      this.chainId = chainId;
+      // this.chainId = chainId;
       return this.apip;
     }
   }

@@ -9,9 +9,12 @@ const logger = new Logger('NodesService'.padEnd(18));
 
 @Injectable()
 export class NodesService {
+  private readonly cohortsCollection: Collection;
   private readonly nodesCollection: Collection;
   private readonly telemetryCollection: Collection;
   private readonly nominationsCollection: Collection;
+  private readonly cohortIds: string[] = ['1', '2', '2-1'];
+  private readonly chainIds: string[] = ['polkadot', 'kusama'];
 
   constructor(
     // @Inject('NODE_REPOSITORY')
@@ -23,9 +26,24 @@ export class NodesService {
     @Inject(forwardRef(() => DatabaseService))
     private databaseService: DatabaseService,
   ) {
+    this.cohortsCollection = this.databaseService.getMongoClient().db('dnd').collection('cohorts');
     this.nodesCollection = this.databaseService.getMongoClient().db('dnd').collection('nodes');
     this.telemetryCollection = this.databaseService.getMongoClient().db('dnd').collection('telemetry');
     this.nominationsCollection = this.databaseService.getMongoClient().db('dnd').collection('nominations');
+  }
+
+  async onModuleInit() {
+    // make sure there are cohorts in the database
+    for (const chainId of this.chainIds) {
+      for (const cohortId of this.cohortIds) {
+        const result = await fetch(`https://nodes.web3.foundation/api/cohort/${cohortId}/${chainId}`);
+        // console.log('result', result);
+        if (result.ok) {
+          const cohort = await result.json();
+          this.nodesCollection.updateOne({ chainId, cohortId }, { $set: { ...cohort, chainId } }, { upsert: true });
+        }
+      }
+    }
   }
 
   async getSelected(chainId: string, cohortId: string) {

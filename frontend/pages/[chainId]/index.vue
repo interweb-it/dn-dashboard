@@ -7,7 +7,7 @@
         <!-- [DN] Dashboard -  -->
         <!-- {{ chainId }} -->
       </v-toolbar-title>
-      <v-btn color="primary" :to="`/${chainId}/cohort/2-1`">Cohort 2-1</v-btn>
+      <!-- <v-btn color="primary" :to="`/${chainId}/cohort/2-1`">Cohort 2-1</v-btn> -->
       <v-btn color="primary" :to="`/${chainId}/cohort/2`">Cohort 2</v-btn>
       <v-btn color="primary" :to="`/${chainId}/cohort/1`">Cohort 1</v-btn>
       <!-- <v-spacer></v-spacer> -->

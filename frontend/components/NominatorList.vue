@@ -37,7 +37,7 @@ export default defineComponent({
     }
   },
   setup(props) {
-    console.log(props)
+    console.debug(props)
     const list = computed(() => props.list.map(i => { return { stash: i }}))
     const chain = computed(() => props.chain)
     return {

@@ -25,7 +25,9 @@ import { databaseProviders } from './database/database.providers';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      load: [configuration],
+      // load: [configuration],
+      cache: true,
+      isGlobal: true,
     }),
     ScheduleModule.forRoot({}),
     GraphQLModule.forRoot<ApolloDriverConfig>({
@@ -58,7 +60,6 @@ import { databaseProviders } from './database/database.providers';
     NominationModule,
   ],
   controllers: [AppController],
-  providers: [AppService, ...databaseProviders],
-  exports: [...databaseProviders],
+  providers: [AppService],
 })
 export class AppModule {}

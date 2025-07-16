@@ -1,34 +1,19 @@
-// import { Sequelize } from 'sequelize-typescript';
+
 import { MongoClient } from 'mongodb';
-// import { Telemetry } from 'src/telemetry/telemetry.entity';
-// import { Nomination } from 'src/nomination/nomination.entity';
+
 
 export const databaseProviders = [
   {
     provide: 'MONGO_CLIENT',
     useFactory: async () => {
-      return new MongoClient(process.env.MONGO_URI);
+      // authentication database: admin
+      const mongoUri = `mongodb://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/admin`;
+      //console.log('mongoUri', mongoUri);
+      console.log('MONGO_HOST', process.env.MONGO_HOST);
+      console.log('MONGO_PORT', process.env.MONGO_PORT);
+      console.log('MONGO_USERNAME', process.env.MONGO_USERNAME);
+      console.log('MONGO_DATABASE', process.env.MONGO_DATABASE);
+      return new MongoClient(mongoUri);
     },
-  },
-  // {
-  //   provide: 'SEQUELIZE',
-  //   useFactory: async () => {
-  //     const sequelize = new Sequelize({
-  //       dialect: 'mysql',
-  //       host: process.env.DB_HOST,
-  //       port: parseInt(process.env.DB_PORT),
-  //       username: process.env.DB_USER,
-  //       password: process.env.DB_PASSWORD,
-  //       database: process.env.DB_NAME,
-  //       // dialect: 'sqlite',
-  //       // storage: './data/database.sqlite',
-  //       logging: console.log,
-  //     });
-  //     sequelize.addModels([Nomination, Telemetry]);
-  //     await sequelize.sync({
-  //       //force: true, // development only
-  //     });
-  //     return sequelize;
-  //   },
-  // },
+  }
 ];

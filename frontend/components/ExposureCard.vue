@@ -3,14 +3,17 @@
     <v-card-title>
       Exposure
       <v-icon color="red" size="small">mdi-fire</v-icon>
-      <v-btn icon flat @click="doRefetch" :loading="loadingE">
+      <v-btn icon flat @click="doRefetch" :loading="loadingH || loadingE">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
     </v-card-title>
     <v-card-text>
       <!-- {{ exposure }} -->
 
-      <!-- <Bar id="chart2" :data="chartData as any" :options="chartOptions as any" /> -->
+      <v-overlay :model-value="loadingE" contained>
+        <!-- <v-progress-circular indeterminate size="48" color="primary" /> -->
+      </v-overlay>
+      <Bar id="chart2" :data="chartData as any" :options="chartOptions as any" />
 
       <br>
 
@@ -32,7 +35,8 @@
 
       <v-data-table :items="exposure.others"
         :headers="[{ key: 'who', title: 'Address'}, {key: 'value', title: 'Amount', align: 'end'}]"
-        :sort-by="[{ key: 'value', order: 'desc' }]">
+        :sort-by="[{ key: 'value', order: 'desc' }]"
+        :loading="loadingE">
         <template v-slot:item.who="{ item }">
           <a :href="`https://${chainId}.subscan.io/nominator/${item.who}`" target="_blank">{{ shortStash(item.who) }}</a>              
           <span v-if="dnNominators.includes(item.who)" style="color: blueviolet; font-weight: bold;"> [DN]</span>
@@ -77,6 +81,11 @@ export default defineComponent({
     stash: {
       type: String,
       required: true
+    },
+    reload: {
+      type: Number,
+      required: false,
+      default: 0
     }
   },
   components: {
@@ -90,7 +99,8 @@ export default defineComponent({
     const nodeStore = useNodeStore()
     const cohortId = computed(() => nodeStore.cohortId)
     const decimalPlaces = 0
-    const loadingE = ref(false)
+    const loadingH = ref(true)
+    const loadingE = ref(true)
     const dnNominators = ref<string[]>([])
     const exposure = ref<IExposure>({
       total: 0,
@@ -105,8 +115,8 @@ export default defineComponent({
     //var apip: ApiPromise | null;
     var apiConnected = ref(false)
 
-    var refetch = () => { console.log('refetch') }
-    var refetchDn = () => { console.log('refetch dm') }
+    var refetch = () => { console.debug('refetch') }
+    var refetchDn = () => { console.debug('refetch dm') }
 
     const getApi = async () => {
       if (!api || !apiConnected.value) {
@@ -133,7 +143,7 @@ export default defineComponent({
       }
       _exposure.total = Number(BigInt(_exposure?.total || 0) / denom);
       _exposure.own = Number(BigInt(_exposure.own) / denom);
-      console.log('exposure:', _exposure);
+      console.debug('exposure:', _exposure);
 
       // validator other exposures
       _exposure.others = [];
@@ -153,7 +163,7 @@ export default defineComponent({
     }
 
     const xAxis = computed(() => {
-      console.log('display', display.smAndUp.value)
+      console.debug('display', display.smAndUp.value)
       return display.smAndUp.value
         ? {
           stacked: true,
@@ -206,16 +216,32 @@ export default defineComponent({
           stacked: true, min: 0,
           ticks: {
             callback: function(value: any) {
-              // console.log('display', display.lgAndUp.value)
+              // console.debug('display', display.lgAndUp.value)
               const ret = display.mdAndUp.value
                 ? value.toLocaleString(undefined, {maximumFractionDigits: 0, minimumFractionDigits: 0})
                 : value > 1000000 ? (value/1000000).toFixed(2) + 'M' : (value/1000).toFixed(0) + 'K'
               return ret
             }
           }
-},
+        },
         x: xAxis.value
       },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context: any) {
+              let label = context.dataset.label || '';
+              if (label) {
+                label += ': ';
+              }
+              if (context.parsed.y !== null && context.parsed.y !== undefined) {
+                label += Number(context.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+              }
+              return label;
+            }
+          }
+        }
+      }
       // plugins: {
       //   title: {
       //     display: true,
@@ -231,6 +257,10 @@ export default defineComponent({
       });
       refetch = _refetch
       // loading.value = _loading
+      watch(() => _loading.value, (newVal) => {
+        console.debug('loading', newVal)
+        loadingH.value = newVal
+      })
 
       onError((error: any) => {
         console.debug('onError', error);
@@ -239,24 +269,24 @@ export default defineComponent({
       onResult((result: any) => {
         console.debug('onResult', result);
         if (result.loading) {
-          console.log('still loading...');
+          console.debug('still loading...');
           return;
         }
-        // console.log('nomination stats result', result.data);
+        // console.debug('nomination stats result', result.data);
         let stats: IValidatorStats[] = []
         result.data.exposureStats.forEach((stat: IValidatorStats) => {
           var dateHour: string = ''
           try {
             const datestr = stat.dateHour.substring(0, 10).replace(/\./g, '/') + ' ' + stat.dateHour.substring(11, 13) + ':00:00'
-            //console.log('datestr', datestr);
+            //console.debug('datestr', datestr);
             dateHour = moment(datestr).format('YYYY-MM-DD HH:mm')
           } catch (err) { console.error(err) }
-          console.log('dateHour', dateHour);
+          // console.debug('dateHour', dateHour);
           stats.push({
             ...stat,
             dateHour: dateHour,
-            exposureNon: Number(BigInt(stat.exposureNon)) / Math.pow(10, decimals.value as number),
-            exposureDn: Number(BigInt(stat.exposureDn)) / Math.pow(10, decimals.value as number),
+            exposureNon: stat.exposureNon / Math.pow(10, decimals.value as number),
+            exposureDn: stat.exposureDn / Math.pow(10, decimals.value as number),
           })
         })
         validatorStats.value = stats
@@ -273,24 +303,31 @@ export default defineComponent({
         stash: props.stash
       });
       refetchDn = dnRefetch
-      // dmError.value((error: any) => {
-      //   console.error(error)
-      // })
+
+      watch(() => dnLoading.value, (newVal) => {
+        console.debug('dn loading', newVal)
+        loadingH.value = newVal
+      })
+
       dnResult((result: any) => {
-        console.log('dn result', result);
+        console.debug('dn result', result);
         if (result.loading) {
-          console.log('still loading dn nominators...');
+          console.debug('still loading dn nominators...');
           return;
         }
         dnNominators.value = result.data.nominators
       })
 
-      getExposure()
-      refetchDn()
+      doRefetch()
+      watch(() => props.reload, (newVal) => {
+        console.debug('reload', newVal)
+        doRefetch()
+      })
+
     })
 
     const doRefetch = () => {
-      console.log('doRefetch')
+      console.debug('doRefetch')
       getExposure()
       refetch()
     }
@@ -299,6 +336,7 @@ export default defineComponent({
       exposure,
       decimals,
       decimalPlaces,
+      loadingH,
       loadingE,
       dnNominators,
       chartData,

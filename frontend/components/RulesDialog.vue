@@ -66,7 +66,7 @@ export default defineComponent({
     })
 
     const closeDialog = () => {
-      // console.log('close dialog')
+      // console.debug('close dialog')
       emit('close')
     }
 

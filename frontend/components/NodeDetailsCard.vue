@@ -24,13 +24,13 @@ export default defineComponent({
   },
   emits: ['onModelValue'],
   setup(props, { emit }) {
-    // console.log(props)
+    // console.debug(props)
     const nodeId = computed(() => props.node[0])
     const node = computed<NodeDetailsX>(() => props.node[1])
     const showDialog = computed(() => props.showDialog)
 
     const onUpdateModel = (value: boolean) => {
-      console.log(value)
+      console.debug(value)
       emit('onModelValue', value)
     }
 

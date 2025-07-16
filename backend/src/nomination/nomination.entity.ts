@@ -3,15 +3,15 @@ import { Table, Column, Model } from 'sequelize-typescript';
 export interface INomination {
   chainId: string;
   stash: string;
-  datehour: string; // YYYY.MM.DD.HH
+  dateHour: string; // YYYY-MM-DD-HH
   active: number;
   commission: number;
-  nom_dn: number;
-  nom_non: number;
-  nom_value_dn: number;
-  nom_value_non: number;
-  exposure_dn: number;
-  exposure_non: number;
+  nomDn: number;
+  nomNon: number;
+  nomValueDn: number;
+  nomValueNon: number;
+  exposureDn: number;
+  exposureNon: number;
 }
 /*
 | chainId | validator | YYYY.MM.DD.HH | active | nom_dn | nom_non | exposure_dn | exposure_non |

@@ -7,7 +7,7 @@
         </v-col>
 
         <v-col>
-          Data from: <a href="https://telemetry.w3f.community" target="_blank">[telemetry]</a>, 
+          Data from: <a href="https://telemetry.polkadot.io" target="_blank">[telemetry]</a>, 
           [DN <a :href="`https://nodes.web3.foundation/`" target="_blank">API]</a>
         </v-col>
 

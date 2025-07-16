@@ -31,7 +31,7 @@ export const useNominatorStore = defineStore('nominatorStore', {
       this.stakingEntries = stakingEntries
     },
     addNominator(nominator: INominator) {
-      // console.log('Adding node', node);
+      // console.debug('Adding node', node);
       if (!(this.nominators instanceof Map)) {
         this.nominators = new Map(); // Reinitialize if something goes wrong
       }

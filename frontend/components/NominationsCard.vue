@@ -8,9 +8,11 @@
       </v-btn>
     </v-card-title>
     <v-card-text>
-
-      <!-- Nominations -->
-      <!-- <Line id="chart1" :data="chartData" :options="{...chartOptions, plugins: { title: { display: true, text: 'Nominations' } }}" /> -->
+      
+      <v-overlay :model-value="loading" contained>
+        <!-- <v-progress-circular indeterminate size="48" color="primary" /> -->
+      </v-overlay>
+      <Bar id="chart1" :data="chartData" :options="chartOptions" />
 
       <!-- <p v-show="loadingN" color="red">Scanning chain nominators, building nominator list... {{ page }} of {{ pages }}</p> -->
       <!-- {{ nominators }} -->
@@ -80,12 +82,19 @@ import type { IValidatorStats, IExposure, INominator } from '~/utils/types';
  *  - get the nomination stats
  *  - get the nominators
  */
-const QUERY_NOMINATION_CARD = gql`
-  query nominationCard($chainId: String!, $cohortId: String!, $stash: String!) {
+const QUERY_NOMINATORS = gql`
+  query allNominators($chainId: String!, $cohortId: String!, $stash: String!) {
     stakersForStash(chainId: $chainId, stash: $stash) {
       address
       balance
     }
+    # dn nominators
+    nominators(chainId: $chainId, cohortId: $cohortId)
+  }
+`;
+
+const QUERY_NOMINATION_STATS = gql`
+  query nominationStats($chainId: String!, $stash: String!) {
     nominationStats(chainId: $chainId, stash: $stash) { 
       chainId
       stash
@@ -99,8 +108,6 @@ const QUERY_NOMINATION_CARD = gql`
       # exposure_dn
       # exposure_non
     }
-    # dn nominators
-    nominators(chainId: $chainId, cohortId: $cohortId)
   }
 `;
 
@@ -114,6 +121,11 @@ export default defineComponent({
     stash: {
       type: String,
       required: true
+    },
+    reload: {
+      type: Number,
+      required: false,
+      default: 0
     }
   },
   components: {
@@ -131,13 +143,6 @@ export default defineComponent({
     const decimalPlaces = 0
 
     const dnNominators = ref<string[]>([])
-
-    // const exposure = ref<IExposure>({
-    //   total: 0,
-    //   own: 0,
-    //   pageCount: 0,
-    //   others: []
-    // })
     const nominationStats = ref<IValidatorStats[]>([])
     const nominators = ref<INominator[]>([])
 
@@ -151,34 +156,35 @@ export default defineComponent({
       return nominators.value.filter(n => !dnNominators.value.includes(n.address)).reduce((sum, n) => sum + Number(n.balance), 0)
     })
 
-    const { $substrate } = useNuxtApp();
-    var api: ApiPromise | null;
-    var apiConnected = ref(false)
+    var loadingN = ref(true)
+    var loadingS = ref(true)
 
-    var loading = ref(false)
-    var refetch = () => { console.log('refetch') }
+    const loading = computed(() => {
+      return loadingN.value || loadingS.value
+    })
+
+    var refetchN = () => { console.debug('refetchN') }
+    var refetchS = () => { console.debug('refetchS') }
 
     const chartData = computed(() => ({
-      title: 'Nominations',
-      // convert dateHour (yyyy-MM-dd-HH) to date (yyyy-MM-dd)
+      // convert dateHour (yyyy-MM-dd-HH) to ISO string for timeseries
       labels: nominationStats.value.map((stat) => {
         const ret = stat.dateHour.substring(0, 10) + ' ' + stat.dateHour.substring(11, 13) + ':00:00';
-        // console.log(ret);
-        return new Date(ret);
+        return new Date(ret).toISOString();
       }),
       datasets: [
         {
-          type: 'bar',
+          type: 'bar' as const,
           label: 'Non-DN',
-          data: nominationStats.value.map((stat) => stat.nomValueNon),
+          data: nominationStats.value.map((stat) => Number(stat.nomValueNon)),
           fill: true,
           borderWidth: 1,
           pointRadius: 1,
         },
         {
-          type: 'bar',
+          type: 'bar' as const,
           label: 'DN',
-          data: nominationStats.value.map((stat) => stat.nomValueDn),
+          data: nominationStats.value.map((stat) => Number(stat.nomValueDn)),
           fill: true,
           borderWidth: 1,
           pointStyle: 'triangle',
@@ -187,7 +193,7 @@ export default defineComponent({
         {
           type: 'line',
           label: 'Nominators',
-          data: nominationStats.value.map((stat) => stat.nomNon + stat.nomDn),
+          data: nominationStats.value.map((stat) => Number(stat.nomNon) + Number(stat.nomDn)),
           fill: false,
           borderWidth: 1,
           pointRadius: 1,
@@ -197,14 +203,11 @@ export default defineComponent({
     }))
 
     const xAxis = computed(() => {
-      // console.log('display', display.mdAndUp.value)
       return display.mdAndUp.value
         ? {
           stacked: true,
-          type: 'time',
+          type: 'timeseries',
           time: {
-            // parser: timeFormat,
-            // round: 'day'                                                                                                                                                                            
             tooltipFormat: 'YYYY-MM-DD HH:mm',
             displayFormats: {
                 millisecond: 'HH:mm:ss.SSS',
@@ -215,7 +218,7 @@ export default defineComponent({
           }
         } : {
           stacked: true,
-          type: 'time',
+          type: 'timeseries',
           ticks: {
             display: false
           }
@@ -228,7 +231,7 @@ export default defineComponent({
           stacked: true, min: 0,
           ticks: {
             callback: function(value: any) {
-              // console.log('display', display.lgAndUp.value)
+              // console.debug('display', display.lgAndUp.value)
               const ret = display.lgAndUp.value
                 ? value.toFixed(0)
                 : value > 1000000 ? (value/1000000).toFixed(2) + 'M' : (value/1000).toFixed(0) + 'K'
@@ -236,34 +239,69 @@ export default defineComponent({
             }
           }
         },
-        y1: { stacked: false, min: 0, position: 'right' },
+        y1: { stacked: false, min: 0, position: 'right' as const },
         x: xAxis.value
       },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context: any) {
+              let label = context.dataset.label || '';
+              if (label) {
+                label += ': ';
+              }
+              if (context.parsed.y !== null && context.parsed.y !== undefined) {
+                label += Number(context.parsed.y).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+              }
+              return label;
+            }
+          }
+        }
+      }
     })
 
     onMounted(() => {
 
-      var { error, loading: _loading, refetch: _refetch, onResult, onError } = useQuery(QUERY_NOMINATION_CARD, {
+      var { error, loading: _loadingN, refetch: _refetchN, onResult: onResultN, onError: onErrorN } = useQuery(QUERY_NOMINATORS, {
         chainId: props.chainId,
         cohortId: cohortId.value,
         stash: props.stash
       });
-
-      loading = _loading
-      refetch = _refetch
-
-      onResult((result: any) => {
+      watch(() => _loadingN.value, (newVal) => {
+        console.debug('loading', newVal)
+        loadingN.value = newVal
+      })
+      refetchN = _refetchN
+      onResultN((result: any) => {
         if (result.loading) {
-          console.log('still loading nomination card...');
+          console.debug('still loading all nominators...');
           return;
         }
-        console.log('nominators result', result.data);
+        console.debug('all nominators result', result.data);
         nominators.value = result.data?.stakersForStash?.map((staker: any) => {
           return {
             address: staker.address,
             balance: Number(staker.balance) / Math.pow(10, decimals.value as number)
           }
         }) || [];
+        dnNominators.value = result.data?.nominators || [];
+      });
+      onErrorN((error: any) => {
+        console.error(error)
+      })
+      
+      var { error, loading: _loadingS, refetch: _refetchS, onResult: onResultS, onError: onErrorS } = useQuery(QUERY_NOMINATION_STATS, {
+        chainId: props.chainId,
+        cohortId: cohortId.value,
+        stash: props.stash
+      });
+      watch(() => _loadingS.value, (newVal) => {
+        console.debug('loading', newVal)
+        loadingS.value = newVal
+      })
+      refetchS = _refetchS
+      onResultS((result: any) => {
+        console.debug('nomination stats result', result.data);
         nominationStats.value = result.data?.nominationStats.map((stat: any) => {
           let dateHour: string = ''
           try {
@@ -277,19 +315,22 @@ export default defineComponent({
             nomValueDn: Number(stat.nomValueDn) / Math.pow(10, decimals.value as number)
           }
         }) || [];
-        dnNominators.value = result.data?.nominators || [];
-      });
-
-      onError((error: any) => {
+      })
+      onErrorS((error: any) => {
         console.error(error)
       })
 
       doRefetch()
+      watch(() => props.reload, (newVal) => {
+        console.debug('reload', newVal)
+        doRefetch()
+      })
     })
 
     const doRefetch = () => {
-      console.log('doRefetch')
-      refetch()
+      console.debug('doRefetch')
+      refetchN()
+      refetchS()
     }
 
     return {

@@ -27,7 +27,27 @@ export default defineNuxtConfig({
   apollo: {
     clients: {
       default: {
-        httpEndpoint: 'http://localhost:3002/graphql',
+        httpEndpoint: process.env.GRAPHQL_API_URL ?? 'http://localhost:3000/graphql',
+        inMemoryCacheOptions: {
+          typePolicies: {
+            Query: {
+              fields: {
+                performance: {
+                  keyArgs: ['chainId', 'address', 'number_sessions'],
+                },
+                stakersForStash: {
+                  keyArgs: ['chainId', 'stash'],
+                },
+                nominationStats: {
+                  keyArgs: ['chainId', 'stash'],
+                },
+                exposureStats: {
+                  keyArgs: ['chainId', 'stash'],
+                },
+              },
+            },
+          },
+        },
       },
     },
   },

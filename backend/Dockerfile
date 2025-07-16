@@ -1,26 +1,47 @@
-# Use Node.js image for building and running the app
-FROM node:18 AS builder
+# Use project root as build context for monorepo/workspaces
+ARG NODE_VERSION=20.18.0
+ARG PORT=3000
+
+FROM node:${NODE_VERSION}-slim AS base
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY . .
+# Build
+FROM base AS build
 
-# RUN npm install
-RUN yarn install
+# Copy root package files and all workspace packages
+COPY --link package.json yarn.lock ./
+COPY --link .yarn .yarn
+COPY --link .yarnrc.yml ./
+COPY --link common ./common
+COPY --link backend ./backend
 
-# RUN npm run build
-RUN rm -rf dist
-RUN yarn build
+# Enable and prepare Yarn
+RUN corepack enable && corepack prepare yarn@4.5.2 --activate
 
-# Production stage
-FROM node:18 AS runner
+# Install all workspace dependencies
+RUN yarn install #--immutable
 
-WORKDIR /app
+# Build all workspaces
+RUN yarn workspaces foreach -A run build
 
-COPY --from=builder /app/dist ./dist
-COPY package*.json ./
+# Run
+FROM base
 
-EXPOSE 4000
+WORKDIR /app/backend
+COPY --from=build /app/backend/dist ./dist
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/common /app/common
+COPY --from=build /app/backend/src ./src
+
+ENV PORT=$PORT
+ENV MONGO_HOST=$MONGO_HOST
+ENV MONGO_PORT=$MONGO_PORT
+ENV MONGO_USERNAME=$MONGO_USERNAME
+ENV MONGO_PASSWORD=$MONGO_PASSWORD
+ENV MONGO_DATABASE=$MONGO_DATABASE
+ENV NODE_ENV=production
+
+EXPOSE ${PORT}
 
 CMD ["node", "dist/main.js"]

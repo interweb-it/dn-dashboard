@@ -1007,7 +1007,7 @@ __metadata:
     "@dn/common": "file:../common"
     "@polkadot/api": "npm:^16.4.1"
     "@polkadot/api-augment": "npm:^16.4.1"
-    "@polkadot/api-derive": "npm:^16.3.1"
+    "@polkadot/api-derive": "npm:^16.4.1"
     "@polkadot/types": "npm:^16.4.1"
     "@polkadot/util": "npm:^13.5.3"
     "@polkadot/util-crypto": "npm:^13.5.3"
@@ -3457,7 +3457,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@polkadot/api-derive@npm:16.4.1, @polkadot/api-derive@npm:^16.3.1":
+"@polkadot/api-derive@npm:16.4.1, @polkadot/api-derive@npm:^16.4.1":
   version: 16.4.1
   resolution: "@polkadot/api-derive@npm:16.4.1"
   dependencies:

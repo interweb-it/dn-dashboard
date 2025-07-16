@@ -43,8 +43,12 @@ export interface NodeDetailsX {
 export const useNodeStore = defineStore('nodeStore', {
   state: () => ({
     chainId: '',
-    cohortIds: ['2-1', '2', '1'],
-    cohortId: '2-1',
+    cohortIds: [
+      // '2-1',
+      '2',
+      '1'
+    ],
+    cohortId: '2',
     selected: [],
     backups: [],
     nominators: [],
@@ -85,12 +89,12 @@ export const useNodeStore = defineStore('nodeStore', {
       }
     },
     async addNode(node: AddedNodeMessageX) {
-      // console.log('Adding node', node);
+      // console.debug('Adding node', node);
       if (!(this.nodes instanceof Map)) {
         this.nodes = new Map(); // Reinitialize if something goes wrong
       }
       const networkId = node.NodeDetails.NetworkId
-      // console.log('Adding node', networkId);
+      // console.debug('Adding node', networkId);
       this.nodes.set(networkId, node);
     },
     removeNode(node: any) {

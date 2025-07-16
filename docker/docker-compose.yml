@@ -8,7 +8,11 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-thisisasecret123}
       MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-dnd}
+      MONGO_HOST: ${MONGO_HOST:-mongodb}
+      MONGO_PORT: ${MONGO_PORT:-27017}
     restart: unless-stopped
+    volumes:
+      - ../data/mongodb:/data/db
 
   # mariadb:
   #   image: mariadb:10.11.5
@@ -33,14 +37,21 @@ services:
     build:
       context: ../
       dockerfile: workers/Dockerfile
+      args:
+        - BULLMQ_PORT=3000 # default port for bullmq, this is internal port
+    ports:
+      - "${BULLMQ_PORT:-3001}:3000" # external to internal port mapping
     environment:
-      MONGO_HOST: ${MONGO_HOST:-mongodb}
-      MONGO_PORT: ${MONGO_PORT:-27017}
-      MONGO_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
-      MONGO_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-      MONGO_DATABASE: ${MONGO_INITDB_DATABASE:-dnd}
+      # MONGO_HOST: ${MONGO_HOST:-mongodb}
+      # MONGO_PORT: ${MONGO_PORT:-27017}
+      # MONGO_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      # MONGO_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      # MONGO_DATABASE: ${MONGO_INITDB_DATABASE:-dnd}
+      MONGO_URI: ${MONGO_URI}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
+      RPC_URL_POLKADOT: ${RPC_URL_POLKADOT:-wss://rpc.metaspan.io/polkadot}
+      RPC_URL_KUSAMA: ${RPC_URL_KUSAMA:-wss://rpc.metaspan.io/kusama}
     restart: unless-stopped
     depends_on:
       - mongodb
@@ -51,8 +62,10 @@ services:
     build:
       context: ../
       dockerfile: backend/Dockerfile
+      args:
+        - PORT=3000 # default port for backend
     ports:
-      - "4000:3002" # Map NestJS app to localhost:4000
+      - "${GRAPHQL_PORT:-3002}:3000" # Map NestJS app to localhost:3000
     environment:
       NODE_ENV: production
       MONGO_HOST: ${MONGO_HOST:-mongodb}
@@ -61,8 +74,8 @@ services:
       MONGO_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
       MONGO_DATABASE: ${MONGO_INITDB_DATABASE:-dnd}
     restart: unless-stopped
-    volumes:
-      - ../backend:/app # Optional: Mount the backend code for local development
+    # volumes:
+      # - ../backend:/app # Optional: Mount the backend code for local development
     depends_on:
       - mongodb
 
@@ -71,12 +84,15 @@ services:
     build:
       context: ../
       dockerfile: frontend/Dockerfile
+      args:
+        - PORT=3000 # default port for frontend
+        - GRAPHQL_API_URL=${GRAPHQL_API_URL}
     ports:
-      - "3002:3000" # Map Nuxt.js app to localhost:3000
+      - "${FRONTEND_PORT:-3003}:3000" # Map Nuxt.js app to localhost:3000
     environment:
       NODE_ENV: production
       # GRAPHQL_BACKEND_URL: http://192.168.1.209:4000
-      GRAPHQL_BACKEND_URL: ${GRAPHQL_BACKEND_URL}
+      GRAPHQL_API_URL: ${GRAPHQL_API_URL}
     restart: unless-stopped
     # volumes:
     #   - ../frontend:/app # Optional: Mount the frontend code for local development
