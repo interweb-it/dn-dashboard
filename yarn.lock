@@ -993,6 +993,62 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@dn/backend@workspace:backend":
+  version: 0.0.0-use.local
+  resolution: "@dn/backend@workspace:backend"
+  dependencies:
+    "@apollo/client": "npm:^3.13.5"
+    "@apollo/server": "npm:^4.11.2"
+    "@dn/common": "npm:*"
+    "@nestjs/apollo": "npm:^12.2.1"
+    "@nestjs/cli": "npm:^10.0.0"
+    "@nestjs/common": "npm:^10.0.0"
+    "@nestjs/config": "npm:^3.3.0"
+    "@nestjs/core": "npm:^10.0.0"
+    "@nestjs/graphql": "npm:^12.2.1"
+    "@nestjs/platform-express": "npm:^10.0.0"
+    "@nestjs/schedule": "npm:^4.1.1"
+    "@nestjs/schematics": "npm:^10.0.0"
+    "@nestjs/testing": "npm:^10.0.0"
+    "@polkadot/api": "npm:^14.3.1"
+    "@types/express": "npm:^5.0.0"
+    "@types/jest": "npm:^29.5.2"
+    "@types/node": "npm:^20.3.1"
+    "@types/sequelize": "npm:^4.28.20"
+    "@types/supertest": "npm:^6.0.0"
+    "@typescript-eslint/eslint-plugin": "npm:^8.0.0"
+    "@typescript-eslint/parser": "npm:^8.0.0"
+    apollo-server-express: "npm:^3.13.0"
+    class-validator: "npm:^0.14.1"
+    date-fns: "npm:^4.1.0"
+    eslint: "npm:^8.0.0"
+    eslint-config-prettier: "npm:^9.0.0"
+    eslint-plugin-prettier: "npm:^5.0.0"
+    graphql: "npm:^16.10.0"
+    graphql-scalars: "npm:^1.23.0"
+    graphql-subscriptions: "npm:^3.0.0"
+    isomorphic-ws: "npm:^5.0.0"
+    jest: "npm:^29.5.0"
+    json-bigint-patch: "npm:^0.0.8"
+    mongodb: "npm:^6.17.0"
+    mysql2: "npm:^3.14.0"
+    prettier: "npm:^3.0.0"
+    reflect-metadata: "npm:^0.2.0"
+    rxjs: "npm:^7.8.1"
+    sequelize: "npm:^6.37.6"
+    sequelize-typescript: "npm:^2.1.6"
+    source-map-support: "npm:^0.5.21"
+    sqlite3: "npm:^5.1.7"
+    supertest: "npm:^7.0.0"
+    ts-jest: "npm:^29.1.0"
+    ts-loader: "npm:^9.4.3"
+    ts-node: "npm:^10.9.1"
+    tsconfig-paths: "npm:^4.2.0"
+    typescript: "npm:^5.1.3"
+    ws: "npm:^8.18.0"
+  languageName: unknown
+  linkType: soft
+
 "@dn/common@file:../common::locator=%40dn%2Fworkers%40workspace%3Aworkers":
   version: 1.0.2
   resolution: "@dn/common@file:../common#../common::hash=df879e&locator=%40dn%2Fworkers%40workspace%3Aworkers"
@@ -1005,6 +1061,42 @@ __metadata:
   resolution: "@dn/common@workspace:common"
   dependencies:
     typescript: "npm:^5.8.3"
+  languageName: unknown
+  linkType: soft
+
+"@dn/dashboard@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@dn/dashboard@workspace:."
+  dependencies:
+    sequelize: "npm:^6.37.7"
+    sequelize-typescript: "npm:^2.1.6"
+  languageName: unknown
+  linkType: soft
+
+"@dn/frontend@workspace:frontend":
+  version: 0.0.0-use.local
+  resolution: "@dn/frontend@workspace:frontend"
+  dependencies:
+    "@nuxt/kit": "npm:^3.16.0"
+    "@nuxtjs/apollo": "npm:^5.0.0-alpha.14"
+    "@pinia/nuxt": "npm:0.10.1"
+    "@polkadot/api": "npm:^16.4.1"
+    "@vue-leaflet/vue-leaflet": "npm:^0.10.1"
+    chart.js: "npm:^4.4.8"
+    chartjs-adapter-moment: "npm:^1.0.1"
+    leaflet: "npm:^1.9.4"
+    moment: "npm:^2.30.1"
+    nuxt: "npm:^3.16.0"
+    pinia: "npm:^3.0.1"
+    sass: "npm:^1.85.1"
+    sass-loader: "npm:^16.0.5"
+    vue: "npm:^3.5.13"
+    vue-chartjs: "npm:^5.3.2"
+    vue-cli-plugin-vuetify: "npm:^2.5.8"
+    vue-router: "npm:^4.5.0"
+    vuetify: "npm:^3.7.15"
+    vuetify-loader: "npm:^1.9.2"
+    vuetify-nuxt-module: "npm:0.18.3"
   languageName: unknown
   linkType: soft
 
@@ -4101,9 +4193,9 @@ __metadata:
   linkType: hard
 
 "@rolldown/pluginutils@npm:^1.0.0-beta.9":
-  version: 1.0.0-beta.27
-  resolution: "@rolldown/pluginutils@npm:1.0.0-beta.27"
-  checksum: 10c0/9658f235b345201d4f6bfb1f32da9754ca164f892d1cb68154fe5f53c1df42bd675ecd409836dff46884a7847d6c00bdc38af870f7c81e05bba5c2645eb4ab9c
+  version: 1.0.0-beta.9-commit.d91dfb5
+  resolution: "@rolldown/pluginutils@npm:1.0.0-beta.9-commit.d91dfb5"
+  checksum: 10c0/63fa64fdd98a2cc99f21dab5c1819ffec172d2282cbff5dcb1089a84d2bb5c556dc6af503e778058f4a038d1941c0179f677ceddd0e30f024b57c543f21042f0
   languageName: node
   linkType: hard
 
@@ -4940,11 +5032,9 @@ __metadata:
   linkType: hard
 
 "@types/parse-path@npm:^7.0.0":
-  version: 7.1.0
-  resolution: "@types/parse-path@npm:7.1.0"
-  dependencies:
-    parse-path: "npm:*"
-  checksum: 10c0/3e45c79a33582ba126250190cc00e939edbbe9f19f9772b41905ee391bb7190387129b0999295c21bad20e5a60b945ea7c5e53cec559f988a14c071639730af0
+  version: 7.0.3
+  resolution: "@types/parse-path@npm:7.0.3"
+  checksum: 10c0/8344b6c7acba4e4e5a8d542f56f53c297685fa92f9b0c085d7532cc7e1b661432cecfc1c75c76cdb0d161c95679b6ecfe0573d9fef7c836962aacf604150a984
   languageName: node
   linkType: hard
 
@@ -7878,62 +7968,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"decentralised-nodes-api@workspace:backend":
-  version: 0.0.0-use.local
-  resolution: "decentralised-nodes-api@workspace:backend"
-  dependencies:
-    "@apollo/client": "npm:^3.13.5"
-    "@apollo/server": "npm:^4.11.2"
-    "@dn/common": "npm:*"
-    "@nestjs/apollo": "npm:^12.2.1"
-    "@nestjs/cli": "npm:^10.0.0"
-    "@nestjs/common": "npm:^10.0.0"
-    "@nestjs/config": "npm:^3.3.0"
-    "@nestjs/core": "npm:^10.0.0"
-    "@nestjs/graphql": "npm:^12.2.1"
-    "@nestjs/platform-express": "npm:^10.0.0"
-    "@nestjs/schedule": "npm:^4.1.1"
-    "@nestjs/schematics": "npm:^10.0.0"
-    "@nestjs/testing": "npm:^10.0.0"
-    "@polkadot/api": "npm:^14.3.1"
-    "@types/express": "npm:^5.0.0"
-    "@types/jest": "npm:^29.5.2"
-    "@types/node": "npm:^20.3.1"
-    "@types/sequelize": "npm:^4.28.20"
-    "@types/supertest": "npm:^6.0.0"
-    "@typescript-eslint/eslint-plugin": "npm:^8.0.0"
-    "@typescript-eslint/parser": "npm:^8.0.0"
-    apollo-server-express: "npm:^3.13.0"
-    class-validator: "npm:^0.14.1"
-    date-fns: "npm:^4.1.0"
-    eslint: "npm:^8.0.0"
-    eslint-config-prettier: "npm:^9.0.0"
-    eslint-plugin-prettier: "npm:^5.0.0"
-    graphql: "npm:^16.10.0"
-    graphql-scalars: "npm:^1.23.0"
-    graphql-subscriptions: "npm:^3.0.0"
-    isomorphic-ws: "npm:^5.0.0"
-    jest: "npm:^29.5.0"
-    json-bigint-patch: "npm:^0.0.8"
-    mongodb: "npm:^6.17.0"
-    mysql2: "npm:^3.14.0"
-    prettier: "npm:^3.0.0"
-    reflect-metadata: "npm:^0.2.0"
-    rxjs: "npm:^7.8.1"
-    sequelize: "npm:^6.37.6"
-    sequelize-typescript: "npm:^2.1.6"
-    source-map-support: "npm:^0.5.21"
-    sqlite3: "npm:^5.1.7"
-    supertest: "npm:^7.0.0"
-    ts-jest: "npm:^29.1.0"
-    ts-loader: "npm:^9.4.3"
-    ts-node: "npm:^10.9.1"
-    tsconfig-paths: "npm:^4.2.0"
-    typescript: "npm:^5.1.3"
-    ws: "npm:^8.18.0"
-  languageName: unknown
-  linkType: soft
-
 "decompress-response@npm:^6.0.0":
   version: 6.0.0
   resolution: "decompress-response@npm:6.0.0"
@@ -8238,15 +8272,6 @@ __metadata:
   checksum: 10c0/abfb387f033e089df3ec3be960205d17b54df8abf0924d982a7ced3a94c557a4e6cbff2e78b121f216b85f466b3d8d041673a386177c311aaea41459286cc9bc
   languageName: node
   linkType: hard
-
-"dnd@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "dnd@workspace:."
-  dependencies:
-    sequelize: "npm:^6.37.7"
-    sequelize-typescript: "npm:^2.1.6"
-  languageName: unknown
-  linkType: soft
 
 "doctrine@npm:^3.0.0":
   version: 3.0.0
@@ -12299,11 +12324,11 @@ __metadata:
   linkType: hard
 
 "memfs@npm:^3.4.1":
-  version: 3.6.0
-  resolution: "memfs@npm:3.6.0"
+  version: 3.5.3
+  resolution: "memfs@npm:3.5.3"
   dependencies:
     fs-monkey: "npm:^1.0.4"
-  checksum: 10c0/af567f9038bbb5bbacf100b35d5839e90a89f882d191d8a1c7002faeb224c6cfcebd0e97c0150e9af8be95ec7b5b75a52af56fcd109d0bc18807c1f4e004f053
+  checksum: 10c0/038fc81bce17ea92dde15aaa68fa0fdaf4960c721ce3ffc7c2cb87a259333f5159784ea48b3b72bf9e054254d9d0d0d5209d0fdc3d07d08653a09933b168fbd7
   languageName: node
   linkType: hard
 
@@ -13359,33 +13384,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nuxt-app@workspace:frontend":
-  version: 0.0.0-use.local
-  resolution: "nuxt-app@workspace:frontend"
-  dependencies:
-    "@nuxt/kit": "npm:^3.16.0"
-    "@nuxtjs/apollo": "npm:^5.0.0-alpha.14"
-    "@pinia/nuxt": "npm:0.10.1"
-    "@polkadot/api": "npm:^16.4.1"
-    "@vue-leaflet/vue-leaflet": "npm:^0.10.1"
-    chart.js: "npm:^4.4.8"
-    chartjs-adapter-moment: "npm:^1.0.1"
-    leaflet: "npm:^1.9.4"
-    moment: "npm:^2.30.1"
-    nuxt: "npm:^3.16.0"
-    pinia: "npm:^3.0.1"
-    sass: "npm:^1.85.1"
-    sass-loader: "npm:^16.0.5"
-    vue: "npm:^3.5.13"
-    vue-chartjs: "npm:^5.3.2"
-    vue-cli-plugin-vuetify: "npm:^2.5.8"
-    vue-router: "npm:^4.5.0"
-    vuetify: "npm:^3.7.15"
-    vuetify-loader: "npm:^1.9.2"
-    vuetify-nuxt-module: "npm:0.18.3"
-  languageName: unknown
-  linkType: soft
-
 "nuxt@npm:^3.16.0":
   version: 3.17.7
   resolution: "nuxt@npm:3.17.7"
@@ -13862,7 +13860,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"parse-path@npm:*, parse-path@npm:^7.0.0":
+"parse-path@npm:^7.0.0":
   version: 7.1.0
   resolution: "parse-path@npm:7.1.0"
   dependencies:
