@@ -1,15 +1,12 @@
 {
   "name": "@dn/workers",
+  "version": "1.0.0",
   "packageManager": "yarn@4.5.2",
   "scripts": {
     "build": "tsc",
     "start": "node './dist/index.js'",
     "dev": "tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/index.js\" | pino-pretty"
   },
-  "workspaces": [
-    "@dn/workers",
-    "@dn/shared"
-  ],
   "dependencies": {
     "@apollo/client": "^3.13.8",
     "@bull-board/express": "^6.9.2",

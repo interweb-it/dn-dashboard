@@ -15,6 +15,8 @@ COPY --link .yarn .yarn
 COPY --link .yarnrc.yml ./
 COPY --link common ./common
 COPY --link backend ./backend
+COPY --link frontend ./frontend
+COPY --link workers ./workers
 
 # Enable and prepare Yarn
 RUN corepack enable && corepack prepare yarn@4.5.2 --activate
@@ -23,7 +25,9 @@ RUN corepack enable && corepack prepare yarn@4.5.2 --activate
 RUN yarn install #--immutable
 
 # Build all workspaces
-RUN yarn workspaces foreach -A run build
+# RUN yarn workspaces foreach -A run build
+RUN cd /app/common && yarn build
+RUN cd /app/backend && yarn build
 
 # Run
 FROM base

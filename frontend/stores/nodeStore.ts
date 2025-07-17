@@ -44,11 +44,11 @@ export const useNodeStore = defineStore('nodeStore', {
   state: () => ({
     chainId: '',
     cohortIds: [
-      // '2-1',
+      '2-1',
       '2',
-      '1'
+      // '1'
     ],
-    cohortId: '2',
+    cohortId: '2-1',
     selected: [],
     backups: [],
     nominators: [],

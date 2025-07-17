@@ -1,5 +1,5 @@
 {
-  "name": "dnd",
+  "name": "@dn/dashboard",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -8,9 +8,5 @@
     "frontend",
     "workers"
   ],
-  "packageManager": "yarn@4.5.2",
-  "dependencies": {
-    "sequelize": "^6.37.7",
-    "sequelize-typescript": "^2.1.6"
-  }
+  "packageManager": "yarn@4.5.2"
 }
