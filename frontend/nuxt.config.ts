@@ -13,6 +13,7 @@ export default defineNuxtConfig({
     'vuetify-nuxt-module',
     '@pinia/nuxt',
     '@nuxtjs/apollo',
+    '@nuxtjs/plausible',
   ],
   vuetify: {
     moduleOptions: {
@@ -51,4 +52,11 @@ export default defineNuxtConfig({
       },
     },
   },
+  plausible: {
+    domain: 'dn.metaspan.io',
+    // ignoredHostnames: ['localhost', '127.0.0.1'],
+    ignoredHostnames: [],
+    apiHost: 'https://click.metaspan.io/',
+    autoPageviews: true,
+  }
 });
