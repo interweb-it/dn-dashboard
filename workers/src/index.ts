@@ -2,6 +2,13 @@ import 'dotenv/config';
 // Load environment variables
 // import './dot-config';
 
+// Enable garbage collection if available
+if (global.gc) {
+  console.log('Garbage collection is available');
+} else {
+  console.log('Garbage collection is not available. Run with --expose-gc flag for better memory management.');
+}
+
 import { Job, Queue, Worker, FlowProducer } from 'bullmq';
 import express from 'express';
 import { ExpressAdapter } from '@bull-board/express';
@@ -10,6 +17,7 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import moment from 'moment';
 
 import { prepareDB } from './utils';
+import { memoryMonitor } from './memory-monitor';
 
 // import { startFlow } from './functions/start-flow';
 import nodesFunction from './functions/nodes';
@@ -58,6 +66,10 @@ import pruneDbFunction from './functions/prune-db';
   const aggregationQueue = new Queue('aggregation', qOpts);
 
   const mongoClient = await prepareDB();
+
+  // Start memory monitoring
+  memoryMonitor.startMonitoring(60000); // Monitor every minute
+  memoryMonitor.logMemoryUsage('Workers startup');
 
   // const flowWorker = new Worker('flow', startFlow, qOpts);
   const nodesWorker = new Worker('nodes', nodesFunction, qOpts);
@@ -153,7 +165,9 @@ import pruneDbFunction from './functions/prune-db';
   // - prune db for polkadot
 
   try {
+    console.log('Adding exposure histories jobs for polkadot');
     exposureHistoriesQueue.add('polkadot', { chainId: 'polkadot' }, { ...jobRetention, delay: A_VERY_LONG_TIME });
+    console.log('Adding exposure histories jobs for kusama');
     exposureHistoriesQueue.add('kusama', { chainId: 'kusama' }, { ...jobRetention, delay: A_VERY_LONG_TIME });
   } catch (error) {
     console.error('Error adding exposure histories jobs:', error);
@@ -178,7 +192,7 @@ import pruneDbFunction from './functions/prune-db';
       new BullMQAdapter(nominatorsQueue, { readOnlyMode: false }),
       // new BullMQAdapter(aggregationQueue, { readOnlyMode: false }),
       new BullMQAdapter(exposureHistoryQueue, { readOnlyMode: false }),
-      // new BullMQAdapter(exposureHistoriesQueue, { readOnlyMode: false }),
+      new BullMQAdapter(exposureHistoriesQueue, { readOnlyMode: false }),
       new BullMQAdapter(pruneDbQueue, { readOnlyMode: false })
     ],
     serverAdapter,

@@ -29,6 +29,23 @@ export class Logger {
     console.error(message);
     this.job?.log(this.toString(message));
   }
+  
+  // Memory monitoring helper
+  logMemoryUsage(context: string) {
+    const memUsage = process.memoryUsage();
+    const message = `${context} - Memory: RSS=${Math.round(memUsage.rss / 1024 / 1024)}MB, Heap=${Math.round(memUsage.heapUsed / 1024 / 1024)}MB/${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`;
+    this.log(message);
+  }
+  
+  // Force garbage collection if available
+  forceGC() {
+    if (global.gc) {
+      global.gc();
+      this.log('Forced garbage collection');
+    } else {
+      this.log('Garbage collection not available');
+    }
+  }
 }
 
 

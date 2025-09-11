@@ -13,7 +13,8 @@ export class NodesService {
   private readonly nodesCollection: Collection;
   private readonly telemetryCollection: Collection;
   private readonly nominationsCollection: Collection;
-  private readonly cohortIds: string[] = ['1', '2', '2-1'];
+  private readonly validatorsCollection: Collection;
+  private readonly cohortIds: string[] = ['1', '2', '2-1', '3'];
   private readonly chainIds: string[] = ['polkadot', 'kusama'];
 
   constructor(
@@ -30,6 +31,7 @@ export class NodesService {
     this.nodesCollection = this.databaseService.getMongoClient().db('dnd').collection('nodes');
     this.telemetryCollection = this.databaseService.getMongoClient().db('dnd').collection('telemetry');
     this.nominationsCollection = this.databaseService.getMongoClient().db('dnd').collection('nominations');
+    this.validatorsCollection = this.databaseService.getMongoClient().db('dnd').collection('validators');
   }
 
   async onModuleInit() {
@@ -53,13 +55,20 @@ export class NodesService {
       logger.warn(`${chainId.padEnd(10)} getSelected ${chainId} ${cohortId} not found`);
       return [];
     }
-    const telemetry = await this.telemetryCollection.find({ chainId }).toArray();
+    // const telemetry = await this.telemetryCollection.find({ chainId }).toArray();
     const nodes: INode[] = [];
     for (const node of cohort.selected) {
-      const _tel = telemetry.find((t) => t.identity === node.identity);
-      if (_tel) {
-        node.telemetryX = _tel;
+      // get the commission for the node
+      const _validator = await this.validatorsCollection.findOne({ chainId, stash: node.stash });
+      if (_validator) {
+        node.commission = _validator.commission;
+        node.active = _validator.active;
       }
+      // get the telemetry for the node
+      // const _tel = telemetry.find((t) => t.identity === node.identity);
+      // if (_tel) {
+      //   node.telemetryX = _tel;
+      // }
       nodes.push(node);
     }
     return nodes;

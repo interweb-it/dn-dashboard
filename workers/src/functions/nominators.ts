@@ -9,7 +9,20 @@ const apolloClient = new ApolloClient({
   headers: {
     'Content-Type': 'application/json',
   },
-  cache: new InMemoryCache(),
+  cache: new InMemoryCache({
+    // Disable caching to reduce memory usage
+    resultCaching: false,
+    addTypename: false,
+  }),
+  // Disable query deduplication to reduce memory
+  defaultOptions: {
+    watchQuery: {
+      fetchPolicy: 'no-cache',
+    },
+    query: {
+      fetchPolicy: 'no-cache',
+    },
+  },
 });
 
 import { prepareDB } from '../utils'
@@ -21,6 +34,7 @@ export default async function (job: Job) {
 
   const logger = new Logger(job);
   logger.log(`nominators: start : ${chainId}, ${refDateHour}`);
+  logger.logMemoryUsage('Nominators function start');
 
   const mongoClient = await prepareDB(job);
   if (!mongoClient) {
@@ -77,7 +91,7 @@ export default async function (job: Job) {
 
   let hasMore = true;
   let offset = 0;
-  const limit = 200;
+  const limit = 100; // Reduced batch size to reduce memory usage
 
   while (hasMore) {
     logger.debug(`${chainId.padEnd(10)}, fetching batch ${offset}`);
@@ -97,57 +111,68 @@ export default async function (job: Job) {
       logger.debug(`${chainId.padEnd(10)}, fetching batch ${offset} took ${end - start}ms`);
       const batch: any[] = response.data.Nominators;
       hasMore = batch.length === limit;
-      // Return the data from the response
-      // return response.data;
-      start = performance.now();
-      for (const nominator of batch) {
-        await NominatorsCollection.updateOne({
-          chainId,
-          dateHour: refDateHour,
-          accountId: nominator.accountId,
-        }, {
-          $set: {
+      
+      // Process batch in smaller chunks to reduce memory pressure
+      const chunkSize = 20;
+      for (let i = 0; i < batch.length; i += chunkSize) {
+        const chunk = batch.slice(i, i + chunkSize);
+        
+        start = performance.now();
+        for (const nominator of chunk) {
+          await NominatorsCollection.updateOne({
             chainId,
             dateHour: refDateHour,
-            ...nominator,
-          },
-        }, {
-          upsert: true,
-        });
-        const isDn = activeCohort.nominators?.includes(nominator.accountId);
-        // console.log(nominator.accountId, 'isDn', isDn);
-        // convert account.data to a bigint and convert to number
-        const accountData = {
-          bonded: Number(BigInt(nominator.account.data.bonded || 0)),
-          feeFrozen: Number(BigInt(nominator.account.data.feeFrozen || 0)),
-          free: Number(BigInt(nominator.account.data.free || 0)),
-          miscFrozen: Number(BigInt(nominator.account.data.miscFrozen || 0)),
-          reserved: Number(BigInt(nominator.account.data.reserved || 0)),
-        };
-        // console.log(nominator.accountId, 'accountData', accountData);
-        for (const targetId of nominator.targetIds) {
-          // is this a DN nomination?
-          await NominationsCollection.updateOne({
-            chainId,
-            dateHour: refDateHour,
-            nominatorId: nominator.accountId,
-            targetId,
+            accountId: nominator.accountId,
           }, {
             $set: {
               chainId,
               dateHour: refDateHour,
-              targetId,
-              nominatorId: nominator.accountId,
-              isDn,
-              account: { data: accountData },
+              ...nominator,
             },
           }, {
             upsert: true,
           });
+          const isDn = activeCohort.nominators?.includes(nominator.accountId);
+          // console.log(nominator.accountId, 'isDn', isDn);
+          // convert account.data to a bigint and convert to number
+          const accountData = {
+            bonded: Number(BigInt(nominator.account.data.bonded || 0)),
+            feeFrozen: Number(BigInt(nominator.account.data.feeFrozen || 0)),
+            free: Number(BigInt(nominator.account.data.free || 0)),
+            miscFrozen: Number(BigInt(nominator.account.data.miscFrozen || 0)),
+            reserved: Number(BigInt(nominator.account.data.reserved || 0)),
+          };
+          // console.log(nominator.accountId, 'accountData', accountData);
+          for (const targetId of nominator.targetIds) {
+            // is this a DN nomination?
+            await NominationsCollection.updateOne({
+              chainId,
+              dateHour: refDateHour,
+              nominatorId: nominator.accountId,
+              targetId,
+            }, {
+              $set: {
+                chainId,
+                dateHour: refDateHour,
+                targetId,
+                nominatorId: nominator.accountId,
+                isDn,
+                account: { data: accountData },
+              },
+            }, {
+              upsert: true,
+            });
+          }
         }
+        end = performance.now();
+        logger.debug(`${chainId.padEnd(10)}, updating chunk ${i}-${i + chunk.length} took ${end - start}ms`);
+        
+        // Force garbage collection hint after each chunk
+        logger.forceGC();
+        
+        // Small delay to allow garbage collection
+        await new Promise(resolve => setTimeout(resolve, 10));
       }
-      end = performance.now();
-      logger.debug(`${chainId.padEnd(10)}, updating ${batch.length} nominators took ${end - start}ms`);
     } catch (error) {
       // Handle errors as needed
       console.error('Error fetching blockchain data:', error);
@@ -156,8 +181,15 @@ export default async function (job: Job) {
     } finally {
       // Increment the offset for the next iteration
       offset += limit;
+      
+      // Force garbage collection hint after each batch
+      logger.forceGC();
+      
+      // Small delay to allow garbage collection
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
   } // while (hasMore)
 
+  logger.logMemoryUsage('Nominators function end');
   return { success: true };
 }

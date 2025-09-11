@@ -5,7 +5,7 @@
       <v-icon size="small"><v-img :src="`/image/${chainId}-logo.svg`" height="22" width="22" style="border-radius: 20%;"></v-img></v-icon>
       <v-toolbar-title>Cohort</v-toolbar-title>
       <v-btn>
-        <NuxtLink :to="`/${chainId}/cohort/1`">Cohort 1</NuxtLink>
+        <NuxtLink :to="`/${chainId}/cohort/3`">Cohort 3</NuxtLink>
       </v-btn>
     </v-toolbar>
   </v-container>
@@ -28,6 +28,13 @@ export default defineComponent({
       console.debug(`Connecting to chain ${chainId.value}`);
       $substrate.connect(chainId.value);
     });
+
+    try {
+      useTrackPageview()
+      console.debug('trackPageview')
+    } catch (error) {
+      console.error('error', error)
+    }
 
     return {
       chainId

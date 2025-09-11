@@ -65,16 +65,10 @@
                 :loading="loading"
                 :headers="[
                   {title: 'Name', key: 'identity'},
-                  // {title: 'Stash',key: 'stash'},
                   {title: 'Commission',key: 'commission'},
                   {title: 'DN Status',key: 'status'},
-                  {title: 'DN nominated', key: 'nominatedBy'},
-                  // {title: 'Telemetry (Public)', key: 'telemetry'},
-                  {title: 'Hardware\n(CPU/RAM/Kernel/VM)', key: 'hw'},
-                  // {title: 'Cores', key: 'cores'},
-                  // {title: 'Memory', key: 'memory'},
-                  // {title: 'Kernel', key: 'linux_kernel'},
-                  // {title: 'VM', key: 'is_virtual_machine'},
+                  {title: 'DN nomination', key: 'nominatedBy'},
+                  // {title: 'Hardware\n(CPU/RAM/Kernel/VM)', key: 'hw'},
                   ]"
                 :search="search"
                 :page="page"
@@ -91,21 +85,12 @@
                     <td>{{ Number(item.commission).toLocaleString(undefined, {maximumFractionDigits: 1, minimumFractionDigits: 1}) }}</td>
                     <td>{{ item.status }}</td>
                     <td class="text-overline text-none">{{ shortStash(nominatedBy[item.stash]) }}</td>
-                    <!-- <td>{{ nominatedBy[item.stash] }}</td> -->
-                    <!-- <td>{{ item.telemetryX ? 'Yes' : 'No' }}</td> -->
-                    <td>
+                    <!-- <td>
                       {{ item.telemetryX?.NodeSysInfo?.core_count || '-' }} /
                       {{ ((item.telemetryX?.NodeSysInfo?.memory || 0)/1024/1024/1024).toFixed(0) }} /
                       {{ item.telemetryX?.NodeSysInfo?.linux_kernel || '-' }} /
                       {{ item.telemetryX ? (item.telemetryX?.NodeSysInfo?.is_virtual_machine ? 'Yes' : 'No') : '-' }}
-
-                    </td>
-                    <!--
-                    <td>{{ item.telemetry?.NodeSysInfo?.core_count }}</td>
-                    <td>{{ ((item.telemetry?.NodeSysInfo?.memory || 0)/1024/1024/1024).toFixed(0) }}</td>
-                    <td>{{ item.telemetry?.NodeSysInfo?.linux_kernel }}</td>
-                    <td>{{ item.telemetry?.NodeSysInfo?.is_virtual_machine ? 'Yes' : 'No' }}</td>
-                    -->
+                    </td> -->
                   </tr>
                 </template>
               </v-data-table>
@@ -131,16 +116,6 @@
                   {{ item.title }}
                 </v-list-item-title>
               </v-list-item>
-              <!-- <template v-slot:subheader="{ item }">
-                <v-subheader>{{ item.title }}</v-subheader>
-              </template>
-              <template v-slot:item="{ item }">
-                <v-list-item>
-                  <v-list-item-content>
-                    <v-list-item-title>{{ item.title }}</v-list-item-title>
-                  </v-list-item-content>
-                </v-list-item>
-              </template> -->
             </v-list>
           </v-tabs-window-item>
         </v-tabs-window>
@@ -168,17 +143,16 @@ query queryNodes($chainId: String!, $cohortId:String!) {
     stash
     status
     commission
-    # telemetry
-    telemetryX {
-      NodeName
-      NodeSysInfo {
-        memory
-        core_count
-        linux_kernel
-        linux_distro
-        is_virtual_machine
-      }
-    }
+    # telemetryX {
+    #   NodeName
+    #   NodeSysInfo {
+    #     memory
+    #     core_count
+    #     linux_kernel
+    #     linux_distro
+    #     is_virtual_machine
+    #   }
+    # }
   }
   nominators(chainId: $chainId, cohortId: $cohortId) 
   backups(chainId: $chainId, cohortId: $cohortId) {
@@ -246,6 +220,7 @@ export default defineComponent({
     onBeforeMount(async () => {
       //console.debug('onBeforeMount');
       // handle localStorage, if exists.
+      loading.value = true;
       const saved = localStorage.getItem(`dnd-search`);
       if (saved !== null) {
         search.value = saved;
@@ -295,6 +270,13 @@ export default defineComponent({
 
         // refetchT.value()
         // console.debug('...done');
+        try {
+          useTrackPageview()
+          console.debug('trackPageview')
+        } catch (error) {
+          console.error('error', error)
+        }
+        loading.value = false;
       });
 
       // save search to localStorage

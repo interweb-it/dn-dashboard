@@ -7,9 +7,10 @@
         <!-- [DN] Dashboard -  -->
         <!-- {{ chainId }} -->
       </v-toolbar-title>
-      <!-- <v-btn color="primary" :to="`/${chainId}/cohort/2-1`">Cohort 2-1</v-btn> -->
-      <v-btn color="primary" :to="`/${chainId}/cohort/2`">Cohort 2</v-btn>
-      <v-btn color="primary" :to="`/${chainId}/cohort/1`">Cohort 1</v-btn>
+      <v-btn color="primary" :to="`/${chainId}/cohort/3`">Cohort 3</v-btn>
+      <v-btn color="primary" :to="`/${chainId}/cohort/2-1`">Cohort 2-1</v-btn>
+      <!-- <v-btn color="primary" :to="`/${chainId}/cohort/2`">Cohort 2</v-btn> -->
+      <!-- <v-btn color="primary" :to="`/${chainId}/cohort/1`">Cohort 1</v-btn> -->
       <!-- <v-spacer></v-spacer> -->
       <v-btn icon>
         <nuxt-link :to="`/${chainId === 'polkadot' ? 'kusama' : 'polkadot'}`">
@@ -40,6 +41,13 @@ export default defineComponent({
     onMounted(() => {
       console.debug(`Connecting to chain ${chainId}`);
       $substrate.connect(chainId);
+      try {
+        console.debug('trackPageview')
+        useTrackPageview()
+        console.debug('trackPageview')
+      } catch (error) {
+        console.error('error', error)
+      }
     });
 
     return {

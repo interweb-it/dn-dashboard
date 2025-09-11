@@ -24,15 +24,19 @@ export default async function exposureHistoriesFunction(job: Job) {
   const NodesCollection = mongoClient.db('dnd').collection<INodeData>('nodes');
 
   const startDate = moment().subtract(30, 'days').format('YYYY-MM-DD HH:mm:ss');
-  const endDate = moment().format('YYYY-MM-DD HH:mm:ss');
+  const refDate = moment().format('YYYY-MM-DD HH:mm:ss');
 
   // find the cohort that is active at the startDate
-  const cohorts = await CohortsCollection.find({ chainId, 'term.start': { $lte: endDate }, 'term.end': { $gte: endDate } }).toArray();
+  const cohorts = await CohortsCollection.find({ 
+    chainId, 
+    'term.start': { $lte: refDate }, 
+    'term.end': { $gte: refDate }
+  }).toArray();
   if (cohorts.length === 0) {
-    logger.log(`No cohorts found for ${chainId} between ${startDate} and ${endDate}`);
+    logger.log(`No cohorts found for ${chainId} for ${refDate}`);
     return { success: false };
   }
-  logger.log(`Found ${cohorts.length} cohorts for ${chainId} between ${startDate} and ${endDate}`);
+  logger.log(`Found ${cohorts.length} cohorts for ${chainId} for ${refDate}`);
 
   const queue = new Queue('exposure-history', {
     connection: {
@@ -56,7 +60,7 @@ export default async function exposureHistoriesFunction(job: Job) {
         cohortId: cohort.cohortId,
         // stash: item.stash,
         startDate,
-        endDate,
+        endDate: refDate,
       });
     }
   }
